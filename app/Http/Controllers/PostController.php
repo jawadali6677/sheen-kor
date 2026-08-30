@@ -18,11 +18,12 @@ class PostController extends Controller
     public function index()
     {
         $posts = Post::with([
+                'user',
                 'category',
                 'images',
             ])
-            ->where('user_id', auth()->id())
-            ->latest()
+            ->where('status', 'published')
+            ->latest('published_at')
             ->paginate(10);
 
         return view('posts.index', compact('posts'));

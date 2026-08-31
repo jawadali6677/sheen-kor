@@ -22,8 +22,9 @@ class PostController extends Controller
                 'category',
                 'images',
             ])
-            ->where('status', 'published')
-            ->latest('published_at')
+            // ->where('status', 'published')
+            // ->latest('published_at')
+            ->latest('created_at')
             ->paginate(10);
 
         return view('posts.index', compact('posts'));

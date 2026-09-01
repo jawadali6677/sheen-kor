@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\Post;
 use App\Models\PostImage;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -13,23 +14,30 @@ use Throwable;
 class PostController extends Controller
 {
     /**
-     * Display user's posts.
+     * Display stories feed.
      */
     public function index()
     {
-        $posts = Post::with([
-                'user',
-                'category',
-                'images',
-            ])
-            // ->where('status', 'published')
-            // ->latest('published_at')
-            ->latest('created_at')
-            ->paginate(10);
-
-        return view('posts.index', compact('posts'));
+        return $this->renderFeed();
     }
 
+    /**
+     * Display published stories in a category.
+     */
+    public function byCategory(Category $category)
+    {
+        abort_unless($category->status, 404);
+
+        return $this->renderFeed(category: $category);
+    }
+
+    /**
+     * Display published stories by an author.
+     */
+    public function byAuthor(User $user)
+    {
+        return $this->renderFeed(author: $user);
+    }
 
     /**
      * Show create post form.
@@ -42,7 +50,6 @@ class PostController extends Controller
 
         return view('posts.create', compact('categories'));
     }
-
 
     /**
      * Store a new post.
@@ -101,7 +108,6 @@ class PostController extends Controller
             ],
         ]);
 
-
         DB::beginTransaction();
 
         try {
@@ -127,7 +133,6 @@ class PostController extends Controller
                 'views' => 0,
             ]);
 
-
             /*
             |--------------------------------------------------------------------------
             | Featured Image
@@ -144,7 +149,6 @@ class PostController extends Controller
                     'featured_image' => $featuredImage,
                 ]);
             }
-
 
             /*
             |--------------------------------------------------------------------------
@@ -170,7 +174,6 @@ class PostController extends Controller
                 }
             }
 
-
             DB::commit();
 
             return redirect()
@@ -195,7 +198,6 @@ class PostController extends Controller
         }
     }
 
-
     /**
      * Display a single post.
      */
@@ -214,7 +216,6 @@ class PostController extends Controller
             abort(404);
         }
 
-
         /*
         |--------------------------------------------------------------------------
         | Load Relationships
@@ -225,9 +226,18 @@ class PostController extends Controller
             'user',
             'category',
             'images',
-            'comments.user',
         ]);
 
+        $post->loadCount([
+            'likes',
+            'comments' => function ($query) {
+                $query->where('status', 'approved');
+            },
+        ]);
+
+        $likedByUser = $post->isLikedBy(auth()->id());
+        $likesCount = $post->likes_count;
+        $commentsCount = $post->comments_count;
 
         /*
         |--------------------------------------------------------------------------
@@ -237,10 +247,82 @@ class PostController extends Controller
 
         $post->increment('views');
 
-
-        return view('posts.show', compact('post'));
+        return view(
+            'posts.show',
+            compact(
+                'post',
+                'likedByUser',
+                'likesCount',
+                'commentsCount'
+            )
+        );
     }
 
+    /**
+     * Shared stories listing for feed, category, and author pages.
+     */
+    private function renderFeed(?Category $category = null, ?User $author = null)
+    {
+        $posts = Post::query()
+            ->with([
+                'user',
+                'category',
+                'images',
+            ])
+            ->withCount([
+                'likes',
+                'comments' => function ($query) {
+                    $query->where('status', 'approved');
+                },
+            ])
+            ->withExists([
+                'likes as liked_by_user' => function ($query) {
+                    $query->where('user_id', auth()->id());
+                },
+            ])
+            ->when($category, function ($query) use ($category) {
+                $query->where('category_id', $category->id)
+                    ->where('status', 'published');
+            })
+            ->when($author, function ($query) use ($author) {
+                $query->where('user_id', $author->id)
+                    ->where('status', 'published');
+            })
+            ->latest('created_at')
+            ->paginate(10)
+            ->withQueryString();
+
+        $categories = Category::query()
+            ->where('status', true)
+            ->withCount([
+                'posts as posts_count' => function ($query) {
+                    $query->where('status', 'published');
+                },
+            ])
+            ->orderBy('name')
+            ->get();
+
+        $authors = User::query()
+            ->whereHas('posts', function ($query) {
+                $query->where('status', 'published');
+            })
+            ->withCount([
+                'posts as posts_count' => function ($query) {
+                    $query->where('status', 'published');
+                },
+            ])
+            ->orderBy('name')
+            ->limit(20)
+            ->get();
+
+        return view('posts.index', compact(
+            'posts',
+            'categories',
+            'authors',
+            'category',
+            'author'
+        ));
+    }
 
     /**
      * Show edit form.
@@ -258,21 +340,17 @@ class PostController extends Controller
             403
         );
 
-
         $categories = Category::where('status', true)
             ->orderBy('name')
             ->get();
 
-
         $post->load('images');
-
 
         return view(
             'posts.edit',
             compact('post', 'categories')
         );
     }
-
 
     /**
      * Update post.
@@ -289,7 +367,6 @@ class PostController extends Controller
             $post->user_id === auth()->id(),
             403
         );
-
 
         /*
         |--------------------------------------------------------------------------
@@ -343,7 +420,6 @@ class PostController extends Controller
             ],
         ]);
 
-
         DB::beginTransaction();
 
         try {
@@ -372,7 +448,6 @@ class PostController extends Controller
                 'published_at' => null,
             ]);
 
-
             /*
             |--------------------------------------------------------------------------
             | Update Featured Image
@@ -387,11 +462,9 @@ class PostController extends Controller
                     ->file('featured_image')
                     ->store('posts/featured', 'public');
 
-
                 $post->update([
                     'featured_image' => $newFeaturedImage,
                 ]);
-
 
                 if ($oldFeaturedImage) {
 
@@ -399,7 +472,6 @@ class PostController extends Controller
                         ->delete($oldFeaturedImage);
                 }
             }
-
 
             /*
             |--------------------------------------------------------------------------
@@ -429,9 +501,7 @@ class PostController extends Controller
                 }
             }
 
-
             DB::commit();
-
 
             return redirect()
                 ->route('posts.index')
@@ -455,7 +525,6 @@ class PostController extends Controller
         }
     }
 
-
     /**
      * Delete post.
      */
@@ -471,7 +540,6 @@ class PostController extends Controller
             $post->user_id === auth()->id(),
             403
         );
-
 
         DB::beginTransaction();
 
@@ -489,7 +557,6 @@ class PostController extends Controller
                     ->delete($post->featured_image);
             }
 
-
             /*
             |--------------------------------------------------------------------------
             | Delete Additional Images
@@ -504,7 +571,6 @@ class PostController extends Controller
                 $image->delete();
             }
 
-
             /*
             |--------------------------------------------------------------------------
             | Delete Post
@@ -513,9 +579,7 @@ class PostController extends Controller
 
             $post->delete();
 
-
             DB::commit();
-
 
             return redirect()
                 ->route('posts.index')

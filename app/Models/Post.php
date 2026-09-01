@@ -54,6 +54,17 @@ class Post extends Model
         return $this->hasMany(Comment::class);
     }
 
+    public function isLikedBy(?int $userId): bool
+    {
+        if (! $userId) {
+            return false;
+        }
+
+        return $this->likes()
+            ->where('user_id', $userId)
+            ->exists();
+    }
+
     public function tips()
     {
         return $this->hasMany(Tip::class);

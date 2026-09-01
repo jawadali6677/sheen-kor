@@ -2,7 +2,13 @@
 
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            Sheen Kor Stories
+            @if($category)
+                {{ $category->name }}
+            @elseif($author)
+                Stories by {{ $author->name }}
+            @else
+                Sheen Kor Stories
+            @endif
         </h2>
     </x-slot>
 
@@ -10,41 +16,83 @@
 
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
 
-            {{-- Success Message --}}
             @if(session('success'))
             <div class="mb-6 p-4 bg-green-100 text-green-700 rounded">
                 {{ session('success') }}
             </div>
             @endif
 
-            {{-- Error Message --}}
             @if(session('error'))
             <div class="mb-6 p-4 bg-red-100 text-red-700 rounded">
                 {{ session('error') }}
             </div>
             @endif
 
-
-            {{-- Create Story --}}
-            @auth
-            <div class="mb-6">
+            <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+                @auth
                 <a
                     href="{{ route('posts.create') }}"
                     class="px-5 py-2 bg-gray-800 text-white rounded">
                     + Create Story
                 </a>
+                @endauth
+
+                @if($category || $author)
+                    <a href="{{ route('posts.index') }}" class="text-blue-600">
+                        View all stories
+                    </a>
+                @endif
             </div>
-            @endauth
 
+            @if($categories->count())
+                <div class="mb-4">
+                    <p class="text-sm text-gray-500 mb-2">Browse by category</p>
+                    <div class="d-flex flex-wrap gap-2">
+                        <a
+                            href="{{ route('posts.index') }}"
+                            class="btn btn-sm {{ ! $category && ! $author ? 'btn-dark' : 'btn-outline-secondary' }}"
+                        >
+                            All
+                        </a>
 
-            {{-- Posts --}}
+                        @foreach($categories as $feedCategory)
+                            <a
+                                href="{{ route('categories.show', $feedCategory) }}"
+                                class="btn btn-sm {{ $category?->id === $feedCategory->id ? 'btn-primary' : 'btn-outline-primary' }}"
+                            >
+                                {{ $feedCategory->name }}
+                                <span class="badge text-bg-light text-dark">{{ $feedCategory->posts_count }}</span>
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
+            @if($authors->count())
+                <div class="mb-6">
+                    <p class="text-sm text-gray-500 mb-2">Browse by author</p>
+                    <div class="d-flex flex-wrap gap-2">
+                        @foreach($authors as $feedAuthor)
+                            <a
+                                href="{{ route('authors.show', $feedAuthor) }}"
+                                class="btn btn-sm {{ $author?->id === $feedAuthor->id ? 'btn-success' : 'btn-outline-success' }}"
+                            >
+                                {{ $feedAuthor->name }}
+                                <span class="badge text-bg-light text-dark">{{ $feedAuthor->posts_count }}</span>
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
+            <div id="engagement-toast" class="alert d-none mb-4" role="alert"></div>
+
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
                 @forelse($posts as $post)
 
                 <div class="bg-white rounded-lg shadow overflow-hidden">
 
-                    {{-- Featured Image --}}
                     @if($post->featured_image)
 
                     <a href="{{ route('posts.show', $post) }}">
@@ -69,17 +117,17 @@
 
                     <div class="p-5">
 
-                        {{-- Category --}}
                         @if($post->category)
 
-                        <span class="text-sm text-blue-600">
+                        <a
+                            href="{{ route('categories.show', $post->category) }}"
+                            class="text-sm text-blue-600">
                             {{ $post->category->name }}
-                        </span>
+                        </a>
 
                         @endif
 
 
-                        {{-- Title --}}
                         <h3 class="text-xl font-semibold mt-2">
 
                             <a
@@ -91,11 +139,16 @@
                         </h3>
 
 
-                        {{-- Author --}}
                         <p class="text-sm text-gray-500 mt-2">
 
                             By
-                            {{ $post->user?->name ?? 'Unknown User' }}
+                            @if($post->user)
+                                <a href="{{ route('authors.show', $post->user) }}" class="text-gray-700 font-medium hover:underline">
+                                    {{ $post->user->name }}
+                                </a>
+                            @else
+                                Unknown User
+                            @endif
 
                             @if($post->published_at)
                             ·
@@ -105,7 +158,6 @@
                         </p>
 
 
-                        {{-- Excerpt --}}
                         @if($post->excerpt)
 
                         <p class="text-gray-600 mt-3">
@@ -115,13 +167,19 @@
                         @endif
 
 
-                        {{-- Views --}}
                         <p class="text-sm text-gray-500 mt-3">
                             {{ $post->views }} views
                         </p>
 
 
-                        {{-- Buttons --}}
+                        @include('posts.partials.engagement-bar', [
+                            'post' => $post,
+                            'liked' => (bool) $post->liked_by_user,
+                            'likesCount' => $post->likes_count,
+                            'commentsCount' => $post->comments_count,
+                        ])
+
+
                         <div class="mt-4">
 
                             <a
@@ -131,7 +189,6 @@
                             </a>
 
 
-                            {{-- Owner Only --}}
                             @auth
 
                             @if(auth()->id() === $post->user_id)
@@ -185,7 +242,6 @@
             </div>
 
 
-            {{-- Pagination --}}
             <div class="mt-8">
                 {{ $posts->links() }}
             </div>
@@ -193,5 +249,7 @@
         </div>
 
     </div>
+
+    @include('posts.partials.engagement-assets')
 
 </x-app-layout>

@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Alert;
 use App\Models\Comment;
 use App\Models\Post;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -11,150 +13,26 @@ use Throwable;
 
 class CommentController extends Controller
 {
-    /**
-     * List comments for a post (modal feed).
-     */
-    public function index(Post $post): JsonResponse
+    public function indexPost(Post $post): JsonResponse
     {
-        if (
-            $post->status !== 'published' &&
-            $post->user_id !== auth()->id()
-        ) {
-            abort(404);
-        }
-
-        $comments = $post->comments()
-            ->whereNull('parent_id')
-            ->where('status', 'approved')
-            ->with([
-                'user',
-                'replies' => function ($query) {
-                    $query->where('status', 'approved')
-                        ->with('user')
-                        ->orderBy('created_at');
-                },
-            ])
-            ->latest()
-            ->get();
-
-        $userId = auth()->id();
-        $postOwnerId = $post->user_id;
-
-        return response()->json([
-            'success' => true,
-            'liked' => $post->isLikedBy($userId),
-            'likes_count' => $post->likes()->count(),
-            'comments_count' => $this->approvedCommentsCount($post),
-            'post' => [
-                'id' => $post->id,
-                'title' => $post->title,
-            ],
-            'comments' => $comments->map(function (Comment $comment) use ($userId, $postOwnerId) {
-                $payload = $comment->toEngagementPayload($userId, $postOwnerId);
-                $payload['replies'] = $comment->replies
-                    ->map(fn (Comment $reply) => $reply->toEngagementPayload($userId, $postOwnerId))
-                    ->values();
-
-                return $payload;
-            })->values(),
-        ]);
+        return $this->indexFor($post);
     }
 
-    /**
-     * Store a new comment or reply.
-     */
-    public function store(Request $request, Post $post): JsonResponse
+    public function storePost(Request $request, Post $post): JsonResponse
     {
-        if ($post->status !== 'published') {
-            return response()->json([
-                'success' => false,
-                'message' => 'You can only comment on published stories.',
-            ], 403);
-        }
-
-        $request->merge([
-            'content' => trim(strip_tags((string) $request->input('content'))),
-        ]);
-
-        $request->validate([
-            'content' => [
-                'required',
-                'string',
-                'min:3',
-                'max:2000',
-            ],
-            'parent_id' => [
-                'nullable',
-                'integer',
-                'exists:comments,id',
-            ],
-        ]);
-
-        if ($request->filled('parent_id')) {
-            $parent = Comment::query()->find($request->integer('parent_id'));
-
-            if (
-                ! $parent ||
-                $parent->post_id !== $post->id ||
-                $parent->status !== 'approved' ||
-                $parent->parent_id !== null
-            ) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'You can only reply to a top-level comment on this story.',
-                    'errors' => [
-                        'parent_id' => [
-                            'You can only reply to a top-level comment on this story.',
-                        ],
-                    ],
-                ], 422);
-            }
-        }
-
-        DB::beginTransaction();
-
-        try {
-
-            $comment = Comment::create([
-                'user_id' => auth()->id(),
-                'post_id' => $post->id,
-                'parent_id' => $request->input('parent_id'),
-                'content' => $request->content,
-                'status' => 'approved',
-            ]);
-
-            $comment->load('user');
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => $comment->parent_id
-                    ? 'Your reply has been added.'
-                    : 'Your comment has been added.',
-                'comment' => $comment->toEngagementPayload(
-                    auth()->id(),
-                    $post->user_id
-                ),
-                'comments_count' => $this->approvedCommentsCount($post),
-            ], 201);
-
-        } catch (Throwable $e) {
-
-            DB::rollBack();
-
-            report($e);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Something went wrong while posting your comment.',
-            ], 500);
-        }
+        return $this->storeFor($request, $post);
     }
 
-    /**
-     * Update an existing comment.
-     */
+    public function indexAlert(Alert $alert): JsonResponse
+    {
+        return $this->indexFor($alert);
+    }
+
+    public function storeAlert(Request $request, Alert $alert): JsonResponse
+    {
+        return $this->storeFor($request, $alert);
+    }
+
     public function update(Request $request, Comment $comment): JsonResponse
     {
         abort_unless(
@@ -162,9 +40,9 @@ class CommentController extends Controller
             403
         );
 
-        $post = $comment->post;
+        $commentable = $comment->commentable;
 
-        if (! $post || $post->status !== 'published') {
+        if (! $commentable || $this->engagementDenied($commentable)) {
             return response()->json([
                 'success' => false,
                 'message' => 'This comment can no longer be edited.',
@@ -201,7 +79,7 @@ class CommentController extends Controller
                 'message' => 'Your comment has been updated.',
                 'comment' => $comment->toEngagementPayload(
                     auth()->id(),
-                    $post->user_id
+                    $commentable->user_id
                 ),
             ]);
 
@@ -218,15 +96,12 @@ class CommentController extends Controller
         }
     }
 
-    /**
-     * Delete a comment.
-     */
     public function destroy(Comment $comment): JsonResponse
     {
-        $post = $comment->post;
+        $commentable = $comment->commentable;
 
         $canDelete = $comment->user_id === auth()->id()
-            || ($post && $post->user_id === auth()->id());
+            || ($commentable && $commentable->user_id === auth()->id());
 
         abort_unless($canDelete, 403);
 
@@ -234,14 +109,16 @@ class CommentController extends Controller
 
         try {
 
-            $postId = $comment->post_id;
+            $commentableType = $comment->commentable_type;
+            $commentableId = $comment->commentable_id;
 
             $comment->delete();
 
             DB::commit();
 
             $commentsCount = Comment::query()
-                ->where('post_id', $postId)
+                ->where('commentable_type', $commentableType)
+                ->where('commentable_id', $commentableId)
                 ->where('status', 'approved')
                 ->count();
 
@@ -264,9 +141,151 @@ class CommentController extends Controller
         }
     }
 
-    private function approvedCommentsCount(Post $post): int
+    private function indexFor(Model $commentable): JsonResponse
     {
-        return $post->comments()
+        if ($commentable instanceof Post
+            && $commentable->status !== 'published'
+            && $commentable->user_id !== auth()->id()
+        ) {
+            abort(404);
+        }
+
+        $comments = $commentable->comments()
+            ->whereNull('parent_id')
+            ->where('status', 'approved')
+            ->with([
+                'user',
+                'replies' => function ($query) {
+                    $query->where('status', 'approved')
+                        ->with('user')
+                        ->orderBy('created_at');
+                },
+            ])
+            ->latest()
+            ->get();
+
+        $userId = auth()->id();
+        $ownerId = $commentable->user_id;
+
+        return response()->json([
+            'success' => true,
+            'liked' => $commentable->isLikedBy($userId),
+            'likes_count' => $commentable->likes()->count(),
+            'comments_count' => $this->approvedCommentsCount($commentable),
+            'item' => [
+                'id' => $commentable->id,
+                'title' => $commentable->title,
+            ],
+            'comments' => $comments->map(function (Comment $comment) use ($userId, $ownerId) {
+                $payload = $comment->toEngagementPayload($userId, $ownerId);
+                $payload['replies'] = $comment->replies
+                    ->map(fn (Comment $reply) => $reply->toEngagementPayload($userId, $ownerId))
+                    ->values();
+
+                return $payload;
+            })->values(),
+        ]);
+    }
+
+    private function storeFor(Request $request, Model $commentable): JsonResponse
+    {
+        $noun = $commentable instanceof Alert ? 'alert' : 'story';
+
+        if ($this->engagementDenied($commentable)) {
+            return response()->json([
+                'success' => false,
+                'message' => "You can only comment on published {$noun}s.",
+            ], 403);
+        }
+
+        $request->merge([
+            'content' => trim(strip_tags((string) $request->input('content'))),
+        ]);
+
+        $request->validate([
+            'content' => [
+                'required',
+                'string',
+                'min:3',
+                'max:2000',
+            ],
+            'parent_id' => [
+                'nullable',
+                'integer',
+                'exists:comments,id',
+            ],
+        ]);
+
+        if ($request->filled('parent_id')) {
+            $parent = Comment::query()->find($request->integer('parent_id'));
+
+            if (
+                ! $parent ||
+                $parent->commentable_id !== $commentable->id ||
+                $parent->commentable_type !== $commentable->getMorphClass() ||
+                $parent->status !== 'approved' ||
+                $parent->parent_id !== null
+            ) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "You can only reply to a top-level comment on this {$noun}.",
+                    'errors' => [
+                        'parent_id' => [
+                            "You can only reply to a top-level comment on this {$noun}.",
+                        ],
+                    ],
+                ], 422);
+            }
+        }
+
+        DB::beginTransaction();
+
+        try {
+
+            $comment = $commentable->comments()->create([
+                'user_id' => auth()->id(),
+                'parent_id' => $request->input('parent_id'),
+                'content' => $request->content,
+                'status' => 'approved',
+            ]);
+
+            $comment->load('user');
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => $comment->parent_id
+                    ? 'Your reply has been added.'
+                    : 'Your comment has been added.',
+                'comment' => $comment->toEngagementPayload(
+                    auth()->id(),
+                    $commentable->user_id
+                ),
+                'comments_count' => $this->approvedCommentsCount($commentable),
+            ], 201);
+
+        } catch (Throwable $e) {
+
+            DB::rollBack();
+
+            report($e);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong while posting your comment.',
+            ], 500);
+        }
+    }
+
+    private function engagementDenied(Model $commentable): bool
+    {
+        return $commentable instanceof Post && $commentable->status !== 'published';
+    }
+
+    private function approvedCommentsCount(Model $commentable): int
+    {
+        return $commentable->comments()
             ->where('status', 'approved')
             ->count();
     }

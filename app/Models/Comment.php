@@ -11,7 +11,8 @@ class Comment extends Model
 
     protected $fillable = [
         'user_id',
-        'post_id',
+        'commentable_id',
+        'commentable_type',
         'parent_id',
         'content',
         'status',
@@ -22,9 +23,9 @@ class Comment extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function post()
+    public function commentable()
     {
-        return $this->belongsTo(Post::class);
+        return $this->morphTo();
     }
 
     public function parent()
@@ -38,9 +39,9 @@ class Comment extends Model
             ->orderBy('created_at');
     }
 
-    public function toEngagementPayload(?int $userId, ?int $postOwnerId = null): array
+    public function toEngagementPayload(?int $userId, ?int $ownerId = null): array
     {
-        $postOwnerId ??= $this->post?->user_id;
+        $ownerId ??= $this->commentable?->user_id;
 
         return [
             'id' => $this->id,
@@ -55,7 +56,7 @@ class Comment extends Model
             'can_edit' => $userId !== null && $this->user_id === $userId,
             'can_delete' => $userId !== null && (
                 $this->user_id === $userId ||
-                $postOwnerId === $userId
+                $ownerId === $userId
             ),
         ];
     }

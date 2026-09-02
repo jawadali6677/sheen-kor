@@ -12,13 +12,10 @@ class CommentFactory extends Factory
     {
         return [
             'user_id' => User::factory(),
-
-            'post_id' => Post::factory(),
-
+            'commentable_type' => 'post',
+            'commentable_id' => Post::factory(),
             'parent_id' => null,
-
             'content' => fake()->paragraph(),
-
             'status' => 'approved',
         ];
     }

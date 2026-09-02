@@ -1,20 +1,27 @@
 @php
-    $liked = $liked ?? (bool) ($post->liked_by_user ?? false);
-    $likesCount = $likesCount ?? ($post->likes_count ?? 0);
-    $commentsCount = $commentsCount ?? ($post->comments_count ?? 0);
-    $isPublished = $post->status === 'published';
+    $model = $model ?? $post;
+    $isAlert = $model instanceof \App\Models\Alert;
+    $liked = $liked ?? (bool) ($model->liked_by_user ?? false);
+    $likesCount = $likesCount ?? ($model->likes_count ?? 0);
+    $commentsCount = $commentsCount ?? ($model->comments_count ?? 0);
+    $canEngage = $isAlert || $model->status === 'published';
+    $likeStore = $isAlert ? route('alerts.likes.store', $model) : route('posts.likes.store', $model);
+    $likeDestroy = $isAlert ? route('alerts.likes.destroy', $model) : route('posts.likes.destroy', $model);
+    $commentsIndex = $isAlert ? route('alerts.comments.index', $model) : route('posts.comments.index', $model);
+    $commentsStore = $isAlert ? route('alerts.comments.store', $model) : route('posts.comments.store', $model);
 @endphp
 
 <div
     class="post-engagement-bar border-t mt-4 pt-4"
-    data-post-id="{{ $post->id }}"
-    data-post-title="{{ $post->title }}"
-    data-published="{{ $isPublished ? '1' : '0' }}"
+    data-item-key="{{ $isAlert ? 'alert' : 'post' }}-{{ $model->id }}"
+    data-post-id="{{ $model->id }}"
+    data-post-title="{{ $model->title }}"
+    data-published="{{ $canEngage ? '1' : '0' }}"
     data-liked="{{ $liked ? '1' : '0' }}"
-    data-like-url="{{ route('posts.likes.store', $post) }}"
-    data-unlike-url="{{ route('posts.likes.destroy', $post) }}"
-    data-comments-url="{{ route('posts.comments.index', $post) }}"
-    data-comment-url="{{ route('posts.comments.store', $post) }}"
+    data-like-url="{{ $likeStore }}"
+    data-unlike-url="{{ $likeDestroy }}"
+    data-comments-url="{{ $commentsIndex }}"
+    data-comment-url="{{ $commentsStore }}"
 >
     <div class="d-flex align-items-center justify-content-between text-muted small mb-2">
         <span>
@@ -25,7 +32,7 @@
         </span>
     </div>
 
-    @if($isPublished)
+    @if($canEngage)
         <div class="d-grid gap-2" style="grid-template-columns: 1fr 1fr;">
             <button
                 type="button"

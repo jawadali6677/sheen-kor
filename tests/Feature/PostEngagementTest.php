@@ -50,7 +50,8 @@ class PostEngagementTest extends TestCase
 
         $this->assertDatabaseHas('likes', [
             'user_id' => $user->id,
-            'post_id' => $post->id,
+            'likeable_id' => $post->id,
+            'likeable_type' => 'post',
         ]);
 
         $this->actingAs($user)
@@ -61,7 +62,7 @@ class PostEngagementTest extends TestCase
                 'likes_count' => 1,
             ]);
 
-        $this->assertSame(1, Like::query()->where('post_id', $post->id)->count());
+        $this->assertSame(1, Like::query()->where('likeable_id', $post->id)->where('likeable_type', 'post')->count());
 
         $this->actingAs($user)
             ->deleteJson(route('posts.likes.destroy', $post))
@@ -74,7 +75,8 @@ class PostEngagementTest extends TestCase
 
         $this->assertDatabaseMissing('likes', [
             'user_id' => $user->id,
-            'post_id' => $post->id,
+            'likeable_id' => $post->id,
+            'likeable_type' => 'post',
         ]);
     }
 
@@ -160,7 +162,8 @@ class PostEngagementTest extends TestCase
 
         $comment = Comment::factory()->create([
             'user_id' => $author->id,
-            'post_id' => $post->id,
+            'commentable_id' => $post->id,
+            'commentable_type' => 'post',
             'content' => 'Original comment body.',
         ]);
 
@@ -181,7 +184,8 @@ class PostEngagementTest extends TestCase
 
         $comment = Comment::factory()->create([
             'user_id' => $commenter->id,
-            'post_id' => $post->id,
+            'commentable_id' => $post->id,
+            'commentable_type' => 'post',
             'content' => 'A comment on this story.',
         ]);
 
@@ -202,7 +206,8 @@ class PostEngagementTest extends TestCase
 
         $parent = Comment::factory()->create([
             'user_id' => $user->id,
-            'post_id' => $post->id,
+            'commentable_id' => $post->id,
+            'commentable_type' => 'post',
             'content' => 'Parent comment body.',
         ]);
 
@@ -268,7 +273,8 @@ class PostEngagementTest extends TestCase
 
         Comment::factory()->create([
             'user_id' => $user->id,
-            'post_id' => $post->id,
+            'commentable_id' => $post->id,
+            'commentable_type' => 'post',
             'content' => 'Visible in the modal thread.',
         ]);
 

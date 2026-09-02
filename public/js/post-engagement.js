@@ -112,7 +112,7 @@
     }
 
     function toggleLike($bar) {
-        var postId = $bar.data('post-id');
+        var postId = $bar.attr('data-item-key') || $bar.data('post-id');
 
         var likeUrl = $bar.attr('data-like-url');
         var unlikeUrl = $bar.attr('data-unlike-url');
@@ -132,7 +132,7 @@
             .done(function (response) {
                 paintLike($bar, Boolean(response.liked), response.likes_count);
 
-                if (currentBar && currentBar.data('post-id') === postId) {
+                if (currentBar && (currentBar.attr('data-item-key') || currentBar.data('post-id')) === postId) {
                     paintModalLike(Boolean(response.liked), response.likes_count, null);
                 }
 

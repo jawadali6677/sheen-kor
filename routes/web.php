@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AlertController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\LikeController;
 use App\Http\Controllers\PostController;
@@ -23,6 +24,7 @@ Route::middleware('auth')->group(function () {
 Route::middleware('auth')->group(function () {
 
     Route::resource('posts', PostController::class);
+    Route::resource('alerts', AlertController::class);
 
     Route::get('categories/{category:slug}', [PostController::class, 'byCategory'])
         ->name('categories.show');
@@ -30,17 +32,29 @@ Route::middleware('auth')->group(function () {
     Route::get('authors/{user}', [PostController::class, 'byAuthor'])
         ->name('authors.show');
 
-    Route::post('posts/{post}/likes', [LikeController::class, 'store'])
+    Route::post('posts/{post}/likes', [LikeController::class, 'storePost'])
         ->name('posts.likes.store');
 
-    Route::delete('posts/{post}/likes', [LikeController::class, 'destroy'])
+    Route::delete('posts/{post}/likes', [LikeController::class, 'destroyPost'])
         ->name('posts.likes.destroy');
 
-    Route::get('posts/{post}/comments', [CommentController::class, 'index'])
+    Route::get('posts/{post}/comments', [CommentController::class, 'indexPost'])
         ->name('posts.comments.index');
 
-    Route::post('posts/{post}/comments', [CommentController::class, 'store'])
+    Route::post('posts/{post}/comments', [CommentController::class, 'storePost'])
         ->name('posts.comments.store');
+
+    Route::post('alerts/{alert}/likes', [LikeController::class, 'storeAlert'])
+        ->name('alerts.likes.store');
+
+    Route::delete('alerts/{alert}/likes', [LikeController::class, 'destroyAlert'])
+        ->name('alerts.likes.destroy');
+
+    Route::get('alerts/{alert}/comments', [CommentController::class, 'indexAlert'])
+        ->name('alerts.comments.index');
+
+    Route::post('alerts/{alert}/comments', [CommentController::class, 'storeAlert'])
+        ->name('alerts.comments.store');
 
     Route::put('comments/{comment}', [CommentController::class, 'update'])
         ->name('comments.update');

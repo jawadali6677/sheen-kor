@@ -315,6 +315,7 @@ class PostController extends Controller
                         ->orWhere('content', 'like', $like);
                 });
             })
+            ->where('status' , "published")
             ->latest('created_at')
             ->paginate(10)
             ->withQueryString();
@@ -592,6 +593,9 @@ class PostController extends Controller
             | Delete Post
             |--------------------------------------------------------------------------
             */
+
+            $post->likes()->delete();
+            $post->comments()->delete();
 
             $post->delete();
 

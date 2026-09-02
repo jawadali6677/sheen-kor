@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Like;
+use App\Models\Alert;
 use App\Models\Post;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -11,31 +12,48 @@ use Throwable;
 
 class LikeController extends Controller
 {
-    /**
-     * Like a published post.
-     */
-    public function store(Post $post): JsonResponse
+    public function storePost(Post $post): JsonResponse
     {
-        $denied = $this->publishedPostOrError($post, 'like');
+        return $this->storeFor($post);
+    }
+
+    public function destroyPost(Post $post): JsonResponse
+    {
+        return $this->destroyFor($post);
+    }
+
+    public function storeAlert(Alert $alert): JsonResponse
+    {
+        return $this->storeFor($alert);
+    }
+
+    public function destroyAlert(Alert $alert): JsonResponse
+    {
+        return $this->destroyFor($alert);
+    }
+
+    private function storeFor(Model $likeable): JsonResponse
+    {
+        $denied = $this->engagementDenied($likeable, 'like');
 
         if ($denied) {
             return $denied;
         }
 
+        $noun = $this->noun($likeable);
+
         DB::beginTransaction();
 
         try {
 
-            $existingLike = Like::query()
+            $existingLike = $likeable->likes()
                 ->where('user_id', auth()->id())
-                ->where('post_id', $post->id)
                 ->lockForUpdate()
                 ->first();
 
             if (! $existingLike) {
-                Like::create([
+                $likeable->likes()->create([
                     'user_id' => auth()->id(),
-                    'post_id' => $post->id,
                 ]);
             }
 
@@ -44,10 +62,10 @@ class LikeController extends Controller
             return response()->json([
                 'success' => true,
                 'liked' => true,
-                'likes_count' => $post->likes()->count(),
+                'likes_count' => $likeable->likes()->count(),
                 'message' => $existingLike
-                    ? 'You already liked this story.'
-                    : 'You liked this story.',
+                    ? "You already liked this {$noun}."
+                    : "You liked this {$noun}.",
             ]);
 
         } catch (UniqueConstraintViolationException $e) {
@@ -57,8 +75,8 @@ class LikeController extends Controller
             return response()->json([
                 'success' => true,
                 'liked' => true,
-                'likes_count' => $post->likes()->count(),
-                'message' => 'You liked this story.',
+                'likes_count' => $likeable->likes()->count(),
+                'message' => "You liked this {$noun}.",
             ]);
 
         } catch (Throwable $e) {
@@ -69,29 +87,27 @@ class LikeController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Something went wrong while liking this story.',
+                'message' => "Something went wrong while liking this {$noun}.",
             ], 500);
         }
     }
 
-    /**
-     * Unlike a published post.
-     */
-    public function destroy(Post $post): JsonResponse
+    private function destroyFor(Model $likeable): JsonResponse
     {
-        $denied = $this->publishedPostOrError($post, 'unlike');
+        $denied = $this->engagementDenied($likeable, 'unlike');
 
         if ($denied) {
             return $denied;
         }
 
+        $noun = $this->noun($likeable);
+
         DB::beginTransaction();
 
         try {
 
-            Like::query()
+            $likeable->likes()
                 ->where('user_id', auth()->id())
-                ->where('post_id', $post->id)
                 ->delete();
 
             DB::commit();
@@ -99,8 +115,8 @@ class LikeController extends Controller
             return response()->json([
                 'success' => true,
                 'liked' => false,
-                'likes_count' => $post->likes()->count(),
-                'message' => 'You unliked this story.',
+                'likes_count' => $likeable->likes()->count(),
+                'message' => "You unliked this {$noun}.",
             ]);
 
         } catch (Throwable $e) {
@@ -111,20 +127,25 @@ class LikeController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Something went wrong while unliking this story.',
+                'message' => "Something went wrong while unliking this {$noun}.",
             ], 500);
         }
     }
 
-    private function publishedPostOrError(Post $post, string $action): ?JsonResponse
+    private function engagementDenied(Model $likeable, string $action): ?JsonResponse
     {
-        if ($post->status === 'published') {
-            return null;
+        if ($likeable instanceof Post && $likeable->status !== 'published') {
+            return response()->json([
+                'success' => false,
+                'message' => "You can only {$action} published stories.",
+            ], 403);
         }
 
-        return response()->json([
-            'success' => false,
-            'message' => "You can only {$action} published stories.",
-        ], 403);
+        return null;
+    }
+
+    private function noun(Model $likeable): string
+    {
+        return $likeable instanceof Alert ? 'alert' : 'story';
     }
 }

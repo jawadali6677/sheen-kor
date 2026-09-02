@@ -6,27 +6,29 @@ use App\Models\Concerns\HasEngagement;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Post extends Model
+class Alert extends Model
 {
     use HasEngagement, HasFactory;
 
     protected $fillable = [
         'user_id',
-        'category_id',
         'title',
         'slug',
-        'excerpt',
-        'content',
+        'description',
+        'location_name',
+        'latitude',
+        'longitude',
         'featured_image',
+        'severity',
         'status',
-        'published_at',
         'views',
     ];
 
     protected function casts(): array
     {
         return [
-            'published_at' => 'datetime',
+            'latitude' => 'float',
+            'longitude' => 'float',
         ];
     }
 
@@ -35,18 +37,13 @@ class Post extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function category()
-    {
-        return $this->belongsTo(Category::class);
-    }
-
     public function images()
     {
-        return $this->hasMany(PostImage::class);
+        return $this->hasMany(AlertImage::class)->orderBy('sort_order');
     }
 
-    public function tips()
+    public function isOpen(): bool
     {
-        return $this->hasMany(Tip::class);
+        return $this->status === 'open';
     }
 }

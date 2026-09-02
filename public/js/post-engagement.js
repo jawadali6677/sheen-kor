@@ -1,18 +1,9 @@
 (function ($) {
     'use strict';
 
-    var $root = $('#post-engagement');
-
-    if (!$root.length) {
+    if (!window.jQuery) {
         return;
     }
-
-    var likeUrl = $root.data('like-url');
-    var unlikeUrl = $root.data('unlike-url');
-    var commentUrl = $root.data('comment-url');
-    var commentUpdateTemplate = $root.data('comment-update-template');
-    var liked = String($root.data('liked')) === '1';
-    var requestInFlight = false;
 
     $.ajaxSetup({
         headers: {
@@ -22,201 +13,267 @@
         }
     });
 
+    var $modal = $('#commentModal');
+    var commentModal = null;
+    var currentBar = null;
+    var replyParentId = null;
+    var inflightLikes = {};
+
+    if ($modal.length && window.bootstrap && bootstrap.Modal) {
+        commentModal = bootstrap.Modal.getOrCreateInstance($modal[0]);
+    }
+
     function escapeHtml(value) {
         return $('<div>').text(value == null ? '' : String(value)).html();
     }
 
-    function showAlert(message, type) {
-        var $alert = $('#engagement-alert');
+    function initials(name) {
+        var parts = String(name || 'U').trim().split(/\s+/);
 
-        $alert
-            .removeClass('d-none alert-success alert-danger alert-info')
-            .addClass('alert-' + (type || 'info'))
-            .text(message);
+        return ((parts[0] || 'U').charAt(0) + (parts[1] ? parts[1].charAt(0) : '')).toUpperCase();
     }
 
-    function hideAlert() {
-        $('#engagement-alert').addClass('d-none').text('');
-    }
-
-    function firstValidationError(xhr) {
+    function firstError(xhr) {
         var errors = xhr.responseJSON && xhr.responseJSON.errors;
 
-        if (!errors) {
-            return (xhr.responseJSON && xhr.responseJSON.message) || 'Something went wrong. Please try again.';
+        if (errors) {
+            return errors[Object.keys(errors)[0]][0];
         }
 
-        var key = Object.keys(errors)[0];
-
-        return errors[key][0];
+        return (xhr.responseJSON && xhr.responseJSON.message) || 'Something went wrong. Please try again.';
     }
 
     function commentEndpoint(id) {
-        return String(commentUpdateTemplate).replace('__ID__', id);
+        var template = $modal.data('comment-update-template') || '/comments/__ID__';
+
+        return String(template).replace('__ID__', id);
     }
 
-    function updateLikeButton() {
-        var $button = $('#like-button');
+    function isLiked($bar) {
+        return String($bar.data('liked')) === '1' || String($bar.attr('data-liked')) === '1';
+    }
+
+    function paintLike($bar, liked, likesCount) {
+        $bar.attr('data-liked', liked ? '1' : '0');
+        $bar.data('liked', liked ? 1 : 0);
+
+        var $button = $bar.find('.js-like-button');
 
         $button
             .toggleClass('btn-danger', liked)
             .toggleClass('btn-outline-danger', !liked);
 
-        $('#like-icon').text(liked ? '♥' : '♡');
-        $('#like-label').text(liked ? 'Liked' : 'Like');
+        $bar.find('.js-like-icon').text(liked ? '♥' : '♡');
+        $bar.find('.js-like-label').text(liked ? 'Liked' : 'Like');
+
+        if (typeof likesCount !== 'undefined' && likesCount !== null) {
+            $bar.find('.js-likes-count').text(likesCount);
+        }
     }
 
-    function setCounts(likesCount, commentsCount) {
+    function paintModalLike(liked, likesCount, commentsCount) {
+        $('#modal-like-button')
+            .toggleClass('btn-danger', liked)
+            .toggleClass('btn-outline-danger', !liked);
+        $('#modal-like-icon').text(liked ? '♥' : '♡');
+        $('#modal-like-label').text(liked ? 'Liked' : 'Like');
+
         if (typeof likesCount !== 'undefined' && likesCount !== null) {
-            $('#likes-count').text(likesCount);
+            $('#modal-likes-count').text(likesCount);
         }
 
         if (typeof commentsCount !== 'undefined' && commentsCount !== null) {
-            $('#comments-count').text(commentsCount);
-            $('#comments-empty').toggleClass('d-none', Number(commentsCount) > 0);
+            $('#modal-comments-count').text(commentsCount);
+            if (currentBar) {
+                currentBar.find('.js-comments-count').text(commentsCount);
+            }
         }
     }
 
-    function renderComment(comment) {
-        var isReply = Boolean(comment.parent_id);
-        var actions = '';
+    function showToast(message, type) {
+        var $toast = $('#engagement-toast');
 
-        if (!isReply) {
-            actions += '<button type="button" class="btn btn-sm btn-outline-primary btn-reply">Reply</button>';
-        }
-
-        if (comment.can_edit) {
-            actions += '<button type="button" class="btn btn-sm btn-outline-secondary btn-edit">Edit</button>';
-        }
-
-        if (comment.can_delete) {
-            actions += '<button type="button" class="btn btn-sm btn-outline-danger btn-delete">Delete</button>';
-        }
-
-        var replyMarkup = '';
-
-        if (!isReply) {
-            replyMarkup =
-                '<div class="comment-reply-form d-none mt-3">' +
-                    '<textarea class="form-control comment-reply-input mb-2" rows="2" maxlength="2000" placeholder="Write a reply..."></textarea>' +
-                    '<div class="d-flex gap-2">' +
-                        '<button type="button" class="btn btn-sm btn-primary btn-submit-reply">Post reply</button>' +
-                        '<button type="button" class="btn btn-sm btn-outline-secondary btn-cancel-reply">Cancel</button>' +
-                    '</div>' +
-                    '<div class="invalid-feedback d-block comment-reply-error"></div>' +
-                '</div>' +
-                '<div class="replies mt-3 ms-md-4"></div>';
-        }
-
-        return $(
-            '<div class="card mb-3 comment-item' + (isReply ? ' border-0 bg-light' : '') + '" data-comment-id="' + comment.id + '" data-parent-id="' + (comment.parent_id || '') + '">' +
-                '<div class="card-body py-3">' +
-                    '<div class="d-flex justify-content-between align-items-start gap-3">' +
-                        '<div>' +
-                            '<strong class="comment-author">' + escapeHtml(comment.user && comment.user.name) + '</strong>' +
-                            '<small class="text-muted comment-time ms-2">' + escapeHtml(comment.created_at) + '</small>' +
-                        '</div>' +
-                    '</div>' +
-                    '<p class="comment-content mt-2 mb-2 mb-md-3">' + escapeHtml(comment.content) + '</p>' +
-                    '<div class="comment-edit-form d-none">' +
-                        '<textarea class="form-control comment-edit-input mb-2" rows="3" maxlength="2000"></textarea>' +
-                        '<div class="d-flex gap-2">' +
-                            '<button type="button" class="btn btn-sm btn-primary btn-save-edit">Save</button>' +
-                            '<button type="button" class="btn btn-sm btn-outline-secondary btn-cancel-edit">Cancel</button>' +
-                        '</div>' +
-                        '<div class="invalid-feedback d-block comment-edit-error"></div>' +
-                    '</div>' +
-                    '<div class="comment-actions d-flex flex-wrap gap-2">' + actions + '</div>' +
-                    replyMarkup +
-                '</div>' +
-            '</div>'
-        );
-    }
-
-    $('#like-button').on('click', function () {
-        if (requestInFlight) {
+        if (!$toast.length) {
             return;
         }
 
-        requestInFlight = true;
-        hideAlert();
+        $toast
+            .removeClass('d-none alert-success alert-danger alert-info')
+            .addClass('alert-' + (type || 'success'))
+            .text(message)
+            .show();
+    }
+
+    function showModalAlert(message, type) {
+        $('#modal-engagement-alert')
+            .removeClass('d-none alert-success alert-danger alert-info')
+            .addClass('alert-' + (type || 'info'))
+            .text(message);
+    }
+
+    function toggleLike($bar) {
+        var postId = $bar.data('post-id');
+
+        var likeUrl = $bar.attr('data-like-url');
+        var unlikeUrl = $bar.attr('data-unlike-url');
+
+        if (!likeUrl || inflightLikes[postId]) {
+            return;
+        }
+
+        var liked = isLiked($bar);
+
+        inflightLikes[postId] = true;
 
         $.ajax({
             url: liked ? unlikeUrl : likeUrl,
             method: liked ? 'DELETE' : 'POST'
         })
             .done(function (response) {
-                liked = Boolean(response.liked);
-                $root.attr('data-liked', liked ? '1' : '0');
-                updateLikeButton();
-                setCounts(response.likes_count, null);
-                showAlert(response.message, 'success');
+                paintLike($bar, Boolean(response.liked), response.likes_count);
+
+                if (currentBar && currentBar.data('post-id') === postId) {
+                    paintModalLike(Boolean(response.liked), response.likes_count, null);
+                }
+
+                showToast(response.message, 'success');
             })
             .fail(function (xhr) {
-                showAlert(firstValidationError(xhr), 'danger');
+                showToast(firstError(xhr), 'danger');
             })
             .always(function () {
-                requestInFlight = false;
+                inflightLikes[postId] = false;
             });
+    }
+
+    function renderComment(comment, isReply) {
+        var name = (comment.user && comment.user.name) || 'Unknown User';
+        var actions = '';
+
+        if (!isReply) {
+            actions += '<button type="button" class="btn btn-link btn-sm p-0 js-reply-comment">Reply</button>';
+        }
+
+        if (comment.can_edit) {
+            actions += '<button type="button" class="btn btn-link btn-sm p-0 js-edit-comment">Edit</button>';
+        }
+
+        if (comment.can_delete) {
+            actions += '<button type="button" class="btn btn-link btn-sm p-0 text-danger js-delete-comment">Delete</button>';
+        }
+
+        var replies = '';
+
+        if (!isReply) {
+            replies = '<div class="comment-replies"></div>';
+        }
+
+        var $item = $(
+            '<div class="comment-item' + (isReply ? ' comment-reply' : '') + '" data-comment-id="' + comment.id + '" data-author="' + escapeHtml(name) + '">' +
+                '<div class="comment-thread">' +
+                    '<div class="comment-avatar">' + escapeHtml(initials(name)) + '</div>' +
+                    '<div class="flex-grow-1">' +
+                        '<div class="comment-bubble">' +
+                            '<strong>' + escapeHtml(name) + '</strong>' +
+                            '<p class="comment-content">' + escapeHtml(comment.content) + '</p>' +
+                        '</div>' +
+                        '<div class="comment-edit-form d-none mt-2">' +
+                            '<textarea class="form-control form-control-sm comment-edit-input mb-2" rows="2" maxlength="2000"></textarea>' +
+                            '<button type="button" class="btn btn-sm btn-primary js-save-edit">Save</button> ' +
+                            '<button type="button" class="btn btn-sm btn-outline-secondary js-cancel-edit">Cancel</button>' +
+                            '<div class="text-danger small comment-edit-error"></div>' +
+                        '</div>' +
+                        '<div class="comment-meta-actions d-flex gap-3 text-muted">' +
+                            '<span>' + escapeHtml(comment.created_at || '') + '</span>' +
+                            actions +
+                        '</div>' +
+                        replies +
+                    '</div>' +
+                '</div>' +
+            '</div>'
+        );
+
+        if (comment.replies && comment.replies.length) {
+            comment.replies.forEach(function (reply) {
+                $item.find('.comment-replies').append(renderComment(reply, true));
+            });
+        }
+
+        return $item;
+    }
+
+    function renderComments(comments) {
+        var $list = $('#modal-comments-list').empty();
+
+        (comments || []).forEach(function (comment) {
+            $list.append(renderComment(comment, false));
+        });
+
+        $('#modal-comments-empty').toggleClass('d-none', (comments || []).length > 0);
+    }
+
+    function resetReplyState() {
+        replyParentId = null;
+        $('#replying-to').addClass('d-none');
+        $('#modal-comment-input').attr('placeholder', 'Write a comment...');
+    }
+
+    function openComments($bar) {
+        currentBar = $bar;
+        resetReplyState();
+        $('#modal-comment-error').text('');
+        $('#modal-engagement-alert').addClass('d-none').text('');
+        $('#commentModalSubtitle').text($bar.attr('data-post-title') || '');
+        $('#modal-comments-loading').removeClass('d-none');
+        $('#modal-comments-empty').addClass('d-none');
+        $('#modal-comments-list').empty();
+        paintModalLike(isLiked($bar), $bar.find('.js-likes-count').text(), $bar.find('.js-comments-count').text());
+
+        if (commentModal) {
+            commentModal.show();
+        } else if ($modal.length) {
+            $modal.addClass('show d-block').attr('aria-hidden', 'false');
+            $('body').append('<div class="modal-backdrop fade show" id="comment-modal-fallback-backdrop"></div>');
+        }
+
+        $.getJSON($bar.attr('data-comments-url'))
+            .done(function (response) {
+                paintLike($bar, Boolean(response.liked), response.likes_count);
+                paintModalLike(Boolean(response.liked), response.likes_count, response.comments_count);
+                renderComments(response.comments);
+            })
+            .fail(function (xhr) {
+                showModalAlert(firstError(xhr), 'danger');
+            })
+            .always(function () {
+                $('#modal-comments-loading').addClass('d-none');
+            });
+    }
+
+    $(document).on('click', '.js-like-button', function (event) {
+        event.preventDefault();
+        toggleLike($(this).closest('.post-engagement-bar'));
     });
 
-    $('#comment-form').on('submit', function (event) {
+    $(document).on('click', '.js-comment-button', function (event) {
         event.preventDefault();
+        openComments($(this).closest('.post-engagement-bar'));
+    });
 
-        var $error = $('#comment-error');
-        var content = $.trim($('#comment-content').val());
+    $('#modal-like-button').on('click', function () {
+        if (currentBar) {
+            toggleLike(currentBar);
+        }
+    });
 
-        $error.text('');
-
-        if (content.length < 3) {
-            $error.text('Please enter at least 3 characters.');
+    $('#modal-comment-submit').on('click', function () {
+        if (!currentBar) {
             return;
         }
 
-        $('#comment-submit').prop('disabled', true);
-        hideAlert();
-
-        $.ajax({
-            url: commentUrl,
-            method: 'POST',
-            data: { content: content }
-        })
-            .done(function (response) {
-                $('#comment-content').val('');
-                $('#comments-list').prepend(renderComment(response.comment));
-                setCounts(null, response.comments_count);
-                showAlert(response.message, 'success');
-            })
-            .fail(function (xhr) {
-                $error.text(firstValidationError(xhr));
-            })
-            .always(function () {
-                $('#comment-submit').prop('disabled', false);
-            });
-    });
-
-    $root.on('click', '.btn-reply', function () {
-        var $item = $(this).closest('.comment-item');
-
-        $item.find('> .card-body > .comment-reply-form').removeClass('d-none');
-        $item.find('.comment-reply-input').trigger('focus');
-    });
-
-    $root.on('click', '.btn-cancel-reply', function () {
-        var $form = $(this).closest('.comment-reply-form');
-
-        $form.addClass('d-none');
-        $form.find('.comment-reply-input').val('');
-        $form.find('.comment-reply-error').text('');
-    });
-
-    $root.on('click', '.btn-submit-reply', function () {
-        var $item = $(this).closest('.comment-item');
-        var $form = $item.find('> .card-body > .comment-reply-form');
-        var $error = $form.find('.comment-reply-error');
         var $button = $(this);
-        var content = $.trim($form.find('.comment-reply-input').val());
-        var parentId = $item.data('comment-id');
+        var $error = $('#modal-comment-error');
+        var content = $.trim($('#modal-comment-input').val());
 
         $error.text('');
 
@@ -228,52 +285,70 @@
         $button.prop('disabled', true);
 
         $.ajax({
-            url: commentUrl,
+            url: currentBar.attr('data-comment-url'),
             method: 'POST',
             data: {
                 content: content,
-                parent_id: parentId
+                parent_id: replyParentId
             }
         })
             .done(function (response) {
-                $item.find('> .card-body > .replies').append(renderComment(response.comment));
-                $form.addClass('d-none');
-                $form.find('.comment-reply-input').val('');
-                setCounts(null, response.comments_count);
-                showAlert(response.message, 'success');
+                $('#modal-comment-input').val('');
+                $('#modal-comments-empty').addClass('d-none');
+
+                if (response.comment.parent_id) {
+                    var $parent = $('#modal-comments-list').find('.comment-item[data-comment-id="' + response.comment.parent_id + '"]');
+                    $parent.find('> .comment-thread .comment-replies').append(renderComment(response.comment, true));
+                } else {
+                    $('#modal-comments-list').prepend(renderComment(response.comment, false));
+                }
+
+                paintModalLike(isLiked(currentBar), null, response.comments_count);
+                showModalAlert(response.message, 'success');
+                resetReplyState();
             })
             .fail(function (xhr) {
-                $error.text(firstValidationError(xhr));
+                $error.text(firstError(xhr));
             })
             .always(function () {
                 $button.prop('disabled', false);
             });
     });
 
-    $root.on('click', '.btn-edit', function () {
-        var $item = $(this).closest('.comment-item');
-        var current = $item.find('> .card-body > .comment-content').text();
-
-        $item.find('> .card-body > .comment-content, > .card-body > .comment-actions').addClass('d-none');
-        $item.find('> .card-body > .comment-edit-form').removeClass('d-none');
-        $item.find('.comment-edit-input').val($.trim(current)).trigger('focus');
-        $item.find('.comment-edit-error').text('');
-    });
-
-    $root.on('click', '.btn-cancel-edit', function () {
+    $(document).on('click', '.js-reply-comment', function () {
         var $item = $(this).closest('.comment-item');
 
-        $item.find('> .card-body > .comment-edit-form').addClass('d-none');
-        $item.find('> .card-body > .comment-content, > .card-body > .comment-actions').removeClass('d-none');
-        $item.find('.comment-edit-error').text('');
+        replyParentId = $item.data('comment-id');
+        $('#replying-to').removeClass('d-none');
+        $('#replying-to-name').text($item.data('author'));
+        $('#modal-comment-input').attr('placeholder', 'Write a reply...').trigger('focus');
     });
 
-    $root.on('click', '.btn-save-edit', function () {
+    $('#cancel-reply').on('click', function () {
+        resetReplyState();
+    });
+
+    $(document).on('click', '.js-edit-comment', function () {
+        var $item = $(this).closest('.comment-item');
+        var content = $.trim($item.find('.comment-content').first().text());
+
+        $item.find('.comment-bubble, .comment-meta-actions').first().addClass('d-none');
+        $item.find('.comment-edit-form').removeClass('d-none');
+        $item.find('.comment-edit-input').val(content).trigger('focus');
+    });
+
+    $(document).on('click', '.js-cancel-edit', function () {
+        var $item = $(this).closest('.comment-item');
+
+        $item.find('.comment-edit-form').addClass('d-none');
+        $item.find('.comment-bubble, .comment-meta-actions').removeClass('d-none');
+    });
+
+    $(document).on('click', '.js-save-edit', function () {
         var $item = $(this).closest('.comment-item');
         var $error = $item.find('.comment-edit-error');
         var $button = $(this);
         var content = $.trim($item.find('.comment-edit-input').val());
-        var commentId = $item.data('comment-id');
 
         $error.text('');
 
@@ -285,48 +360,53 @@
         $button.prop('disabled', true);
 
         $.ajax({
-            url: commentEndpoint(commentId),
+            url: commentEndpoint($item.data('comment-id')),
             method: 'PUT',
             data: { content: content }
         })
             .done(function (response) {
-                $item.find('> .card-body > .comment-content').text(response.comment.content);
-                $item.find('> .card-body > .comment-edit-form').addClass('d-none');
-                $item.find('> .card-body > .comment-content, > .card-body > .comment-actions').removeClass('d-none');
-                showAlert(response.message, 'success');
+                $item.find('.comment-content').first().text(response.comment.content);
+                $item.find('.comment-edit-form').addClass('d-none');
+                $item.find('.comment-bubble, .comment-meta-actions').removeClass('d-none');
+                showModalAlert(response.message, 'success');
             })
             .fail(function (xhr) {
-                $error.text(firstValidationError(xhr));
+                $error.text(firstError(xhr));
             })
             .always(function () {
                 $button.prop('disabled', false);
             });
     });
 
-    $root.on('click', '.btn-delete', function () {
-        if (!window.confirm('Are you sure you want to delete this comment?')) {
+    $(document).on('click', '.js-delete-comment', function () {
+        if (!window.confirm('Delete this comment?')) {
             return;
         }
 
         var $item = $(this).closest('.comment-item');
         var $button = $(this);
-        var commentId = $item.data('comment-id');
 
         $button.prop('disabled', true);
-        hideAlert();
 
         $.ajax({
-            url: commentEndpoint(commentId),
+            url: commentEndpoint($item.data('comment-id')),
             method: 'DELETE'
         })
             .done(function (response) {
                 $item.remove();
-                setCounts(null, response.comments_count);
-                showAlert(response.message, 'success');
+                paintModalLike(currentBar ? isLiked(currentBar) : false, null, response.comments_count);
+                $('#modal-comments-empty').toggleClass('d-none', $('#modal-comments-list .comment-item').length > 0);
+                showModalAlert(response.message, 'success');
             })
             .fail(function (xhr) {
-                showAlert(firstValidationError(xhr), 'danger');
+                showModalAlert(firstError(xhr), 'danger');
                 $button.prop('disabled', false);
             });
     });
-})(jQuery);
+
+    $modal.on('hidden.bs.modal', function () {
+        currentBar = null;
+        resetReplyState();
+        $('#comment-modal-fallback-backdrop').remove();
+    });
+})(window.jQuery);

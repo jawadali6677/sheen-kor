@@ -28,64 +28,57 @@
             </div>
             @endif
 
-            <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
-                @auth
+            @auth
+            <div class="mb-6">
                 <a
                     href="{{ route('posts.create') }}"
                     class="px-5 py-2 bg-gray-800 text-white rounded">
                     + Create Story
                 </a>
-                @endauth
-
-                @if($category || $author)
-                    <a href="{{ route('posts.index') }}" class="text-blue-600">
-                        View all stories
-                    </a>
-                @endif
             </div>
+            @endauth
 
-            @if($categories->count())
-                <div class="mb-4">
-                    <p class="text-sm text-gray-500 mb-2">Browse by category</p>
-                    <div class="d-flex flex-wrap gap-2">
-                        <a
-                            href="{{ route('posts.index') }}"
-                            class="btn btn-sm {{ ! $category && ! $author ? 'btn-dark' : 'btn-outline-secondary' }}"
+            <form
+                method="GET"
+                action="{{ $author ? route('authors.show', $author) : route('posts.index') }}"
+                class="mb-6 bg-white rounded-lg shadow p-4"
+            >
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-8">
+                        <label for="story-search" class="form-label text-muted small mb-1">Search stories</label>
+                        <input
+                            id="story-search"
+                            type="search"
+                            name="q"
+                            value="{{ $search }}"
+                            class="form-control"
+                            placeholder="Search by title or content..."
                         >
-                            All
-                        </a>
-
-                        @foreach($categories as $feedCategory)
-                            <a
-                                href="{{ route('categories.show', $feedCategory) }}"
-                                class="btn btn-sm {{ $category?->id === $feedCategory->id ? 'btn-primary' : 'btn-outline-primary' }}"
-                            >
-                                {{ $feedCategory->name }}
-                                <span class="badge text-bg-light text-dark">{{ $feedCategory->posts_count }}</span>
-                            </a>
-                        @endforeach
                     </div>
-                </div>
-            @endif
 
-            @if($authors->count())
-                <div class="mb-6">
-                    <p class="text-sm text-gray-500 mb-2">Browse by author</p>
-                    <div class="d-flex flex-wrap gap-2">
-                        @foreach($authors as $feedAuthor)
-                            <a
-                                href="{{ route('authors.show', $feedAuthor) }}"
-                                class="btn btn-sm {{ $author?->id === $feedAuthor->id ? 'btn-success' : 'btn-outline-success' }}"
+                    @if(! $author)
+                        <div class="col-md-4">
+                            <label for="category-filter" class="form-label text-muted small mb-1">Category</label>
+                            <select
+                                id="category-filter"
+                                name="category"
+                                class="form-select"
+                                onchange="this.form.submit()"
                             >
-                                {{ $feedAuthor->name }}
-                                <span class="badge text-bg-light text-dark">{{ $feedAuthor->posts_count }}</span>
-                            </a>
-                        @endforeach
-                    </div>
+                                <option value="">All categories</option>
+                                @foreach($categories as $feedCategory)
+                                    <option
+                                        value="{{ $feedCategory->slug }}"
+                                        @selected($category?->slug === $feedCategory->slug)
+                                    >
+                                        {{ $feedCategory->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endif
                 </div>
-            @endif
-
-            <div id="engagement-toast" class="alert d-none mb-4" role="alert"></div>
+            </form>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 

@@ -16,27 +16,45 @@ class PostController extends Controller
     /**
      * Display stories feed.
      */
-    public function index()
+    public function index(Request $request)
     {
-        return $this->renderFeed();
+        $category = null;
+
+        if ($request->filled('category')) {
+            $category = Category::query()
+                ->where('status', true)
+                ->where('slug', $request->string('category'))
+                ->first();
+        }
+
+        return $this->renderFeed(
+            category: $category,
+            search: $this->feedSearchTerm($request),
+        );
     }
 
     /**
      * Display published stories in a category.
      */
-    public function byCategory(Category $category)
+    public function byCategory(Request $request, Category $category)
     {
         abort_unless($category->status, 404);
 
-        return $this->renderFeed(category: $category);
+        return $this->renderFeed(
+            category: $category,
+            search: $this->feedSearchTerm($request),
+        );
     }
 
     /**
      * Display published stories by an author.
      */
-    public function byAuthor(User $user)
+    public function byAuthor(Request $request, User $user)
     {
-        return $this->renderFeed(author: $user);
+        return $this->renderFeed(
+            author: $user,
+            search: $this->feedSearchTerm($request),
+        );
     }
 
     /**
@@ -261,7 +279,7 @@ class PostController extends Controller
     /**
      * Shared stories listing for feed, category, and author pages.
      */
-    private function renderFeed(?Category $category = null, ?User $author = null)
+    private function renderFeed(?Category $category = null, ?User $author = null, ?string $search = null)
     {
         $posts = Post::query()
             ->with([
@@ -288,40 +306,38 @@ class PostController extends Controller
                 $query->where('user_id', $author->id)
                     ->where('status', 'published');
             })
+            ->when($search, function ($query) use ($search) {
+                $like = '%'.addcslashes($search, '%_\\').'%';
+
+                $query->where(function ($query) use ($like) {
+                    $query->where('title', 'like', $like)
+                        ->orWhere('excerpt', 'like', $like)
+                        ->orWhere('content', 'like', $like);
+                });
+            })
             ->latest('created_at')
             ->paginate(10)
             ->withQueryString();
 
         $categories = Category::query()
             ->where('status', true)
-            ->withCount([
-                'posts as posts_count' => function ($query) {
-                    $query->where('status', 'published');
-                },
-            ])
             ->orderBy('name')
-            ->get();
-
-        $authors = User::query()
-            ->whereHas('posts', function ($query) {
-                $query->where('status', 'published');
-            })
-            ->withCount([
-                'posts as posts_count' => function ($query) {
-                    $query->where('status', 'published');
-                },
-            ])
-            ->orderBy('name')
-            ->limit(20)
             ->get();
 
         return view('posts.index', compact(
             'posts',
             'categories',
-            'authors',
             'category',
-            'author'
+            'author',
+            'search'
         ));
+    }
+
+    private function feedSearchTerm(Request $request): ?string
+    {
+        $search = trim((string) $request->input('q', ''));
+
+        return $search === '' ? null : $search;
     }
 
     /**

@@ -241,97 +241,20 @@
             </article>
 
             @if($post->status === 'published')
-                <section
-                    class="mt-4"
-                    id="post-engagement"
-                    data-post-id="{{ $post->id }}"
-                    data-like-url="{{ route('posts.likes.store', $post) }}"
-                    data-unlike-url="{{ route('posts.likes.destroy', $post) }}"
-                    data-comment-url="{{ route('posts.comments.store', $post) }}"
-                    data-comment-update-template="{{ url('comments/__ID__') }}"
-                    data-liked="{{ $likedByUser ? '1' : '0' }}"
-                    data-auth-name="{{ auth()->user()->name }}"
-                >
-                    <div class="card shadow-sm">
-                        <div class="card-body">
-                            <div
-                                id="engagement-alert"
-                                class="alert d-none"
-                                role="alert"
-                            ></div>
-
-                            <div class="d-flex flex-wrap align-items-center gap-3 mb-4">
-                                <button
-                                    type="button"
-                                    id="like-button"
-                                    class="btn {{ $likedByUser ? 'btn-danger' : 'btn-outline-danger' }}"
-                                >
-                                    <span id="like-icon">{{ $likedByUser ? '♥' : '♡' }}</span>
-                                    <span id="like-label">{{ $likedByUser ? 'Liked' : 'Like' }}</span>
-                                </button>
-
-                                <span class="badge text-bg-secondary fs-6">
-                                    <span id="likes-count">{{ $likesCount }}</span> likes
-                                </span>
-
-                                <span class="badge text-bg-primary fs-6">
-                                    <span id="comments-count">{{ $commentsCount }}</span> comments
-                                </span>
-                            </div>
-
-                            <h3 class="h5 mb-3">Comments</h3>
-
-                            <form id="comment-form" class="mb-4">
-                                <label for="comment-content" class="form-label">Add a comment</label>
-                                <textarea
-                                    id="comment-content"
-                                    class="form-control"
-                                    rows="3"
-                                    maxlength="2000"
-                                    placeholder="Share your thoughts (at least 3 characters)..."
-                                    required
-                                ></textarea>
-                                <div class="invalid-feedback d-block" id="comment-error"></div>
-                                <button type="submit" class="btn btn-primary mt-2" id="comment-submit">
-                                    Post comment
-                                </button>
-                            </form>
-
-                            <div id="comments-empty" class="{{ $comments->count() ? 'd-none' : '' }} text-muted">
-                                No comments yet. Be the first to share your thoughts.
-                            </div>
-
-                            <div id="comments-list">
-                                @foreach($comments as $comment)
-                                    @include('posts.partials.comment', ['comment' => $comment, 'post' => $post])
-                                @endforeach
-                            </div>
-                        </div>
-                    </div>
-                </section>
+                <div class="bg-white shadow-sm rounded-lg p-4 mt-4">
+                    @include('posts.partials.engagement-bar', [
+                        'post' => $post,
+                        'liked' => $likedByUser,
+                        'likesCount' => $likesCount,
+                        'commentsCount' => $commentsCount,
+                    ])
+                </div>
             @endif
 
         </div>
 
     </div>
 
-    @push('styles')
-        <link
-            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-            rel="stylesheet"
-        >
-        <style>
-            #post-engagement .comment-content {
-                white-space: pre-wrap;
-                word-break: break-word;
-            }
-        </style>
-    @endpush
-
-    @push('scripts')
-        <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-        <script src="{{ asset('js/post-engagement.js') }}"></script>
-    @endpush
+    @include('posts.partials.engagement-assets')
 
 </x-app-layout>

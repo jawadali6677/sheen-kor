@@ -256,7 +256,41 @@ class PostEngagementTest extends TestCase
         $this->actingAs($user)
             ->get(route('posts.show', $post))
             ->assertOk()
-            ->assertSee('id="post-engagement"', false)
-            ->assertSee('Post comment');
+            ->assertSee('js-like-button', false)
+            ->assertSee('js-comment-button', false)
+            ->assertSee('id="commentModal"', false);
+    }
+
+    public function test_comments_can_be_listed_for_the_modal(): void
+    {
+        $user = User::factory()->create();
+        $post = $this->publishedPost();
+
+        Comment::factory()->create([
+            'user_id' => $user->id,
+            'post_id' => $post->id,
+            'content' => 'Visible in the modal thread.',
+        ]);
+
+        $this->actingAs($user)
+            ->getJson(route('posts.comments.index', $post))
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('comments.0.content', 'Visible in the modal thread.');
+    }
+
+    public function test_stories_index_includes_like_and_comment_buttons(): void
+    {
+        $user = User::factory()->create();
+        $this->publishedPost();
+
+        $this->actingAs($user)
+            ->get(route('posts.index'))
+            ->assertOk()
+            ->assertSee('js-like-button', false)
+            ->assertSee('js-comment-button', false)
+            ->assertSee('id="commentModal"', false)
+            ->assertSee('id="category-filter"', false)
+            ->assertDontSee('Browse by author');
     }
 }

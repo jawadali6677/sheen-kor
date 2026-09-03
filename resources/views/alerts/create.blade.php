@@ -46,29 +46,17 @@
                         >
                     </div>
 
-                    <div class="mb-6">
-                        <label for="location_name" class="block font-medium text-sm text-gray-700">Location</label>
-                        <input
-                            type="text"
-                            name="location_name"
-                            id="location_name"
-                            value="{{ old('location_name') }}"
-                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-                            placeholder="Village, street, river, or landmark"
-                            required
-                        >
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                        <div>
-                            <label for="latitude" class="block font-medium text-sm text-gray-700">Latitude (optional)</label>
-                            <input type="text" name="latitude" id="latitude" value="{{ old('latitude') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                        </div>
-                        <div>
-                            <label for="longitude" class="block font-medium text-sm text-gray-700">Longitude (optional)</label>
-                            <input type="text" name="longitude" id="longitude" value="{{ old('longitude') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                        </div>
-                    </div>
+                    @include('partials.location-map', [
+                        'mapId' => 'alert-create-map',
+                        'latName' => 'latitude',
+                        'lngName' => 'longitude',
+                        'nameField' => 'location_name',
+                        'nameLabel' => 'Location on the map',
+                        'requiredName' => true,
+                        'lat' => old('latitude'),
+                        'lng' => old('longitude'),
+                        'name' => old('location_name'),
+                    ])
 
                     <div class="mb-6">
                         <label for="severity" class="block font-medium text-sm text-gray-700">Severity</label>

@@ -52,101 +52,78 @@
                 </div>
             </form>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="social-feed">
 
                 @forelse($alerts as $alert)
 
-                    <div class="bg-white rounded-lg shadow overflow-hidden">
-                        <a href="{{ route('alerts.show', $alert) }}">
-                            <img
-                                src="{{ asset('storage/' . $alert->featured_image) }}"
-                                alt="{{ $alert->title }}"
-                                class="w-full h-56 object-cover"
-                            >
-                        </a>
+                    @php
+                        $authorName = $alert->user?->name ?? 'Unknown User';
+                        $initial = mb_strtoupper(mb_substr($authorName, 0, 1));
+                    @endphp
 
-                        <div class="p-5">
-                            <span class="text-xs uppercase tracking-wide
-                                @if($alert->severity === 'high') text-red-600
-                                @elseif($alert->severity === 'medium') text-orange-600
-                                @else text-green-600
-                                @endif">
-                                {{ $alert->severity }} severity
-                            </span>
-
-                            <h3 class="text-xl font-semibold mt-2">
-                                <a href="{{ route('alerts.show', $alert) }}" class="hover:underline">
-                                    {{ $alert->title }}
-                                </a>
-                            </h3>
-
-                            <p class="text-sm text-gray-500 mt-2">
-                                {{ $alert->location_name }}
-                                ·
+                    <article class="feed-card">
+                        <div class="feed-header">
+                            <div class="feed-avatar">{{ $initial }}</div>
+                            <div class="min-w-0 flex-1">
                                 @if($alert->user)
-                                    <a href="{{ route('authors.show', $alert->user) }}" class="text-gray-700 font-medium hover:underline">
-                                        {{ $alert->user->name }}
+                                    <a href="{{ route('authors.show', $alert->user) }}" class="font-semibold text-gray-900">
+                                        {{ $authorName }}
                                     </a>
                                 @else
-                                    Unknown User
+                                    <span class="font-semibold text-gray-900">{{ $authorName }}</span>
                                 @endif
-                            </p>
+                                <div class="feed-meta">
+                                    {{ $alert->location_name }}
+                                    · {{ $alert->created_at?->format('M d') }}
+                                </div>
+                            </div>
+                            @include('alerts.partials.status-badge', ['alert' => $alert])
+                        </div>
 
-                            <p class="text-gray-600 mt-3">
-                                {{ \Illuminate\Support\Str::limit($alert->description, 120) }}
-                            </p>
+                        <a href="{{ route('alerts.show', $alert) }}" class="feed-image-wrap">
+                            <img src="{{ asset('storage/' . $alert->featured_image) }}" alt="{{ $alert->title }}">
+                        </a>
 
-                            <p class="text-sm text-gray-500 mt-3 flex items-center gap-2">
-                                @include('alerts.partials.status-badge', ['alert' => $alert])
-                                <span>· {{ $alert->views }} views</span>
-                            </p>
-
-                            @if($alert->isInProgress() && $alert->actionUser)
-                                <p class="text-sm text-blue-700 mt-2">
-                                    Being handled by {{ $alert->actionUser->name }}
-                                </p>
-                            @elseif($alert->isFixed() && $alert->actionUser)
-                                <p class="text-sm text-green-700 mt-2">
-                                    Fixed by {{ $alert->actionUser->name }}
-                                </p>
-                            @endif
-
+                        <div class="feed-body">
                             @include('posts.partials.engagement-bar', [
                                 'model' => $alert,
                                 'liked' => (bool) $alert->liked_by_user,
                                 'likesCount' => $alert->likes_count,
                                 'commentsCount' => $alert->comments_count,
+                                'compact' => true,
                             ])
 
-                            <div class="mt-4">
-                                <a href="{{ route('alerts.show', $alert) }}" class="text-blue-600 mr-4">
-                                    View Alert
-                                </a>
+                            <h3 class="feed-title">
+                                <a href="{{ route('alerts.show', $alert) }}">{{ $alert->title }}</a>
+                            </h3>
 
-                                @if(auth()->id() === $alert->user_id)
-                                    <a href="{{ route('alerts.edit', $alert) }}" class="text-green-600 mr-4">Edit</a>
+                            <p class="text-gray-600 text-sm">
+                                {{ \Illuminate\Support\Str::limit($alert->description, 140) }}
+                            </p>
 
-                                    <form
-                                        action="{{ route('alerts.destroy', $alert) }}"
-                                        method="POST"
-                                        class="inline"
-                                        onsubmit="return confirm('Delete this alert?')"
-                                    >
+                            @if($alert->isInProgress() && $alert->actionUser)
+                                <p class="text-sm text-blue-700 mt-2">Being handled by {{ $alert->actionUser->name }}</p>
+                            @elseif($alert->isFixed() && $alert->actionUser)
+                                <p class="text-sm text-green-700 mt-2">Fixed by {{ $alert->actionUser->name }}</p>
+                            @endif
+
+                            @if(auth()->id() === $alert->user_id)
+                                <div class="mt-2 text-sm">
+                                    <a href="{{ route('alerts.edit', $alert) }}" class="text-gray-500 mr-3">Edit</a>
+                                    <form action="{{ route('alerts.destroy', $alert) }}" method="POST" class="inline" onsubmit="return confirm('Delete this alert?')">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="text-red-600">Delete</button>
                                     </form>
-                                @endif
-                            </div>
+                                </div>
+                            @endif
                         </div>
-                    </div>
+                    </article>
 
                 @empty
-                    <div class="col-span-full text-center py-12">
-                        <p class="text-gray-500 text-lg">
-                            No alerts yet. Report pollution, dumping, or other environmental harm.
-                        </p>
-                    </div>
+                    <p class="text-center text-gray-500 py-12">
+                        No alerts yet. Report pollution, dumping, or other environmental harm.
+                    </p>
                 @endforelse
 
             </div>

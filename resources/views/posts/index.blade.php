@@ -80,156 +80,83 @@
                 </div>
             </form>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="social-feed">
 
                 @forelse($posts as $post)
 
-                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    @php
+                        $authorName = $post->user?->name ?? 'Unknown User';
+                        $initial = mb_strtoupper(mb_substr($authorName, 0, 1));
+                    @endphp
 
-                    @if($post->featured_image)
-
-                    <a href="{{ route('posts.show', $post) }}">
-
-                        <img
-                            src="{{ asset('storage/' . $post->featured_image) }}"
-                            alt="{{ $post->title }}"
-                            class="w-full h-56 object-cover">
-
-                    </a>
-
-                    @else
-
-                    <div class="w-full h-56 bg-gray-200 flex items-center justify-center">
-                        <span class="text-gray-500">
-                            No Image
-                        </span>
-                    </div>
-
-                    @endif
-
-
-                    <div class="p-5">
-
-                        @if($post->category)
-
-                        <a
-                            href="{{ route('categories.show', $post->category) }}"
-                            class="text-sm text-blue-600">
-                            {{ $post->category->name }}
-                        </a>
-
-                        @endif
-
-
-                        <h3 class="text-xl font-semibold mt-2">
-
-                            <a
-                                href="{{ route('posts.show', $post) }}"
-                                class="hover:underline">
-                                {{ $post->title }}
-                            </a>
-
-                        </h3>
-
-
-                        <p class="text-sm text-gray-500 mt-2">
-
-                            By
-                            @if($post->user)
-                                <a href="{{ route('authors.show', $post->user) }}" class="text-gray-700 font-medium hover:underline">
-                                    {{ $post->user->name }}
-                                </a>
-                            @else
-                                Unknown User
-                            @endif
-
-                            @if($post->published_at)
-                            ·
-                            {{ $post->published_at->format('M d, Y') }}
-                            @endif
-
-                        </p>
-
-
-                        @if($post->excerpt)
-
-                        <p class="text-gray-600 mt-3">
-                            {{ \Illuminate\Support\Str::limit($post->excerpt, 120) }}
-                        </p>
-
-                        @endif
-
-
-                        <p class="text-sm text-gray-500 mt-3">
-                            {{ $post->views }} views
-                        </p>
-
-
-                        @include('posts.partials.engagement-bar', [
-                            'post' => $post,
-                            'liked' => (bool) $post->liked_by_user,
-                            'likesCount' => $post->likes_count,
-                            'commentsCount' => $post->comments_count,
-                        ])
-
-
-                        <div class="mt-4">
-
-                            <a
-                                href="{{ route('posts.show', $post) }}"
-                                class="text-blue-600 mr-4">
-                                Read More
-                            </a>
-
-
-                            @auth
-
-                            @if(auth()->id() === $post->user_id)
-
-                            <a
-                                href="{{ route('posts.edit', $post) }}"
-                                class="text-green-600 mr-4">
-                                Edit
-                            </a>
-
-
-                            <form
-                                action="{{ route('posts.destroy', $post) }}"
-                                method="POST"
-                                class="inline"
-                                onsubmit="return confirm('Are you sure you want to delete this story?')">
-
-                                @csrf
-                                @method('DELETE')
-
-                                <button
-                                    type="submit"
-                                    class="text-red-600">
-                                    Delete
-                                </button>
-
-                            </form>
-
-                            @endif
-
-                            @endauth
-
+                    <article class="feed-card">
+                        <div class="feed-header">
+                            <div class="feed-avatar">{{ $initial }}</div>
+                            <div class="min-w-0">
+                                @if($post->user)
+                                    <a href="{{ route('authors.show', $post->user) }}" class="font-semibold text-gray-900">
+                                        {{ $authorName }}
+                                    </a>
+                                @else
+                                    <span class="font-semibold text-gray-900">{{ $authorName }}</span>
+                                @endif
+                                <div class="feed-meta">
+                                    @if($post->category)
+                                        <a href="{{ route('categories.show', $post->category) }}">{{ $post->category->name }}</a>
+                                        ·
+                                    @endif
+                                    @if($post->published_at)
+                                        {{ $post->published_at->format('M d') }}
+                                    @else
+                                        {{ $post->created_at?->format('M d') }}
+                                    @endif
+                                    · {{ $post->views }} views
+                                </div>
+                            </div>
                         </div>
 
-                    </div>
+                        <a href="{{ route('posts.show', $post) }}" class="feed-image-wrap">
+                            @if($post->featured_image)
+                                <img src="{{ asset('storage/' . $post->featured_image) }}" alt="{{ $post->title }}">
+                            @else
+                                <div class="feed-placeholder">{{ $post->title }}</div>
+                            @endif
+                        </a>
 
-                </div>
+                        <div class="feed-body">
+                            @include('posts.partials.engagement-bar', [
+                                'post' => $post,
+                                'liked' => (bool) $post->liked_by_user,
+                                'likesCount' => $post->likes_count,
+                                'commentsCount' => $post->comments_count,
+                                'compact' => true,
+                            ])
+
+                            <h3 class="feed-title">
+                                <a href="{{ route('posts.show', $post) }}">{{ $post->title }}</a>
+                            </h3>
+
+                            @if($post->excerpt)
+                                <p class="text-gray-600 text-sm">
+                                    {{ \Illuminate\Support\Str::limit($post->excerpt, 140) }}
+                                </p>
+                            @endif
+
+                            @if(auth()->id() === $post->user_id)
+                                <div class="mt-2 text-sm">
+                                    <a href="{{ route('posts.edit', $post) }}" class="text-gray-500 mr-3">Edit</a>
+                                    <form action="{{ route('posts.destroy', $post) }}" method="POST" class="inline" onsubmit="return confirm('Delete this story?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-red-600">Delete</button>
+                                    </form>
+                                </div>
+                            @endif
+                        </div>
+                    </article>
 
                 @empty
-
-                <div class="col-span-full text-center py-12">
-
-                    <p class="text-gray-500 text-lg">
-                        No stories available yet.
-                    </p>
-
-                </div>
-
+                    <p class="text-center text-gray-500 py-12">No stories available yet.</p>
                 @endforelse
 
             </div>

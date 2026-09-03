@@ -9,10 +9,11 @@
     $likeDestroy = $isAlert ? route('alerts.likes.destroy', $model) : route('posts.likes.destroy', $model);
     $commentsIndex = $isAlert ? route('alerts.comments.index', $model) : route('posts.comments.index', $model);
     $commentsStore = $isAlert ? route('alerts.comments.store', $model) : route('posts.comments.store', $model);
+    $compact = $compact ?? false;
 @endphp
 
 <div
-    class="post-engagement-bar border-t mt-4 pt-4"
+    class="post-engagement-bar {{ $compact ? 'compact' : 'border-t mt-4 pt-4' }}"
     data-item-key="{{ $isAlert ? 'alert' : 'post' }}-{{ $model->id }}"
     data-post-id="{{ $model->id }}"
     data-post-title="{{ $model->title }}"
@@ -23,17 +24,22 @@
     data-comments-url="{{ $commentsIndex }}"
     data-comment-url="{{ $commentsStore }}"
 >
-    <div class="d-flex align-items-center justify-content-between text-muted small mb-2">
+    <div class="{{ $compact ? 'feed-counts' : 'd-flex align-items-center justify-content-between text-muted small mb-2' }}">
         <span>
             <span class="js-likes-count">{{ $likesCount }}</span> likes
+            @if($compact)
+                · <span class="js-comments-count">{{ $commentsCount }}</span> comments
+            @endif
         </span>
+        @unless($compact)
         <span>
             <span class="js-comments-count">{{ $commentsCount }}</span> comments
         </span>
+        @endunless
     </div>
 
     @if($canEngage)
-        <div class="d-grid gap-2" style="grid-template-columns: 1fr 1fr;">
+        <div class="{{ $compact ? 'feed-actions-row' : 'd-grid gap-2' }}" @unless($compact) style="grid-template-columns: 1fr 1fr;" @endunless>
             <button
                 type="button"
                 class="btn {{ $liked ? 'btn-danger' : 'btn-outline-danger' }} js-like-button"

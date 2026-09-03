@@ -17,6 +17,8 @@
             href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
             rel="stylesheet"
         >
+        <link href="{{ asset('css/social-feed.css') }}" rel="stylesheet">
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
         @stack('styles')
     </head>
     <body class="font-sans antialiased">
@@ -39,6 +41,8 @@
         </div>
         <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <script src="{{ asset('js/location-map.js') }}"></script>
         <script src="{{ asset('js/post-engagement.js') }}"></script>
         @stack('scripts')
     </body>

@@ -43,8 +43,7 @@
                     <h1 class="text-3xl md:text-4xl font-bold mt-3">{{ $alert->title }}</h1>
 
                     <div class="mt-4 text-sm text-gray-500">
-                        {{ $alert->location_name }}
-                        · Reported by
+                        Reported by
                         @if($alert->user)
                             <a href="{{ route('authors.show', $alert->user) }}" class="text-gray-700 font-semibold hover:underline">
                                 {{ $alert->user->name }}
@@ -59,9 +58,15 @@
                     </div>
 
                     @if($alert->latitude && $alert->longitude)
-                        <p class="mt-2 text-sm text-gray-500">
-                            Coordinates: {{ $alert->latitude }}, {{ $alert->longitude }}
-                        </p>
+                        @include('partials.location-map', [
+                            'mapId' => 'alert-report-map',
+                            'readonly' => true,
+                            'lat' => $alert->latitude,
+                            'lng' => $alert->longitude,
+                            'name' => $alert->location_name,
+                        ])
+                    @else
+                        <p class="mt-2 text-sm text-gray-500">{{ $alert->location_name }}</p>
                     @endif
 
                     <div class="mt-8 prose max-w-none">
@@ -119,30 +124,17 @@
                                         <p class="text-sm text-gray-500 mt-1">Show the cleaned place. Up to 10 images, 5 MB each.</p>
                                     </div>
 
-                                    <div>
-                                        <label for="fixed_location_name" class="block font-medium text-sm text-gray-700">
-                                            Location after the fix (optional)
-                                        </label>
-                                        <input
-                                            type="text"
-                                            name="fixed_location_name"
-                                            id="fixed_location_name"
-                                            value="{{ old('fixed_location_name') }}"
-                                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-                                            placeholder="Same place, or a more precise location"
-                                        >
-                                    </div>
-
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label for="fixed_latitude" class="block font-medium text-sm text-gray-700">Latitude (optional)</label>
-                                            <input type="text" name="fixed_latitude" id="fixed_latitude" value="{{ old('fixed_latitude') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                                        </div>
-                                        <div>
-                                            <label for="fixed_longitude" class="block font-medium text-sm text-gray-700">Longitude (optional)</label>
-                                            <input type="text" name="fixed_longitude" id="fixed_longitude" value="{{ old('fixed_longitude') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                                        </div>
-                                    </div>
+                                    @include('partials.location-map', [
+                                        'mapId' => 'alert-fix-map',
+                                        'latName' => 'fixed_latitude',
+                                        'lngName' => 'fixed_longitude',
+                                        'nameField' => 'fixed_location_name',
+                                        'nameLabel' => 'Location after the fix (optional)',
+                                        'requiredName' => false,
+                                        'lat' => old('fixed_latitude'),
+                                        'lng' => old('fixed_longitude'),
+                                        'name' => old('fixed_location_name'),
+                                    ])
 
                                     <button
                                         type="submit"
@@ -175,14 +167,17 @@
                             </p>
 
                             @if($alert->fixed_location_name || ($alert->fixed_latitude && $alert->fixed_longitude))
-                                <p class="text-sm text-gray-700 mt-3">
-                                    @if($alert->fixed_location_name)
-                                        Fixed at {{ $alert->fixed_location_name }}
-                                    @endif
-                                    @if($alert->fixed_latitude && $alert->fixed_longitude)
-                                        ({{ $alert->fixed_latitude }}, {{ $alert->fixed_longitude }})
-                                    @endif
-                                </p>
+                                @if($alert->fixed_latitude && $alert->fixed_longitude)
+                                    @include('partials.location-map', [
+                                        'mapId' => 'alert-fixed-map',
+                                        'readonly' => true,
+                                        'lat' => $alert->fixed_latitude,
+                                        'lng' => $alert->fixed_longitude,
+                                        'name' => $alert->fixed_location_name,
+                                    ])
+                                @else
+                                    <p class="text-sm text-gray-700 mt-3">Fixed at {{ $alert->fixed_location_name }}</p>
+                                @endif
                             @endif
 
                             @if($alert->fixImages->count())

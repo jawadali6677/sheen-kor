@@ -18,9 +18,8 @@ return new class extends Migration
                 ->constrained()
                 ->cascadeOnDelete();
 
-            $table->foreignId('post_id')
-                ->constrained()
-                ->cascadeOnDelete();
+            $table->string('commentable_type');
+            $table->unsignedBigInteger('commentable_id');
 
             $table->foreignId('parent_id')
                 ->nullable()
@@ -36,6 +35,8 @@ return new class extends Migration
             ])->default('approved');
 
             $table->timestamps();
+
+            $table->index(['commentable_type', 'commentable_id']);
         });
     }
 

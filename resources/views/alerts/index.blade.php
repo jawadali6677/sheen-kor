@@ -45,8 +45,8 @@
                         <select id="alert-status" name="status" class="form-select" onchange="this.form.submit()">
                             <option value="">All statuses</option>
                             <option value="open" @selected($status === 'open')>Open</option>
-                            <option value="acknowledged" @selected($status === 'acknowledged')>Acknowledged</option>
-                            <option value="resolved" @selected($status === 'resolved')>Resolved</option>
+                            <option value="in_progress" @selected($status === 'in_progress')>In progress</option>
+                            <option value="fixed" @selected($status === 'fixed')>Fixed</option>
                         </select>
                     </div>
                 </div>
@@ -96,10 +96,20 @@
                                 {{ \Illuminate\Support\Str::limit($alert->description, 120) }}
                             </p>
 
-                            <p class="text-sm text-gray-500 mt-3">
-                                {{ ucfirst($alert->status) }}
-                                · {{ $alert->views }} views
+                            <p class="text-sm text-gray-500 mt-3 flex items-center gap-2">
+                                @include('alerts.partials.status-badge', ['alert' => $alert])
+                                <span>· {{ $alert->views }} views</span>
                             </p>
+
+                            @if($alert->isInProgress() && $alert->actionUser)
+                                <p class="text-sm text-blue-700 mt-2">
+                                    Being handled by {{ $alert->actionUser->name }}
+                                </p>
+                            @elseif($alert->isFixed() && $alert->actionUser)
+                                <p class="text-sm text-green-700 mt-2">
+                                    Fixed by {{ $alert->actionUser->name }}
+                                </p>
+                            @endif
 
                             @include('posts.partials.engagement-bar', [
                                 'model' => $alert,

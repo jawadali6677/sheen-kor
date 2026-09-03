@@ -44,6 +44,12 @@ Route::middleware('auth')->group(function () {
     Route::post('posts/{post}/comments', [CommentController::class, 'storePost'])
         ->name('posts.comments.store');
 
+    Route::post('alerts/{alert}/take-action', [AlertController::class, 'takeAction'])
+        ->name('alerts.take-action');
+
+    Route::post('alerts/{alert}/mark-fixed', [AlertController::class, 'markFixed'])
+        ->name('alerts.mark-fixed');
+
     Route::post('alerts/{alert}/likes', [LikeController::class, 'storeAlert'])
         ->name('alerts.likes.store');
 

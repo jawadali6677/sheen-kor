@@ -34,8 +34,8 @@ return new class extends Migration
 
             $table->enum('status', [
                 'open',
-                'acknowledged',
-                'resolved',
+                'in_progress',
+                'fixed',
             ])->default('open');
 
             $table->unsignedBigInteger('views')->default(0);

@@ -14,6 +14,7 @@ class AlertImageFactory extends Factory
             'image' => 'alerts/images/placeholder.jpg',
             'caption' => fake()->sentence(),
             'sort_order' => fake()->numberBetween(0, 5),
+            'kind' => 'report',
         ];
     }
 }

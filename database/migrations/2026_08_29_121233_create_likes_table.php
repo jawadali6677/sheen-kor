@@ -18,13 +18,13 @@ return new class extends Migration
                 ->constrained()
                 ->cascadeOnDelete();
 
-            $table->foreignId('post_id')
-                ->constrained()
-                ->cascadeOnDelete();
+            $table->string('likeable_type');
+            $table->unsignedBigInteger('likeable_id');
 
             $table->timestamps();
 
-            $table->unique(['user_id', 'post_id']);
+            $table->index(['likeable_type', 'likeable_id']);
+            $table->unique(['user_id', 'likeable_id', 'likeable_type']);
         });
     }
 

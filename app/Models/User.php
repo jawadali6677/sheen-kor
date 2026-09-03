@@ -44,6 +44,11 @@ class User extends Authenticatable
         return $this->hasMany(Alert::class);
     }
 
+    public function claimedAlerts()
+    {
+        return $this->hasMany(Alert::class, 'action_user_id');
+    }
+
     public function comments()
     {
         return $this->hasMany(Comment::class);

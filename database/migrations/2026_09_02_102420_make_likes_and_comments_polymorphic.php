@@ -24,7 +24,9 @@ return new class extends Migration
                     'likeable_id' => DB::raw('post_id'),
                 ]);
 
-            $this->dropForeignKeysOnColumns('likes', ['post_id', 'user_id']);
+            if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                $this->dropForeignKeysOnColumns('likes', ['post_id', 'user_id']);
+            }
 
             $this->dropIndexIfExists('likes', 'likes_user_id_post_id_unique');
 
@@ -32,12 +34,14 @@ return new class extends Migration
                 $table->dropColumn('post_id');
             });
 
-            Schema::table('likes', function (Blueprint $table) {
-                $table->foreign('user_id')
-                    ->references('id')
-                    ->on('users')
-                    ->cascadeOnDelete();
-            });
+            if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                Schema::table('likes', function (Blueprint $table) {
+                    $table->foreign('user_id')
+                        ->references('id')
+                        ->on('users')
+                        ->cascadeOnDelete();
+                });
+            }
         }
 
         if (! Schema::hasColumn('likes', 'likeable_id')) {
@@ -74,7 +78,9 @@ return new class extends Migration
                     'commentable_id' => DB::raw('post_id'),
                 ]);
 
-            $this->dropForeignKeysOnColumns('comments', ['post_id']);
+            if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                $this->dropForeignKeysOnColumns('comments', ['post_id']);
+            }
 
             Schema::table('comments', function (Blueprint $table) {
                 $table->dropColumn('post_id');

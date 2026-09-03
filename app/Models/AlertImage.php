@@ -14,6 +14,7 @@ class AlertImage extends Model
         'image',
         'caption',
         'sort_order',
+        'kind',
     ];
 
     public function alert()

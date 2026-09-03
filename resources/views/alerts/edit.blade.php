@@ -61,15 +61,6 @@
                     </div>
 
                     <div class="mb-6">
-                        <label for="status" class="block font-medium text-sm text-gray-700">Status</label>
-                        <select name="status" id="status" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
-                            <option value="open" @selected(old('status', $alert->status) === 'open')>Open</option>
-                            <option value="acknowledged" @selected(old('status', $alert->status) === 'acknowledged')>Acknowledged</option>
-                            <option value="resolved" @selected(old('status', $alert->status) === 'resolved')>Resolved</option>
-                        </select>
-                    </div>
-
-                    <div class="mb-6">
                         <label for="description" class="block font-medium text-sm text-gray-700">What did you see?</label>
                         <textarea name="description" id="description" rows="8" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>{{ old('description', $alert->description) }}</textarea>
                     </div>

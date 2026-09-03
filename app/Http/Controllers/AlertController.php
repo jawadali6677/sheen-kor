@@ -17,7 +17,7 @@ class AlertController extends Controller
         $search = trim((string) $request->input('q', ''));
 
         $alerts = Alert::query()
-            ->with('user')
+            ->with(['user', 'actionUser'])
             ->withCount([
                 'likes',
                 'comments' => function ($query) {
@@ -29,7 +29,7 @@ class AlertController extends Controller
                     $query->where('user_id', auth()->id());
                 },
             ])
-            ->when(in_array($status, ['open', 'acknowledged', 'resolved'], true), function ($query) use ($status) {
+            ->when(in_array($status, ['open', 'in_progress', 'fixed'], true), function ($query) use ($status) {
                 $query->where('status', $status);
             })
             ->when($search !== '', function ($query) use ($search) {
@@ -96,6 +96,7 @@ class AlertController extends Controller
                         'image' => $image->store('alerts/images', 'public'),
                         'caption' => null,
                         'sort_order' => $key,
+                        'kind' => 'report',
                     ]);
                 }
             }
@@ -120,7 +121,7 @@ class AlertController extends Controller
 
     public function show(Alert $alert)
     {
-        $alert->load(['user', 'images']);
+        $alert->load(['user', 'images', 'actionUser', 'reportImages', 'fixImages']);
 
         $alert->loadCount([
             'likes',
@@ -163,7 +164,6 @@ class AlertController extends Controller
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'severity' => ['required', 'in:low,medium,high'],
-            'status' => ['required', 'in:open,acknowledged,resolved'],
             'featured_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'images' => ['nullable', 'array', 'max:10'],
             'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
@@ -181,7 +181,6 @@ class AlertController extends Controller
                 'latitude' => $request->latitude,
                 'longitude' => $request->longitude,
                 'severity' => $request->severity,
-                'status' => $request->status,
             ]);
 
             if ($request->hasFile('featured_image')) {
@@ -263,6 +262,120 @@ class AlertController extends Controller
             report($e);
 
             return back()->with('error', 'Something went wrong while deleting the alert.');
+        }
+    }
+
+    /**
+     * Claim an open alert so only this person/organization can fix it.
+     */
+    public function takeAction(Alert $alert)
+    {
+        DB::beginTransaction();
+
+        try {
+
+            $lockedAlert = Alert::query()
+                ->whereKey($alert->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (! $lockedAlert->canBeClaimedBy(auth()->id())) {
+                DB::rollBack();
+
+                return back()->with(
+                    'error',
+                    $lockedAlert->isFixed()
+                        ? 'This alert is already fixed.'
+                        : 'This alert is already being handled by someone else.'
+                );
+            }
+
+            $lockedAlert->update([
+                'action_user_id' => auth()->id(),
+                'status' => 'in_progress',
+                'action_taken_at' => now(),
+            ]);
+
+            DB::commit();
+
+            return back()->with(
+                'success',
+                'You have taken this alert. Others cannot take it while you work on it. Mark it as Fixed when the cleanup is done.'
+            );
+
+        } catch (Throwable $e) {
+
+            DB::rollBack();
+
+            report($e);
+
+            return back()->with(
+                'error',
+                'Something went wrong while taking this alert.'
+            );
+        }
+    }
+
+    /**
+     * Mark a claimed alert as fixed. Only the person who took action can do this.
+     */
+    public function markFixed(Request $request, Alert $alert)
+    {
+        abort_unless(
+            $alert->canBeFixedBy(auth()->id()),
+            403
+        );
+
+        $request->validate([
+            'fixed_location_name' => ['nullable', 'string', 'min:3', 'max:255'],
+            'fixed_latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'fixed_longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'fix_images' => ['nullable', 'array', 'max:10'],
+            'fix_images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+
+            $alert->update([
+                'status' => 'fixed',
+                'fixed_at' => now(),
+                'fixed_location_name' => $request->fixed_location_name,
+                'fixed_latitude' => $request->fixed_latitude,
+                'fixed_longitude' => $request->fixed_longitude,
+            ]);
+
+            if ($request->hasFile('fix_images')) {
+                foreach ($request->file('fix_images') as $key => $image) {
+                    AlertImage::create([
+                        'alert_id' => $alert->id,
+                        'image' => $image->store('alerts/fixes', 'public'),
+                        'caption' => null,
+                        'sort_order' => $key,
+                        'kind' => 'report',
+                        'kind' => 'fix',
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            return back()->with(
+                'success',
+                'This alert is now marked as Fixed. Thank you for taking care of it.'
+            );
+
+        } catch (Throwable $e) {
+
+            DB::rollBack();
+
+            report($e);
+
+            return back()->with(
+                'error',
+                'Something went wrong while marking this alert as fixed.'
+            );
         }
     }
 }

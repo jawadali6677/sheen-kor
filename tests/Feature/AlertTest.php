@@ -119,7 +119,6 @@ class AlertTest extends TestCase
                 'description' => $alert->description,
                 'location_name' => $alert->location_name,
                 'severity' => 'low',
-                'status' => 'resolved',
             ])
             ->assertForbidden();
 
@@ -133,11 +132,11 @@ class AlertTest extends TestCase
                 'description' => $alert->description,
                 'location_name' => $alert->location_name,
                 'severity' => 'low',
-                'status' => 'resolved',
             ])
             ->assertRedirect(route('alerts.show', $alert));
 
-        $this->assertSame('resolved', $alert->fresh()->status);
+        $this->assertSame('Updated alert title here', $alert->fresh()->title);
+        $this->assertSame('open', $alert->fresh()->status);
     }
 
     public function test_alerts_can_be_filtered_by_search_and_status(): void
@@ -151,7 +150,7 @@ class AlertTest extends TestCase
 
         Alert::factory()->create([
             'title' => 'Cleared dumping site',
-            'status' => 'resolved',
+            'status' => 'fixed',
         ]);
 
         $this->actingAs($user)
@@ -161,9 +160,66 @@ class AlertTest extends TestCase
             ->assertDontSee('Cleared dumping site');
 
         $this->actingAs($user)
-            ->get(route('alerts.index', ['status' => 'resolved']))
+            ->get(route('alerts.index', ['status' => 'fixed']))
             ->assertOk()
             ->assertSee('Cleared dumping site')
             ->assertDontSee('Oil spill in the harbor');
+    }
+
+    public function test_user_can_take_action_and_mark_an_alert_fixed(): void
+    {
+        Storage::fake('public');
+
+        $helper = User::factory()->create();
+        $other = User::factory()->create();
+        $alert = Alert::factory()->create([
+            'status' => 'open',
+        ]);
+
+        $this->actingAs($helper)
+            ->from(route('alerts.show', $alert))
+            ->post(route('alerts.take-action', $alert))
+            ->assertRedirect(route('alerts.show', $alert));
+
+        $alert->refresh();
+
+        $this->assertSame('in_progress', $alert->status);
+        $this->assertSame($helper->id, $alert->action_user_id);
+        $this->assertNotNull($alert->action_taken_at);
+
+        $this->actingAs($other)
+            ->from(route('alerts.show', $alert))
+            ->post(route('alerts.take-action', $alert))
+            ->assertRedirect(route('alerts.show', $alert))
+            ->assertSessionHas('error');
+
+        $this->assertSame($helper->id, $alert->fresh()->action_user_id);
+
+        $this->actingAs($other)
+            ->post(route('alerts.mark-fixed', $alert))
+            ->assertForbidden();
+
+        $this->actingAs($helper)
+            ->from(route('alerts.show', $alert))
+            ->post(route('alerts.mark-fixed', $alert), [
+                'fixed_location_name' => 'River bank, cleaned stretch',
+                'fixed_latitude' => 35.1234,
+                'fixed_longitude' => 44.5678,
+                'fix_images' => [UploadedFile::fake()->image('after.jpg')],
+            ])
+            ->assertRedirect(route('alerts.show', $alert));
+
+        $alert->refresh();
+
+        $this->assertSame('fixed', $alert->status);
+        $this->assertNotNull($alert->fixed_at);
+        $this->assertSame('River bank, cleaned stretch', $alert->fixed_location_name);
+        $this->assertSame(1, $alert->fixImages()->count());
+
+        $this->actingAs($other)
+            ->from(route('alerts.show', $alert))
+            ->post(route('alerts.take-action', $alert))
+            ->assertRedirect(route('alerts.show', $alert))
+            ->assertSessionHas('error');
     }
 }

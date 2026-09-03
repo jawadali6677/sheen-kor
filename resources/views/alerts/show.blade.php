@@ -29,7 +29,7 @@
                 >
 
                 <div class="p-6 md:p-10">
-                    <div class="flex flex-wrap gap-2 text-sm">
+                    <div class="flex flex-wrap items-center gap-2 text-sm">
                         <span class="px-2 py-1 rounded
                             @if($alert->severity === 'high') bg-red-100 text-red-700
                             @elseif($alert->severity === 'medium') bg-orange-100 text-orange-700
@@ -37,9 +37,7 @@
                             @endif">
                             {{ ucfirst($alert->severity) }} severity
                         </span>
-                        <span class="px-2 py-1 rounded bg-gray-100 text-gray-700">
-                            {{ ucfirst($alert->status) }}
-                        </span>
+                        @include('alerts.partials.status-badge', ['alert' => $alert])
                     </div>
 
                     <h1 class="text-3xl md:text-4xl font-bold mt-3">{{ $alert->title }}</h1>
@@ -70,11 +68,145 @@
                         {!! nl2br(e($alert->description)) !!}
                     </div>
 
-                    @if($alert->images->count())
+                    <div class="mt-8 p-4 rounded-lg border
+                        @if($alert->isFixed()) border-green-200 bg-green-50
+                        @elseif($alert->isInProgress()) border-blue-200 bg-blue-50
+                        @else border-amber-200 bg-amber-50
+                        @endif">
+                        @if($alert->isOpen())
+                            <p class="text-gray-800 font-medium">This alert is open. Someone can take action to clean or fix it.</p>
+                            <form action="{{ route('alerts.take-action', $alert) }}" method="POST" class="mt-3">
+                                @csrf
+                                <button
+                                    type="submit"
+                                    class="px-4 py-2 bg-blue-700 text-white rounded"
+                                    onclick="return confirm('Take this alert? Others will not be able to take it while you work on it.')"
+                                >
+                                    Take action
+                                </button>
+                            </form>
+                        @elseif($alert->isInProgress())
+                            <p class="text-gray-800">
+                                In progress
+                                @if($alert->actionUser)
+                                    by <strong>{{ $alert->actionUser->name }}</strong>
+                                @endif
+                                @if($alert->action_taken_at)
+                                    since {{ $alert->action_taken_at->format('M d, Y') }}
+                                @endif
+                            </p>
+                            @if($alert->canBeFixedBy(auth()->id()))
+                                <form
+                                    action="{{ route('alerts.mark-fixed', $alert) }}"
+                                    method="POST"
+                                    enctype="multipart/form-data"
+                                    class="mt-4 space-y-4"
+                                >
+                                    @csrf
+
+                                    <div>
+                                        <label for="fix_images" class="block font-medium text-sm text-gray-700">
+                                            After photos (optional)
+                                        </label>
+                                        <input
+                                            type="file"
+                                            name="fix_images[]"
+                                            id="fix_images"
+                                            multiple
+                                            accept="image/jpeg,image/png,image/webp"
+                                            class="mt-1 block w-full"
+                                        >
+                                        <p class="text-sm text-gray-500 mt-1">Show the cleaned place. Up to 10 images, 5 MB each.</p>
+                                    </div>
+
+                                    <div>
+                                        <label for="fixed_location_name" class="block font-medium text-sm text-gray-700">
+                                            Location after the fix (optional)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="fixed_location_name"
+                                            id="fixed_location_name"
+                                            value="{{ old('fixed_location_name') }}"
+                                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                                            placeholder="Same place, or a more precise location"
+                                        >
+                                    </div>
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label for="fixed_latitude" class="block font-medium text-sm text-gray-700">Latitude (optional)</label>
+                                            <input type="text" name="fixed_latitude" id="fixed_latitude" value="{{ old('fixed_latitude') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                                        </div>
+                                        <div>
+                                            <label for="fixed_longitude" class="block font-medium text-sm text-gray-700">Longitude (optional)</label>
+                                            <input type="text" name="fixed_longitude" id="fixed_longitude" value="{{ old('fixed_longitude') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        type="submit"
+                                        class="px-4 py-2 bg-green-700 text-white rounded"
+                                        onclick="return confirm('Mark this alert as Fixed?')"
+                                    >
+                                        Mark as Fixed
+                                    </button>
+                                </form>
+                            @else
+                                <p class="text-sm text-gray-600 mt-2">
+                                    This alert is already being handled. Others cannot take it until it is finished.
+                                </p>
+                            @endif
+                        @else
+                            <p class="text-green-800 font-medium flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-6 h-6">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+                                </svg>
+                                Fixed
+                                @if($alert->actionUser)
+                                    by {{ $alert->actionUser->name }}
+                                @endif
+                                @if($alert->fixed_at)
+                                    on {{ $alert->fixed_at->format('M d, Y') }}
+                                @endif
+                            </p>
+                            <p class="text-sm text-gray-600 mt-2">
+                                This alert is closed. Nobody else can take action on it.
+                            </p>
+
+                            @if($alert->fixed_location_name || ($alert->fixed_latitude && $alert->fixed_longitude))
+                                <p class="text-sm text-gray-700 mt-3">
+                                    @if($alert->fixed_location_name)
+                                        Fixed at {{ $alert->fixed_location_name }}
+                                    @endif
+                                    @if($alert->fixed_latitude && $alert->fixed_longitude)
+                                        ({{ $alert->fixed_latitude }}, {{ $alert->fixed_longitude }})
+                                    @endif
+                                </p>
+                            @endif
+
+                            @if($alert->fixImages->count())
+                                <div class="mt-4">
+                                    <p class="font-medium text-gray-800 mb-3">After photos</p>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                                        @foreach($alert->fixImages as $image)
+                                            <img
+                                                src="{{ asset('storage/' . $image->image) }}"
+                                                alt="After the fix"
+                                                class="w-full h-40 object-cover rounded-lg"
+                                            >
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+                        @endif
+                    </div>
+
+                    @if($alert->reportImages->count())
                         <div class="mt-10">
                             <h2 class="text-2xl font-semibold mb-5">More photos</h2>
                             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
-                                @foreach($alert->images as $image)
+                                @foreach($alert->reportImages as $image)
                                     <img
                                         src="{{ asset('storage/' . $image->image) }}"
                                         alt="{{ $image->caption ?? $alert->title }}"

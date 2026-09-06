@@ -3,11 +3,13 @@
 namespace App\Models;
 
 use App\Enums\Permission;
-use App\Enums\Role;
+use App\Models\Role as AccessRole;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 
 class User extends Authenticatable
 {
@@ -36,7 +38,7 @@ class User extends Authenticatable
      * @var array<string, mixed>
      */
     protected $attributes = [
-        'role' => 'user',
+        'role' => AccessRole::USER,
         'status' => true,
         'score' => 0,
     ];
@@ -47,7 +49,6 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'status' => 'boolean',
-            'role' => Role::class,
             'score' => 'integer',
         ];
     }
@@ -92,24 +93,91 @@ class User extends Authenticatable
         return $this->hasMany(ScoreEvent::class);
     }
 
-    public function hasRole(Role $role): bool
+    public function assignedRole(): BelongsTo
+    {
+        return $this->belongsTo(AccessRole::class, 'role', 'slug');
+    }
+
+    public function extraPermissionRecords(): HasMany
+    {
+        return $this->hasMany(UserPermission::class);
+    }
+
+    public function roleLabel(): string
+    {
+        return $this->assignedRole?->name ?? Str::headline((string) $this->role);
+    }
+
+    public function hasRole(string $role): bool
     {
         return $this->role === $role;
     }
 
     public function hasPermission(Permission $permission): bool
     {
-        return $this->role->has($permission);
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        if ($this->assignedRole?->hasPermission($permission)) {
+            return true;
+        }
+
+        return $this->extraPermissionRecords()
+            ->where('permission', $permission->value)
+            ->exists();
+    }
+
+    /**
+     * @return list<Permission>
+     */
+    public function assignablePermissions(): array
+    {
+        if ($this->isAdmin()) {
+            return Permission::cases();
+        }
+
+        return array_values(array_filter(
+            Permission::cases(),
+            fn (Permission $permission): bool => $this->hasPermission($permission),
+        ));
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function extraPermissionValues(): array
+    {
+        return $this->extraPermissionRecords()->pluck('permission')->all();
+    }
+
+    /**
+     * @param  list<string>  $permissions
+     */
+    public function syncExtraPermissions(array $permissions): void
+    {
+        $allowed = array_values(array_intersect(
+            $permissions,
+            array_map(fn (Permission $permission): string => $permission->value, Permission::cases()),
+        ));
+
+        $this->extraPermissionRecords()->delete();
+
+        foreach ($allowed as $permission) {
+            $this->extraPermissionRecords()->create([
+                'permission' => $permission,
+            ]);
+        }
     }
 
     public function isAdmin(): bool
     {
-        return $this->hasRole(Role::Admin);
+        return $this->hasRole(AccessRole::ADMIN);
     }
 
     public function isModerator(): bool
     {
-        return $this->hasRole(Role::Moderator);
+        return $this->hasRole(AccessRole::MODERATOR);
     }
 
     public function initials(): string

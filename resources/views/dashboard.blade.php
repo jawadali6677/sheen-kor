@@ -13,7 +13,7 @@
                     <p class="text-gray-900 text-lg font-semibold">
                         <a href="{{ route('users.show', $user) }}">{{ $user->name }}</a>
                     </p>
-                    <p class="text-sm text-gray-500">{{ $user->role->label() }} · {{ number_format($user->score) }} points</p>
+                    <p class="text-sm text-gray-500">{{ $user->roleLabel() }} · {{ number_format($user->score) }} points</p>
                     <a href="{{ route('profile.edit') }}" class="text-sm text-blue-700">Complete your profile</a>
                 </div>
             </div>

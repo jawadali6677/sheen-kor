@@ -3,7 +3,7 @@
 namespace App\Policies;
 
 use App\Enums\Permission;
-use App\Enums\Role;
+use App\Models\Role;
 use App\Models\User;
 
 class UserPolicy
@@ -18,18 +18,18 @@ class UserPolicy
         return $actor->hasPermission(Permission::ManageUsers);
     }
 
-    public function changeRole(User $actor, User $user, Role $newRole): bool
+    public function changeRole(User $actor, User $user, string $newRole): bool
     {
         if (! $this->update($actor, $user)) {
             return false;
         }
 
-        if ($user->role !== Role::Admin || $newRole === Role::Admin) {
+        if ($user->role !== Role::ADMIN || $newRole === Role::ADMIN) {
             return true;
         }
 
         return User::query()
-            ->where('role', Role::Admin)
+            ->where('role', Role::ADMIN)
             ->where('status', true)
             ->whereKeyNot($user->id)
             ->exists();

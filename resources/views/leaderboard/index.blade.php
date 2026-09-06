@@ -24,7 +24,7 @@
                                 <td class="px-4 py-3 font-medium">
                                     <a href="{{ route('users.show', $member) }}">{{ $member->name }}</a>
                                 </td>
-                                <td class="px-4 py-3 text-gray-500">{{ $member->role->label() }}</td>
+                                <td class="px-4 py-3 text-gray-500">{{ $member->roleLabel() }}</td>
                                 <td class="px-4 py-3 text-right font-semibold">{{ number_format($member->score) }}</td>
                             </tr>
                         @endforeach

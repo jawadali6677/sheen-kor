@@ -10,6 +10,7 @@ class DashboardController extends Controller
     public function __invoke(): View
     {
         $user = auth()->user();
+        $user->load('assignedRole');
 
         $events = $user->scoreEvents()
             ->latest()

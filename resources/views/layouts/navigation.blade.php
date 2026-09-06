@@ -31,6 +31,11 @@
                             {{ __('Users') }}
                         </x-nav-link>
                     @endcan
+                    @can('roles.manage')
+                        <x-nav-link :href="route('admin.roles.index')" :active="request()->routeIs('admin.roles.*')">
+                            {{ __('Roles') }}
+                        </x-nav-link>
+                    @endcan
                 </div>
             </div>
 
@@ -106,6 +111,11 @@
                     {{ __('Users') }}
                 </x-responsive-nav-link>
             @endcan
+            @can('roles.manage')
+                <x-responsive-nav-link :href="route('admin.roles.index')" :active="request()->routeIs('admin.roles.*')">
+                    {{ __('Roles') }}
+                </x-responsive-nav-link>
+            @endcan
         </div>
 
         <!-- Responsive Settings Options -->
@@ -113,7 +123,7 @@
             <div class="px-4">
                 <div class="font-medium text-base text-gray-800">{{ Auth::user()->name }}</div>
                 <div class="font-medium text-sm text-gray-500">{{ Auth::user()->email }}</div>
-                <div class="font-medium text-sm text-gray-500">{{ number_format(Auth::user()->score) }} points · {{ Auth::user()->role->label() }}</div>
+                <div class="font-medium text-sm text-gray-500">{{ number_format(Auth::user()->score) }} points · {{ Auth::user()->roleLabel() }}</div>
             </div>
 
             <div class="mt-3 space-y-1">

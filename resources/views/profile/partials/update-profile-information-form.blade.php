@@ -5,7 +5,7 @@
         </h2>
 
         <p class="mt-1 text-sm text-gray-600">
-            {{ $user->profileCompletionPercent() }}% complete · {{ $user->role->label() }} · {{ number_format($user->score) }} points
+            {{ $user->profileCompletionPercent() }}% complete · {{ $user->roleLabel() }} · {{ number_format($user->score) }} points
         </p>
         <p class="mt-1 text-sm">
             <a href="{{ route('users.show', $user) }}" class="text-blue-700">{{ __('View public profile') }}</a>

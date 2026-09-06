@@ -17,6 +17,8 @@ class ProfileController extends Controller
     {
         abort_unless($user->status || auth()->id() === $user->id, 404);
 
+        $user->load('assignedRole');
+
         $user->loadCount([
             'posts as stories_count' => function ($query) {
                 $query->where('status', 'published');

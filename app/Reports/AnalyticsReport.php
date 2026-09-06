@@ -4,9 +4,11 @@ namespace App\Reports;
 
 use App\Models\Alert;
 use App\Models\Post;
+use App\Models\Role;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 class AnalyticsReport
 {
@@ -72,16 +74,40 @@ class AnalyticsReport
                 'Published' => Post::query()->where('status', 'published')->count(),
                 'Pending' => Post::query()->where('status', 'pending')->count(),
             ],
-            'users_by_role' => [
-                'User' => User::query()->where('role', 'user')->count(),
-                'Moderator' => User::query()->where('role', 'moderator')->count(),
-                'Admin' => User::query()->where('role', 'admin')->count(),
-            ],
+            'users_by_role' => $this->usersByRole(),
             'users_by_status' => [
                 'Active' => User::query()->where('status', true)->count(),
                 'Disabled' => User::query()->where('status', false)->count(),
             ],
         ];
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function usersByRole(): array
+    {
+        $counts = User::query()
+            ->selectRaw('role, count(*) as aggregate')
+            ->groupBy('role')
+            ->pluck('aggregate', 'role');
+
+        $roles = Role::query()->orderBy('name')->get();
+        $usersByRole = [];
+
+        foreach ($roles as $role) {
+            $usersByRole[$role->name] = (int) ($counts[$role->slug] ?? 0);
+        }
+
+        foreach ($counts as $slug => $count) {
+            if ($roles->contains('slug', $slug)) {
+                continue;
+            }
+
+            $usersByRole[Str::headline((string) $slug)] = (int) $count;
+        }
+
+        return $usersByRole;
     }
 
     /**

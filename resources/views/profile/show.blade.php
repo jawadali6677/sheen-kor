@@ -49,7 +49,7 @@
                         </div>
                     </div>
 
-                    <p class="text-sm text-gray-500 mb-2">{{ $profile->role->label() }}</p>
+                    <p class="text-sm text-gray-500 mb-2">{{ $profile->roleLabel() }}</p>
 
                     @if($profile->bio)
                         <p class="text-gray-800 whitespace-pre-line">{{ $profile->bio }}</p>

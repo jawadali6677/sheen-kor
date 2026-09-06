@@ -10,6 +10,7 @@ class LeaderboardController extends Controller
     public function index(): View
     {
         $users = User::query()
+            ->with('assignedRole')
             ->where('status', true)
             ->orderByDesc('score')
             ->orderBy('id')

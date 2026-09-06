@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\Category;
 use App\Models\Comment;
 use App\Models\Like;
 use App\Models\Post;
@@ -30,7 +29,13 @@ class DatabaseSeeder extends Seeder
         |--------------------------------------------------------------------------
         */
 
+        $admin = User::factory()->admin()->create([
+            'name' => 'Admin',
+            'email' => 'admin@example.com',
+        ]);
+
         $users = User::factory(20)->create();
+        $users->push($admin);
 
         /*
         |--------------------------------------------------------------------------

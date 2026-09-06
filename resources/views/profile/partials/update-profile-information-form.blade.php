@@ -5,7 +5,7 @@
         </h2>
 
         <p class="mt-1 text-sm text-gray-600">
-            {{ __("Update your account's profile information and email address.") }}
+            {{ $user->role->label() }} · {{ number_format($user->score) }} points. {{ __("Update your account's profile information and email address.") }}
         </p>
     </header>
 

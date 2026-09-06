@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\AwardScore;
+use App\Actions\RevokeScore;
+use App\Enums\ScoreReason;
 use App\Models\Alert;
 use App\Models\AlertImage;
 use Illuminate\Http\Request;
@@ -11,6 +14,11 @@ use Throwable;
 
 class AlertController extends Controller
 {
+    public function __construct(
+        private AwardScore $awardScore,
+        private RevokeScore $revokeScore,
+    ) {}
+
     public function index(Request $request)
     {
         $status = $request->string('status')->toString();
@@ -50,11 +58,15 @@ class AlertController extends Controller
 
     public function create()
     {
+        $this->authorize('create', Alert::class);
+
         return view('alerts.create');
     }
 
     public function store(Request $request)
     {
+        $this->authorize('create', Alert::class);
+
         $request->validate([
             'title' => ['required', 'string', 'min:5', 'max:255'],
             'description' => ['required', 'string', 'min:20'],
@@ -101,6 +113,8 @@ class AlertController extends Controller
                 }
             }
 
+            $this->awardScore->handle($request->user(), ScoreReason::AlertCreated, $alert);
+
             DB::commit();
 
             return redirect()
@@ -146,7 +160,7 @@ class AlertController extends Controller
 
     public function edit(Alert $alert)
     {
-        abort_unless($alert->user_id === auth()->id(), 403);
+        $this->authorize('update', $alert);
 
         $alert->load('images');
 
@@ -155,7 +169,7 @@ class AlertController extends Controller
 
     public function update(Request $request, Alert $alert)
     {
-        abort_unless($alert->user_id === auth()->id(), 403);
+        $this->authorize('update', $alert);
 
         $request->validate([
             'title' => ['required', 'string', 'min:5', 'max:255'],
@@ -230,7 +244,7 @@ class AlertController extends Controller
 
     public function destroy(Alert $alert)
     {
-        abort_unless($alert->user_id === auth()->id(), 403);
+        $this->authorize('delete', $alert);
 
         DB::beginTransaction();
 
@@ -247,6 +261,15 @@ class AlertController extends Controller
 
             $alert->likes()->delete();
             $alert->comments()->delete();
+
+            if ($alert->user) {
+                $this->revokeScore->handle($alert->user, ScoreReason::AlertCreated, $alert);
+            }
+
+            if ($alert->actionUser) {
+                $this->revokeScore->handle($alert->actionUser, ScoreReason::AlertFixed, $alert);
+            }
+
             $alert->delete();
 
             DB::commit();
@@ -270,6 +293,8 @@ class AlertController extends Controller
      */
     public function takeAction(Alert $alert)
     {
+        $this->authorize('takeAction', $alert);
+
         DB::beginTransaction();
 
         try {
@@ -321,10 +346,7 @@ class AlertController extends Controller
      */
     public function markFixed(Request $request, Alert $alert)
     {
-        abort_unless(
-            $alert->canBeFixedBy(auth()->id()),
-            403
-        );
+        $this->authorize('markFixed', $alert);
 
         $request->validate([
             'fixed_location_name' => ['nullable', 'string', 'min:3', 'max:255'],
@@ -358,6 +380,8 @@ class AlertController extends Controller
                     ]);
                 }
             }
+
+            $this->awardScore->handle($request->user(), ScoreReason::AlertFixed, $alert);
 
             DB::commit();
 

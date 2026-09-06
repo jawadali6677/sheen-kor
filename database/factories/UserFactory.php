@@ -29,9 +29,33 @@ class UserFactory extends Factory
 
             'status' => true,
 
+            'score' => 0,
+
             'remember_token' => Str::random(10),
         ];
     }
+
+    public function admin(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'admin',
+        ]);
+    }
+
+    public function moderator(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'moderator',
+        ]);
+    }
+
+    public function disabled(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => false,
+        ]);
+    }
+
     public function unverified(): static
     {
         return $this->state(fn (array $attributes) => [

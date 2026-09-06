@@ -107,16 +107,18 @@
                                 <p class="text-sm text-green-700 mt-2">Fixed by {{ $alert->actionUser->name }}</p>
                             @endif
 
-                            @if(auth()->id() === $alert->user_id)
+                            @can('update', $alert)
                                 <div class="mt-2 text-sm">
                                     <a href="{{ route('alerts.edit', $alert) }}" class="text-gray-500 mr-3">Edit</a>
+                                    @can('delete', $alert)
                                     <form action="{{ route('alerts.destroy', $alert) }}" method="POST" class="inline" onsubmit="return confirm('Delete this alert?')">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="text-red-600">Delete</button>
                                     </form>
+                                    @endcan
                                 </div>
-                            @endif
+                            @endcan
                         </div>
                     </article>
 

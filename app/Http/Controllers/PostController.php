@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\AwardScore;
+use App\Actions\RevokeScore;
+use App\Enums\ScoreReason;
 use App\Models\Category;
 use App\Models\Post;
 use App\Models\PostImage;
@@ -13,6 +16,11 @@ use Throwable;
 
 class PostController extends Controller
 {
+    public function __construct(
+        private AwardScore $awardScore,
+        private RevokeScore $revokeScore,
+    ) {}
+
     /**
      * Display stories feed.
      */
@@ -62,6 +70,7 @@ class PostController extends Controller
      */
     public function create()
     {
+        $this->authorize('create', Post::class);
         $categories = Category::where('status', true)
             ->orderBy('name')
             ->get();
@@ -74,6 +83,8 @@ class PostController extends Controller
      */
     public function store(Request $request)
     {
+        $this->authorize('create', Post::class);
+
         /*
         |--------------------------------------------------------------------------
         | Validation
@@ -191,6 +202,8 @@ class PostController extends Controller
                     ]);
                 }
             }
+
+            $this->awardScore->handle($request->user(), ScoreReason::PostCreated, $post);
 
             DB::commit();
 
@@ -315,7 +328,7 @@ class PostController extends Controller
                         ->orWhere('content', 'like', $like);
                 });
             })
-            ->where('status' , "published")
+            ->where('status', 'published')
             ->latest('created_at')
             ->paginate(10)
             ->withQueryString();
@@ -352,10 +365,7 @@ class PostController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        abort_unless(
-            $post->user_id === auth()->id(),
-            403
-        );
+        $this->authorize('update', $post);
 
         $categories = Category::where('status', true)
             ->orderBy('name')
@@ -380,10 +390,7 @@ class PostController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        abort_unless(
-            $post->user_id === auth()->id(),
-            403
-        );
+        $this->authorize('update', $post);
 
         /*
         |--------------------------------------------------------------------------
@@ -553,10 +560,7 @@ class PostController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        abort_unless(
-            $post->user_id === auth()->id(),
-            403
-        );
+        $this->authorize('delete', $post);
 
         DB::beginTransaction();
 
@@ -596,6 +600,10 @@ class PostController extends Controller
 
             $post->likes()->delete();
             $post->comments()->delete();
+
+            if ($post->user) {
+                $this->revokeScore->handle($post->user, ScoreReason::PostCreated, $post);
+            }
 
             $post->delete();
 

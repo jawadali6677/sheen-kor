@@ -213,10 +213,13 @@
                     @endif
 
                     <div class="border-t mt-10 pt-6 flex flex-wrap items-center gap-4">
-                        @if(auth()->id() === $alert->user_id)
+                        @canany(['update', 'delete'], $alert)
+                            @can('update', $alert)
                             <a href="{{ route('alerts.edit', $alert) }}" class="px-4 py-2 bg-green-600 text-white rounded">
                                 Edit Alert
                             </a>
+                            @endcan
+                            @can('delete', $alert)
                             <form
                                 action="{{ route('alerts.destroy', $alert) }}"
                                 method="POST"
@@ -228,7 +231,8 @@
                                     Delete Alert
                                 </button>
                             </form>
-                        @endif
+                            @endcan
+                        @endcanany
 
                         <a href="{{ route('alerts.index') }}" class="px-4 py-2 bg-gray-200 text-gray-700 rounded">
                             Back to Alerts

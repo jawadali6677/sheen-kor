@@ -194,16 +194,18 @@
                         {{-- Owner Only --}}
                         @auth
 
-                            @if(auth()->id() === $post->user_id)
+                            @canany(['update', 'delete'], $post)
 
+                                @can('update', $post)
                                 <a
                                     href="{{ route('posts.edit', $post) }}"
                                     class="px-4 py-2 bg-green-600 text-white rounded"
                                 >
                                     Edit Story
                                 </a>
+                                @endcan
 
-
+                                @can('delete', $post)
                                 <form
                                     action="{{ route('posts.destroy', $post) }}"
                                     method="POST"
@@ -221,8 +223,9 @@
                                     </button>
 
                                 </form>
+                                @endcan
 
-                            @endif
+                            @endcanany
 
                         @endauth
 

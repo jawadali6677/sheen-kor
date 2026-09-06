@@ -1,7 +1,7 @@
 @php
     $isReply = (bool) $comment->parent_id;
-    $canEdit = auth()->id() === $comment->user_id;
-    $canDelete = $canEdit || auth()->id() === $post->user_id;
+    $canEdit = auth()->user()?->can('update', $comment);
+    $canDelete = auth()->user()?->can('delete', $comment);
 @endphp
 
 <div

@@ -142,16 +142,18 @@
                                 </p>
                             @endif
 
-                            @if(auth()->id() === $post->user_id)
+                            @can('update', $post)
                                 <div class="mt-2 text-sm">
                                     <a href="{{ route('posts.edit', $post) }}" class="text-gray-500 mr-3">Edit</a>
+                                    @can('delete', $post)
                                     <form action="{{ route('posts.destroy', $post) }}" method="POST" class="inline" onsubmit="return confirm('Delete this story?')">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="text-red-600">Delete</button>
                                     </form>
+                                    @endcan
                                 </div>
-                            @endif
+                            @endcan
                         </div>
                     </article>
 

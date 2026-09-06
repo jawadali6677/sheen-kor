@@ -39,10 +39,8 @@ class Comment extends Model
             ->orderBy('created_at');
     }
 
-    public function toEngagementPayload(?int $userId, ?int $ownerId = null): array
+    public function toEngagementPayload(?User $actor = null): array
     {
-        $ownerId ??= $this->commentable?->user_id;
-
         return [
             'id' => $this->id,
             'parent_id' => $this->parent_id,
@@ -53,11 +51,8 @@ class Comment extends Model
                 'id' => $this->user?->id,
                 'name' => $this->user?->name ?? 'Unknown User',
             ],
-            'can_edit' => $userId !== null && $this->user_id === $userId,
-            'can_delete' => $userId !== null && (
-                $this->user_id === $userId ||
-                $ownerId === $userId
-            ),
+            'can_edit' => $actor?->can('update', $this) ?? false,
+            'can_delete' => $actor?->can('delete', $this) ?? false,
         ];
     }
 }

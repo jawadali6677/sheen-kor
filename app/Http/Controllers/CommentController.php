@@ -35,10 +35,7 @@ class CommentController extends Controller
 
     public function update(Request $request, Comment $comment): JsonResponse
     {
-        abort_unless(
-            $comment->user_id === auth()->id(),
-            403
-        );
+        $this->authorize('update', $comment);
 
         $commentable = $comment->commentable;
 
@@ -77,10 +74,7 @@ class CommentController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Your comment has been updated.',
-                'comment' => $comment->toEngagementPayload(
-                    auth()->id(),
-                    $commentable->user_id
-                ),
+                'comment' => $comment->toEngagementPayload(auth()->user()),
             ]);
 
         } catch (Throwable $e) {
@@ -98,12 +92,9 @@ class CommentController extends Controller
 
     public function destroy(Comment $comment): JsonResponse
     {
+        $this->authorize('delete', $comment);
+
         $commentable = $comment->commentable;
-
-        $canDelete = $comment->user_id === auth()->id()
-            || ($commentable && $commentable->user_id === auth()->id());
-
-        abort_unless($canDelete, 403);
 
         DB::beginTransaction();
 
@@ -164,22 +155,21 @@ class CommentController extends Controller
             ->latest()
             ->get();
 
-        $userId = auth()->id();
-        $ownerId = $commentable->user_id;
+        $actor = auth()->user();
 
         return response()->json([
             'success' => true,
-            'liked' => $commentable->isLikedBy($userId),
+            'liked' => $commentable->isLikedBy($actor?->id),
             'likes_count' => $commentable->likes()->count(),
             'comments_count' => $this->approvedCommentsCount($commentable),
             'item' => [
                 'id' => $commentable->id,
                 'title' => $commentable->title,
             ],
-            'comments' => $comments->map(function (Comment $comment) use ($userId, $ownerId) {
-                $payload = $comment->toEngagementPayload($userId, $ownerId);
+            'comments' => $comments->map(function (Comment $comment) use ($actor) {
+                $payload = $comment->toEngagementPayload($actor);
                 $payload['replies'] = $comment->replies
-                    ->map(fn (Comment $reply) => $reply->toEngagementPayload($userId, $ownerId))
+                    ->map(fn (Comment $reply) => $reply->toEngagementPayload($actor))
                     ->values();
 
                 return $payload;
@@ -258,10 +248,7 @@ class CommentController extends Controller
                 'message' => $comment->parent_id
                     ? 'Your reply has been added.'
                     : 'Your comment has been added.',
-                'comment' => $comment->toEngagementPayload(
-                    auth()->id(),
-                    $commentable->user_id
-                ),
+                'comment' => $comment->toEngagementPayload(auth()->user()),
                 'comments_count' => $this->approvedCommentsCount($commentable),
             ], 201);
 

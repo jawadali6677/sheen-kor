@@ -22,7 +22,8 @@ return new class extends Migration
             $table->string('profile_image')->nullable();
             $table->text('bio')->nullable();
 
-            $table->enum('role', ['user', 'admin'])->default('user');
+            $table->enum('role', ['user', 'moderator', 'admin'])->default('user');
+            $table->unsignedInteger('score')->default(0);
             $table->boolean('status')->default(true);
 
             $table->rememberToken();

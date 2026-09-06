@@ -63,7 +63,7 @@
 
                     <div class="mb-6">
                         <label class="block font-medium text-sm text-gray-700">Current photo</label>
-                        <img src="{{ asset('storage/' . $alert->featured_image) }}" alt="{{ $alert->title }}" class="mt-2 h-40 object-cover rounded">
+                        <img src="{{ asset('storage/' . $alert->featured_image) }}" alt="{{ $alert->title }}" class="mt-2 h-40 object-cover rounded js-lightbox">
                     </div>
 
                     <div class="mb-6">

@@ -35,6 +35,11 @@
     font-weight: 700;
     flex-shrink: 0;
 }
+img.feed-avatar {
+    display: block;
+    object-fit: cover;
+    padding: 0;
+}
 .feed-image-wrap {
     position: relative;
     background: #111;
@@ -98,4 +103,195 @@
 .post-engagement-bar.compact .js-like-button.btn-danger {
     background: transparent;
     color: #dc2626;
+}
+
+.profile-page {
+    max-width: 935px;
+    margin: 0 auto;
+}
+.profile-cover {
+    height: 220px;
+    background: linear-gradient(135deg, #0f766e, #1d4ed8);
+    border-radius: 16px 16px 0 0;
+    overflow: hidden;
+}
+.profile-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.profile-card {
+    background: #fff;
+    border: 1px solid #efefef;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+    margin-bottom: 1.5rem;
+}
+.profile-main {
+    padding: 0 1.5rem 1.5rem;
+}
+.profile-avatar-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 1.25rem;
+    margin-top: -48px;
+}
+.profile-avatar {
+    width: 96px;
+    height: 96px;
+    border-radius: 999px;
+    border: 4px solid #fff;
+    background: linear-gradient(135deg, #0d6efd, #198754);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 2rem;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+}
+.profile-avatar-lg {
+    width: 120px;
+    height: 120px;
+}
+.profile-stats {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    margin: 1rem 0;
+}
+.profile-stat {
+    text-align: center;
+}
+.profile-stat strong {
+    display: block;
+    font-size: 1.15rem;
+}
+.profile-stat span {
+    color: #6b7280;
+    font-size: 0.8rem;
+}
+.profile-tabs {
+    display: flex;
+    gap: 1.5rem;
+    border-bottom: 1px solid #efefef;
+    margin: 1.5rem 0 1rem;
+}
+.profile-tabs a {
+    padding: 0.75rem 0;
+    color: #6b7280;
+    text-decoration: none;
+    font-weight: 600;
+    border-bottom: 2px solid transparent;
+}
+.profile-tabs a.active {
+    color: #111827;
+    border-bottom-color: #111827;
+}
+.profile-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+}
+.profile-grid a,
+.profile-grid .profile-grid-empty {
+    aspect-ratio: 1;
+    background: #111;
+    overflow: hidden;
+    display: block;
+}
+.profile-grid img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.profile-grid-empty {
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0.5rem;
+    font-size: 0.8rem;
+}
+.profile-edit-preview {
+    width: 88px;
+    height: 88px;
+    border-radius: 999px;
+    object-fit: cover;
+}
+.profile-edit-cover {
+    width: 100%;
+    height: 140px;
+    object-fit: cover;
+    border-radius: 12px;
+    cursor: zoom-in;
+}
+.image-preview-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+}
+.image-preview-hint {
+    width: 100%;
+    margin: 0;
+    color: #6b7280;
+    font-size: 0.85rem;
+}
+.image-preview-thumb {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: zoom-in;
+    border-radius: 12px;
+    overflow: hidden;
+}
+.image-preview-thumb img {
+    display: block;
+    width: 112px;
+    height: 112px;
+    object-fit: cover;
+}
+img.js-lightbox {
+    cursor: zoom-in;
+}
+.image-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 1080;
+    background: rgba(15, 23, 42, 0.88);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+.image-lightbox[hidden] {
+    display: none !important;
+}
+.image-lightbox img {
+    max-width: min(96vw, 1100px);
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 8px;
+    cursor: default;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+}
+.image-lightbox-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: #fff;
+    color: #111827;
+    border: 0;
+    border-radius: 999px;
+    padding: 0.4rem 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+body.image-lightbox-open {
+    overflow: hidden;
 }

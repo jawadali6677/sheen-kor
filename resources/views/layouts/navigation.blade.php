@@ -21,6 +21,11 @@
                     <x-nav-link :href="route('leaderboard.index')" :active="request()->routeIs('leaderboard.*')">
                         {{ __('Scores') }}
                     </x-nav-link>
+                    @can('analytics.view')
+                        <x-nav-link :href="route('analytics.index')" :active="request()->routeIs('analytics.*')">
+                            {{ __('Analytics') }}
+                        </x-nav-link>
+                    @endcan
                     @can('users.manage')
                         <x-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
                             {{ __('Users') }}
@@ -46,8 +51,11 @@
                     </x-slot>
 
                     <x-slot name="content">
+                        <x-dropdown-link :href="route('users.show', Auth::user())">
+                            {{ __('My profile') }}
+                        </x-dropdown-link>
                         <x-dropdown-link :href="route('profile.edit')">
-                            {{ __('Profile') }}
+                            {{ __('Edit profile') }}
                         </x-dropdown-link>
 
                         <!-- Authentication -->
@@ -88,6 +96,11 @@
             <x-responsive-nav-link :href="route('leaderboard.index')" :active="request()->routeIs('leaderboard.*')">
                 {{ __('Scores') }}
             </x-responsive-nav-link>
+            @can('analytics.view')
+                <x-responsive-nav-link :href="route('analytics.index')" :active="request()->routeIs('analytics.*')">
+                    {{ __('Analytics') }}
+                </x-responsive-nav-link>
+            @endcan
             @can('users.manage')
                 <x-responsive-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
                     {{ __('Users') }}
@@ -104,8 +117,11 @@
             </div>
 
             <div class="mt-3 space-y-1">
+                <x-responsive-nav-link :href="route('users.show', Auth::user())">
+                    {{ __('My profile') }}
+                </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('profile.edit')">
-                    {{ __('Profile') }}
+                    {{ __('Edit profile') }}
                 </x-responsive-nav-link>
 
                 <!-- Authentication -->

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\AlertController;
+use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LeaderboardController;
@@ -22,8 +23,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::get('/users/{user}', [ProfileController::class, 'show'])->name('users.show');
 
     Route::get('/leaderboard', [LeaderboardController::class, 'index'])->name('leaderboard.index');
+    Route::get('/analytics', [AnalyticsController::class, 'index'])->name('analytics.index');
 
     Route::resource('posts', PostController::class);
     Route::resource('alerts', AlertController::class);
@@ -31,8 +34,7 @@ Route::middleware('auth')->group(function () {
     Route::get('categories/{category:slug}', [PostController::class, 'byCategory'])
         ->name('categories.show');
 
-    Route::get('authors/{user}', [PostController::class, 'byAuthor'])
-        ->name('authors.show');
+    Route::get('authors/{user}', [ProfileController::class, 'show'])->name('authors.show');
 
     Route::post('posts/{post}/likes', [LikeController::class, 'storePost'])
         ->name('posts.likes.store');

@@ -148,7 +148,7 @@
                         >
 
                         <p class="text-sm text-gray-500 mt-1">
-                            Maximum size: 5 MB.
+                            Maximum size: 5 MB. The photo appears below so you can check it before you submit. Click it to open it larger.
                         </p>
                     </div>
 

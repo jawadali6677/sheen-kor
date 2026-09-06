@@ -7,9 +7,15 @@
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-                <p class="text-gray-900 text-lg font-semibold">{{ $user->name }}</p>
-                <p class="text-sm text-gray-500">{{ $user->role->label() }} · {{ number_format($user->score) }} points</p>
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 flex items-center gap-4">
+                <x-user-avatar :user="$user" />
+                <div>
+                    <p class="text-gray-900 text-lg font-semibold">
+                        <a href="{{ route('users.show', $user) }}">{{ $user->name }}</a>
+                    </p>
+                    <p class="text-sm text-gray-500">{{ $user->role->label() }} · {{ number_format($user->score) }} points</p>
+                    <a href="{{ route('profile.edit') }}" class="text-sm text-blue-700">Complete your profile</a>
+                </div>
             </div>
 
             <div class="grid gap-6 md:grid-cols-2">
@@ -32,7 +38,7 @@
                     </div>
                     @foreach($leaders as $leader)
                         <div class="flex justify-between text-sm py-2 border-b last:border-0">
-                            <span>{{ $leader->name }}</span>
+                            <a href="{{ route('users.show', $leader) }}">{{ $leader->name }}</a>
                             <span>{{ number_format($leader->score) }}</span>
                         </div>
                     @endforeach

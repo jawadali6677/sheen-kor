@@ -12,4 +12,5 @@ enum Permission: string
     case MarkAlertsFixed = 'alerts.mark_fixed';
     case ModerateComments = 'comments.moderate';
     case ManageUsers = 'users.manage';
+    case ViewAnalytics = 'analytics.view';
 }

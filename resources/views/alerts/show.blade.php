@@ -25,7 +25,7 @@
                 <img
                     src="{{ asset('storage/' . $alert->featured_image) }}"
                     alt="{{ $alert->title }}"
-                    class="w-full max-h-[550px] object-cover"
+                    class="w-full max-h-[550px] object-cover js-lightbox"
                 >
 
                 <div class="p-6 md:p-10">
@@ -45,7 +45,7 @@
                     <div class="mt-4 text-sm text-gray-500">
                         Reported by
                         @if($alert->user)
-                            <a href="{{ route('authors.show', $alert->user) }}" class="text-gray-700 font-semibold hover:underline">
+                            <a href="{{ route('users.show', $alert->user) }}" class="text-gray-700 font-semibold hover:underline">
                                 {{ $alert->user->name }}
                             </a>
                         @else
@@ -121,7 +121,7 @@
                                             accept="image/jpeg,image/png,image/webp"
                                             class="mt-1 block w-full"
                                         >
-                                        <p class="text-sm text-gray-500 mt-1">Show the cleaned place. Up to 10 images, 5 MB each.</p>
+                                        <p class="text-sm text-gray-500 mt-1">Show the cleaned place. Up to 10 images, 5 MB each. Preview them below, then click to open larger.</p>
                                     </div>
 
                                     @include('partials.location-map', [
@@ -188,7 +188,7 @@
                                             <img
                                                 src="{{ asset('storage/' . $image->image) }}"
                                                 alt="After the fix"
-                                                class="w-full h-40 object-cover rounded-lg"
+                                                class="w-full h-40 object-cover rounded-lg js-lightbox"
                                             >
                                         @endforeach
                                     </div>
@@ -205,7 +205,7 @@
                                     <img
                                         src="{{ asset('storage/' . $image->image) }}"
                                         alt="{{ $image->caption ?? $alert->title }}"
-                                        class="w-full h-64 object-cover rounded-lg"
+                                        class="w-full h-64 object-cover rounded-lg js-lightbox"
                                     >
                                 @endforeach
                             </div>

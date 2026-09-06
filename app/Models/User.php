@@ -18,7 +18,11 @@ class User extends Authenticatable
         'email',
         'password',
         'profile_image',
+        'cover_image',
         'bio',
+        'username',
+        'location',
+        'website',
         'role',
         'status',
     ];
@@ -106,5 +110,42 @@ class User extends Authenticatable
     public function isModerator(): bool
     {
         return $this->hasRole(Role::Moderator);
+    }
+
+    public function initials(): string
+    {
+        return mb_strtoupper(mb_substr($this->name, 0, 1));
+    }
+
+    public function avatarUrl(): ?string
+    {
+        if (! $this->profile_image) {
+            return null;
+        }
+
+        return asset('storage/'.$this->profile_image);
+    }
+
+    public function coverUrl(): ?string
+    {
+        if (! $this->cover_image) {
+            return null;
+        }
+
+        return asset('storage/'.$this->cover_image);
+    }
+
+    public function profileCompletionPercent(): int
+    {
+        $fields = ['name', 'username', 'bio', 'location', 'website', 'profile_image', 'cover_image'];
+        $filled = 0;
+
+        foreach ($fields as $field) {
+            if (filled($this->{$field})) {
+                $filled++;
+            }
+        }
+
+        return (int) round(($filled / count($fields)) * 100);
     }
 }

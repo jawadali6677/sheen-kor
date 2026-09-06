@@ -22,7 +22,7 @@
                             <tr class="border-t {{ $member->is(auth()->user()) ? 'bg-green-50' : '' }}">
                                 <td class="px-4 py-3">{{ $users->firstItem() + $index }}</td>
                                 <td class="px-4 py-3 font-medium">
-                                    <a href="{{ route('authors.show', $member) }}">{{ $member->name }}</a>
+                                    <a href="{{ route('users.show', $member) }}">{{ $member->name }}</a>
                                 </td>
                                 <td class="px-4 py-3 text-gray-500">{{ $member->role->label() }}</td>
                                 <td class="px-4 py-3 text-right font-semibold">{{ number_format($member->score) }}</td>

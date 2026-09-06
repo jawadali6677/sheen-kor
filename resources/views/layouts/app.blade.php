@@ -44,6 +44,11 @@
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <script src="{{ asset('js/location-map.js') }}"></script>
         <script src="{{ asset('js/post-engagement.js') }}"></script>
+        <script src="{{ asset('js/image-preview.js') }}"></script>
+        <div id="image-lightbox" class="image-lightbox" hidden>
+            <button type="button" class="image-lightbox-close js-image-lightbox-close">Close</button>
+            <img id="image-lightbox-image" alt="Preview">
+        </div>
         @stack('scripts')
     </body>
 </html>

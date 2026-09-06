@@ -36,6 +36,7 @@ enum Role: string
                 Permission::ModeratePosts,
                 Permission::ModerateAlerts,
                 Permission::ModerateComments,
+                Permission::ViewAnalytics,
             ],
             self::Admin => Permission::cases(),
         };

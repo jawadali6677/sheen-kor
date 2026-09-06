@@ -44,7 +44,7 @@
                         <img
                             src="{{ asset('storage/' . $post->featured_image) }}"
                             alt="{{ $post->title }}"
-                            class="w-full max-h-[550px] object-cover"
+                            class="w-full max-h-[550px] object-cover js-lightbox"
                         >
 
                     </div>
@@ -80,7 +80,7 @@
                         <span>
                             By
                             @if($post->user)
-                                <a href="{{ route('authors.show', $post->user) }}" class="text-gray-700 font-semibold hover:underline">
+                                <a href="{{ route('users.show', $post->user) }}" class="text-gray-700 font-semibold hover:underline">
                                     {{ $post->user->name }}
                                 </a>
                             @else
@@ -164,7 +164,7 @@
                                         <img
                                             src="{{ asset('storage/' . $image->image) }}"
                                             alt="{{ $image->caption ?? $post->title }}"
-                                            class="w-full h-64 object-cover rounded-lg"
+                                            class="w-full h-64 object-cover rounded-lg js-lightbox"
                                         >
 
 

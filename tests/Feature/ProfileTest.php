@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class ProfileTest extends TestCase
@@ -95,5 +97,72 @@ class ProfileTest extends TestCase
             ->assertRedirect('/profile');
 
         $this->assertNotNull($user->fresh());
+    }
+
+    public function test_users_can_complete_their_public_profile(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create([
+            'bio' => null,
+            'location' => null,
+            'website' => null,
+            'username' => null,
+        ]);
+
+        $this->actingAs($user)
+            ->patch('/profile', [
+                'name' => 'River Keeper',
+                'email' => $user->email,
+                'username' => 'river.keeper',
+                'bio' => 'I report dumping and help clean river banks.',
+                'location' => 'Erbil',
+                'website' => 'https://example.com',
+                'profile_image' => UploadedFile::fake()->image('avatar.jpg'),
+                'cover_image' => UploadedFile::fake()->image('cover.jpg'),
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect('/profile');
+
+        $user->refresh();
+
+        $this->assertSame('River Keeper', $user->name);
+        $this->assertSame('river.keeper', $user->username);
+        $this->assertSame('Erbil', $user->location);
+        $this->assertSame('https://example.com', $user->website);
+        $this->assertNotNull($user->profile_image);
+        $this->assertNotNull($user->cover_image);
+        Storage::disk('public')->assertExists($user->profile_image);
+    }
+
+    public function test_other_users_can_view_a_public_profile_without_seeing_email(): void
+    {
+        $profile = User::factory()->create([
+            'name' => 'Public Person',
+            'email' => 'secret-profile@example.com',
+            'username' => 'public.person',
+            'bio' => 'I plant trees in the city.',
+            'score' => 40,
+        ]);
+        $viewer = User::factory()->create();
+
+        $this->actingAs($viewer)
+            ->get(route('users.show', $profile))
+            ->assertOk()
+            ->assertSee('Public Person')
+            ->assertSee('public.person')
+            ->assertSee('I plant trees in the city.')
+            ->assertSee('40')
+            ->assertDontSee('secret-profile@example.com');
+    }
+
+    public function test_disabled_profiles_are_hidden_from_other_users(): void
+    {
+        $profile = User::factory()->disabled()->create();
+        $viewer = User::factory()->create();
+
+        $this->actingAs($viewer)
+            ->get(route('users.show', $profile))
+            ->assertNotFound();
     }
 }

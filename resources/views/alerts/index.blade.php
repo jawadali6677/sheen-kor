@@ -56,21 +56,22 @@
 
                 @forelse($alerts as $alert)
 
-                    @php
-                        $authorName = $alert->user?->name ?? 'Unknown User';
-                        $initial = mb_strtoupper(mb_substr($authorName, 0, 1));
-                    @endphp
-
                     <article class="feed-card">
                         <div class="feed-header">
-                            <div class="feed-avatar">{{ $initial }}</div>
+                            @if($alert->user)
+                                <a href="{{ route('users.show', $alert->user) }}">
+                                    <x-user-avatar :user="$alert->user" size="sm" />
+                                </a>
+                            @else
+                                <div class="feed-avatar">?</div>
+                            @endif
                             <div class="min-w-0 flex-1">
                                 @if($alert->user)
-                                    <a href="{{ route('authors.show', $alert->user) }}" class="font-semibold text-gray-900">
-                                        {{ $authorName }}
+                                    <a href="{{ route('users.show', $alert->user) }}" class="font-semibold text-gray-900">
+                                        {{ $alert->user->name }}
                                     </a>
                                 @else
-                                    <span class="font-semibold text-gray-900">{{ $authorName }}</span>
+                                    <span class="font-semibold text-gray-900">Unknown User</span>
                                 @endif
                                 <div class="feed-meta">
                                     {{ $alert->location_name }}

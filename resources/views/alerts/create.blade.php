@@ -89,7 +89,7 @@
                             class="mt-1 block w-full"
                             required
                         >
-                        <p class="text-sm text-gray-500 mt-1">Maximum size: 5 MB.</p>
+                        <p class="text-sm text-gray-500 mt-1">Maximum size: 5 MB. Preview appears after you choose a photo. Click it to open it larger.</p>
                     </div>
 
                     <div class="mb-6">

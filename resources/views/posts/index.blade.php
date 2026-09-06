@@ -84,21 +84,22 @@
 
                 @forelse($posts as $post)
 
-                    @php
-                        $authorName = $post->user?->name ?? 'Unknown User';
-                        $initial = mb_strtoupper(mb_substr($authorName, 0, 1));
-                    @endphp
-
                     <article class="feed-card">
                         <div class="feed-header">
-                            <div class="feed-avatar">{{ $initial }}</div>
+                            @if($post->user)
+                                <a href="{{ route('users.show', $post->user) }}">
+                                    <x-user-avatar :user="$post->user" size="sm" />
+                                </a>
+                            @else
+                                <div class="feed-avatar">?</div>
+                            @endif
                             <div class="min-w-0">
                                 @if($post->user)
-                                    <a href="{{ route('authors.show', $post->user) }}" class="font-semibold text-gray-900">
-                                        {{ $authorName }}
+                                    <a href="{{ route('users.show', $post->user) }}" class="font-semibold text-gray-900">
+                                        {{ $post->user->name }}
                                     </a>
                                 @else
-                                    <span class="font-semibold text-gray-900">{{ $authorName }}</span>
+                                    <span class="font-semibold text-gray-900">Unknown User</span>
                                 @endif
                                 <div class="feed-meta">
                                     @if($post->category)

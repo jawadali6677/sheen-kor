@@ -145,7 +145,7 @@
                             <img
                                 src="{{ asset('storage/' . $post->featured_image) }}"
                                 alt="{{ $post->title }}"
-                                class="w-48 h-32 object-cover rounded"
+                                class="w-48 h-32 object-cover rounded js-lightbox"
                             >
 
                         </div>
@@ -196,7 +196,7 @@
                                         <img
                                             src="{{ asset('storage/' . $image->image) }}"
                                             alt="Post image"
-                                            class="w-full h-32 object-cover rounded"
+                                            class="w-full h-32 object-cover rounded js-lightbox"
                                         >
 
                                     </div>

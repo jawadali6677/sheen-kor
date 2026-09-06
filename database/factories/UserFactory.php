@@ -23,7 +23,15 @@ class UserFactory extends Factory
 
             'profile_image' => null,
 
+            'cover_image' => null,
+
+            'username' => fake()->unique()->numerify('user####'),
+
             'bio' => fake()->sentence(12),
+
+            'location' => fake()->city(),
+
+            'website' => null,
 
             'role' => 'user',
 

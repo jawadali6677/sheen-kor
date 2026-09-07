@@ -7,27 +7,9 @@
     </x-slot>
 
     <div class="py-8">
-        <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
-
-            {{-- Validation Errors --}}
-            @if ($errors->any())
-                <div class="mb-6 p-4 bg-red-100 text-red-700 rounded">
-                    <ul class="list-disc list-inside">
-                        @foreach ($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                </div>
-            @endif
-
-            {{-- Error Message --}}
-            @if(session('error'))
-                <div class="mb-6 p-4 bg-red-100 text-red-700 rounded">
-                    {{ session('error') }}
-                </div>
-            @endif
-
-            <div class="bg-white shadow-sm sm:rounded-lg p-6">
+        <div class="max-w-3xl mx-auto">
+            <x-flash />
+            <div class="sk-card p-6 md:p-8">
 
                 <form
                     action="{{ route('posts.store') }}"
@@ -51,7 +33,7 @@
                             name="title"
                             id="title"
                             value="{{ old('title') }}"
-                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                            class="sk-input"
                             placeholder="Enter your story title"
                             required
                         >
@@ -70,7 +52,7 @@
                         <select
                             name="category_id"
                             id="category_id"
-                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                            class="sk-input"
                             required
                         >
                             <option value="">
@@ -104,7 +86,7 @@
                             name="excerpt"
                             id="excerpt"
                             rows="3"
-                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                            class="sk-input"
                             placeholder="Write a short description..."
                         >{{ old('excerpt') }}</textarea>
                     </div>
@@ -123,7 +105,7 @@
                             name="content"
                             id="content"
                             rows="12"
-                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                            class="sk-input"
                             placeholder="Write your story..."
                             required
                         >{{ old('content') }}</textarea>
@@ -183,17 +165,11 @@
                     {{-- Buttons --}}
                     <div class="flex items-center gap-4">
 
-                        <button
-                            type="submit"
-                            class="px-5 py-2 bg-gray-800 text-white rounded"
-                        >
+                        <button type="submit" class="btn-primary">
                             Submit Story
                         </button>
 
-                        <a
-                            href="{{ route('posts.index') }}"
-                            class="px-5 py-2 bg-gray-200 text-gray-700 rounded"
-                        >
+                        <a href="{{ route('posts.index') }}" class="btn-secondary">
                             Cancel
                         </a>
 

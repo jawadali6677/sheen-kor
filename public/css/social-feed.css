@@ -6,7 +6,7 @@
 }
 
 .social-feed {
-    max-width: 470px;
+    max-width: 100%;
     margin: 0 auto;
 }
 .feed-card {
@@ -112,7 +112,7 @@ img.feed-avatar {
 }
 .profile-cover {
     height: 220px;
-    background: linear-gradient(135deg, #0f766e, #1d4ed8);
+    background: linear-gradient(135deg, #0F3D2E, #1C3F30);
     border-radius: 16px 16px 0 0;
     overflow: hidden;
 }
@@ -189,8 +189,8 @@ img.feed-avatar {
     border-bottom: 2px solid transparent;
 }
 .profile-tabs a.active {
-    color: #111827;
-    border-bottom-color: #111827;
+    border-bottom-color: #0F3D2E;
+    color: #0F3D2E;
 }
 .profile-grid {
     display: grid;

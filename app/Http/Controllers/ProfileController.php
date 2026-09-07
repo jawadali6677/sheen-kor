@@ -31,7 +31,7 @@ class ProfileController extends Controller
 
         $tab = request()->string('tab')->toString();
 
-        if (! in_array($tab, ['stories', 'alerts'], true)) {
+        if (! in_array($tab, ['stories', 'alerts', 'activity'], true)) {
             $tab = 'stories';
         }
 
@@ -53,14 +53,16 @@ class ProfileController extends Controller
             ->limit(8)
             ->get();
 
+        $viewer = auth()->user();
+
         return view('profile.show', [
             'profile' => $user,
             'tab' => $tab,
             'stories' => $stories,
             'alerts' => $alerts,
             'scoreEvents' => $scoreEvents,
-            'isFollowing' => auth()->id() !== $user->id && auth()->user()->isFollowing($user),
-            'isFollowedBy' => auth()->id() !== $user->id && $user->isFollowing(auth()->user()),
+            'isFollowing' => $viewer !== null && $viewer->id !== $user->id && $viewer->isFollowing($user),
+            'isFollowedBy' => $viewer !== null && $viewer->id !== $user->id && $user->isFollowing($viewer),
         ]);
     }
 

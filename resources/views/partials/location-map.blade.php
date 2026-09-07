@@ -22,11 +22,11 @@
                 placeholder="Search a place, then click the map"
                 autocomplete="off"
             >
-            <button type="button" id="{{ $mapId }}-search-btn" class="px-3 py-2 bg-gray-800 text-white rounded whitespace-nowrap">
+            <button type="button" id="{{ $mapId }}-search-btn" class="btn-primary whitespace-nowrap">
                 Find
             </button>
         </div>
-        <button type="button" id="{{ $mapId }}-locate" class="mb-2 text-sm text-blue-700">
+        <button type="button" id="{{ $mapId }}-locate" class="mb-2 text-sm font-semibold text-forest-700">
             Use my current location
         </button>
     @endunless

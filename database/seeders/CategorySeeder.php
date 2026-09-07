@@ -47,6 +47,10 @@ class CategorySeeder extends Seeder
                 'name' => 'Community',
                 'description' => 'Community activities, volunteer work and local initiatives.',
             ],
+            [
+                'name' => 'Tips',
+                'description' => 'Practical advice for cleaner, greener everyday life.',
+            ],
         ];
 
         foreach ($categories as $category) {

@@ -19,8 +19,24 @@
     var replyParentId = null;
     var inflightLikes = {};
 
-    if ($modal.length && window.bootstrap && bootstrap.Modal) {
-        commentModal = bootstrap.Modal.getOrCreateInstance($modal[0]);
+    function showCommentModal() {
+        if (! $modal.length) {
+            return;
+        }
+
+        $modal.removeClass('hidden').addClass('flex').attr('aria-hidden', 'false');
+        $('body').addClass('overflow-y-hidden');
+    }
+
+    function hideCommentModal() {
+        if (! $modal.length) {
+            return;
+        }
+
+        $modal.addClass('hidden').removeClass('flex').attr('aria-hidden', 'true');
+        $('body').removeClass('overflow-y-hidden');
+        currentBar = null;
+        resetReplyState();
     }
 
     function escapeHtml(value) {
@@ -98,8 +114,8 @@
         }
 
         $toast
-            .removeClass('d-none alert-success alert-danger alert-info')
-            .addClass('alert-' + (type || 'success'))
+            .removeClass('d-none bg-forest-800 bg-red-600')
+            .addClass(type === 'danger' ? 'bg-red-600' : 'bg-forest-800')
             .text(message)
             .show();
     }
@@ -231,9 +247,8 @@
 
         if (commentModal) {
             commentModal.show();
-        } else if ($modal.length) {
-            $modal.addClass('show d-block').attr('aria-hidden', 'false');
-            $('body').append('<div class="modal-backdrop fade show" id="comment-modal-fallback-backdrop"></div>');
+        } else {
+            showCommentModal();
         }
 
         $.getJSON($bar.attr('data-comments-url'))
@@ -404,9 +419,17 @@
             });
     });
 
+    $modal.on('click', function (event) {
+        if (event.target === $modal[0]) {
+            hideCommentModal();
+        }
+    });
+
+    $modal.on('click', '.js-comment-modal-close', function () {
+        hideCommentModal();
+    });
+
     $modal.on('hidden.bs.modal', function () {
-        currentBar = null;
-        resetReplyState();
-        $('#comment-modal-fallback-backdrop').remove();
+        hideCommentModal();
     });
 })(window.jQuery);

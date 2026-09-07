@@ -79,6 +79,8 @@ class MessageController extends Controller
             if (preg_match('/^\d+\.\d+$/', (string) $request->header('X-Socket-ID')) === 1) {
                 $pending->toOthers();
             }
+
+            unset($pending);
         } catch (Throwable $exception) {
             report($exception);
         }

@@ -1,258 +1,63 @@
 <x-app-layout>
+    <div class="mx-auto max-w-5xl space-y-6">
+        <x-flash />
 
-    <x-slot name="header">
-
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ $post->title }}
-        </h2>
-
-    </x-slot>
-
-
-    <div class="py-8">
-
-        <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
-
-            {{-- Success --}}
-            @if(session('success'))
-
-                <div class="mb-6 p-4 bg-green-100 text-green-700 rounded">
-                    {{ session('success') }}
-                </div>
-
+        <article class="sk-card overflow-hidden">
+            @if($post->featured_image)
+                <img src="{{ asset('storage/'.$post->featured_image) }}" alt="{{ $post->title }}" class="max-h-[32rem] w-full object-cover js-lightbox">
             @endif
-
-
-            {{-- Error --}}
-            @if(session('error'))
-
-                <div class="mb-6 p-4 bg-red-100 text-red-700 rounded">
-                    {{ session('error') }}
+            <div class="p-6 md:p-10">
+                @if($post->category)
+                    <a href="{{ route('categories.show', $post->category) }}" class="text-sm font-semibold text-forest-700 hover:underline">{{ $post->category->name }}</a>
+                @endif
+                <h1 class="mt-2 text-3xl font-bold text-forest-900 md:text-4xl">{{ $post->title }}</h1>
+                <div class="mt-4 flex flex-wrap items-center gap-3 text-sm text-gray-500">
+                    @if($post->user)
+                        <a href="{{ route('users.show', $post->user) }}" class="inline-flex items-center gap-2 font-semibold text-forest-800">
+                            <x-user-avatar :user="$post->user" size="sm" />
+                            {{ $post->user->name }}
+                        </a>
+                    @endif
+                    <span>{{ ($post->published_at ?? $post->created_at)?->format('M d, Y') }}</span>
+                    <span>{{ $post->views }} views</span>
                 </div>
+                <div class="prose mt-8 max-w-none text-gray-700">{!! nl2br(e($post->content)) !!}</div>
 
-            @endif
-
-
-            <article class="bg-white shadow-sm rounded-lg overflow-hidden">
-
-
-                {{-- Featured Image --}}
-                @if($post->featured_image)
-
-                    <div>
-
-                        <img
-                            src="{{ asset('storage/' . $post->featured_image) }}"
-                            alt="{{ $post->title }}"
-                            class="w-full max-h-[550px] object-cover js-lightbox"
-                        >
-
+                @if($post->images->count())
+                    <div class="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+                        @foreach($post->images as $image)
+                            <x-media-item :media="$image" :alt="$image->caption ?? $post->title" class="h-64 w-full rounded-xl object-cover" />
+                        @endforeach
                     </div>
-
                 @endif
 
-
-                <div class="p-6 md:p-10">
-
-
-                    {{-- Category --}}
-                    @if($post->category)
-
-                        <a
-                            href="{{ route('categories.show', $post->category) }}"
-                            class="text-sm text-blue-600"
-                        >
-                            {{ $post->category->name }}
-                        </a>
-
-                    @endif
-
-
-                    {{-- Title --}}
-                    <h1 class="text-3xl md:text-4xl font-bold mt-3">
-                        {{ $post->title }}
-                    </h1>
-
-
-                    {{-- Author Information --}}
-                    <div class="flex items-center mt-4 text-sm text-gray-500">
-
-                        <span>
-                            By
-                            @if($post->user)
-                                <a href="{{ route('users.show', $post->user) }}" class="text-gray-700 font-semibold hover:underline">
-                                    {{ $post->user->name }}
-                                </a>
-                            @else
-                                <strong class="text-gray-700">Unknown User</strong>
-                            @endif
-                        </span>
-
-                        @if($post->published_at)
-
-                            <span class="mx-2">
-                                ·
-                            </span>
-
-                            <span>
-                                {{ $post->published_at->format('M d, Y') }}
-                            </span>
-
-                        @endif
-
-                        <span class="mx-2">
-                            ·
-                        </span>
-
-                        <span>
-                            {{ $post->views }} views
-                        </span>
-
-                        <span class="mx-2">
-                            ·
-                        </span>
-
-                        <span>
-                            {{ $likesCount }} likes
-                        </span>
-
-                        <span class="mx-2">
-                            ·
-                        </span>
-
-                        <span>
-                            {{ $commentsCount }} comments
-                        </span>
-
-                    </div>
-
-
-                    {{-- Excerpt --}}
-                    @if($post->excerpt)
-
-                        <div class="mt-6 text-lg text-gray-600">
-                            {{ $post->excerpt }}
-                        </div>
-
-                    @endif
-
-
-                    {{-- Article Content --}}
-                    <div class="mt-8 prose max-w-none">
-
-                        {!! nl2br(e($post->content)) !!}
-
-                    </div>
-
-
-                    {{-- Additional Images --}}
-                    @if($post->images->count())
-
-                        <div class="mt-10">
-
-                            <h2 class="text-2xl font-semibold mb-5">
-                                Photos and videos
-                            </h2>
-
-
-                            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
-
-                                @foreach($post->images as $image)
-
-                                    <div>
-                                        <x-media-item :media="$image" :alt="$image->caption ?? $post->title" class="w-full h-64 object-cover rounded-lg" />
-
-
-                                        @if($image->caption)
-
-                                            <p class="text-sm text-gray-500 mt-2">
-                                                {{ $image->caption }}
-                                            </p>
-
-                                        @endif
-
-                                    </div>
-
-                                @endforeach
-
-                            </div>
-
-                        </div>
-
-                    @endif
-
-
-                    {{-- Actions --}}
-                    <div class="border-t mt-10 pt-6 flex items-center gap-4">
-
-
-                        {{-- Owner Only --}}
-                        @auth
-
-                            @canany(['update', 'delete'], $post)
-
-                                @can('update', $post)
-                                <a
-                                    href="{{ route('posts.edit', $post) }}"
-                                    class="px-4 py-2 bg-green-600 text-white rounded"
-                                >
-                                    Edit Story
-                                </a>
-                                @endcan
-
-                                @can('delete', $post)
-                                <form
-                                    action="{{ route('posts.destroy', $post) }}"
-                                    method="POST"
-                                    onsubmit="return confirm('Are you sure you want to delete this story?')"
-                                >
-
-                                    @csrf
-                                    @method('DELETE')
-
-                                    <button
-                                        type="submit"
-                                        class="px-4 py-2 bg-red-600 text-white rounded"
-                                    >
-                                        Delete Story
-                                    </button>
-
-                                </form>
-                                @endcan
-
-                            @endcanany
-
-                        @endauth
-
-
-                        <a
-                            href="{{ route('posts.index') }}"
-                            class="px-4 py-2 bg-gray-200 text-gray-700 rounded"
-                        >
-                            Back to Stories
-                        </a>
-
-                    </div>
-
+                <div class="mt-10 flex flex-wrap gap-3 border-t border-gray-100 pt-6">
+                    @can('update', $post)
+                        <a href="{{ route('posts.edit', $post) }}" class="btn-primary">Edit Story</a>
+                    @endcan
+                    @can('delete', $post)
+                        <form action="{{ route('posts.destroy', $post) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this story?')">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="btn-secondary text-red-700">Delete Story</button>
+                        </form>
+                    @endcan
+                    <a href="{{ route('posts.index') }}" class="btn-secondary">Back to Stories</a>
                 </div>
+            </div>
+        </article>
 
-            </article>
-
-            @if($post->status === 'published')
-                <div class="bg-white shadow-sm rounded-lg p-4 mt-4">
-                    @include('posts.partials.engagement-bar', [
-                        'post' => $post,
-                        'liked' => $likedByUser,
-                        'likesCount' => $likesCount,
-                        'commentsCount' => $commentsCount,
-                    ])
-                </div>
-            @endif
-
-        </div>
-
+        @if($post->status === 'published')
+            <div class="sk-card p-5">
+                @include('posts.partials.engagement-bar', [
+                    'post' => $post,
+                    'liked' => $likedByUser,
+                    'likesCount' => $likesCount,
+                    'commentsCount' => $commentsCount,
+                ])
+            </div>
+        @endif
     </div>
 
     @include('posts.partials.engagement-assets')
-
 </x-app-layout>

@@ -1,163 +1,101 @@
-<nav x-data="{ open: false }" class="bg-white border-b border-gray-100">
-    @php($unreadChats = Auth::user()->unreadConversationCount())
-    <!-- Primary Navigation Menu -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
-            <div class="flex">
-                <!-- Logo -->
-                <div class="shrink-0 flex items-center">
-                    <a href="{{ route('dashboard') }}">
-                        <x-application-logo class="block h-9 w-auto fill-current text-gray-800" />
-                    </a>
-                </div>
+<nav x-data="{ open: false }" class="sticky top-0 z-40 border-b border-gray-100 bg-white/95 backdrop-blur">
+    @php($unreadChats = auth()->check() ? auth()->user()->unreadConversationCount() : 0)
+    <div class="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+        <a href="{{ auth()->check() ? route('posts.index') : route('home') }}" class="shrink-0">
+            <x-brand />
+        </a>
 
-                <!-- Navigation Links -->
-                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                    <x-nav-link :href="route('posts.index')" :active="request()->routeIs('posts.*', 'categories.*', 'authors.*')">
-                        {{ __('Stories') }}
-                    </x-nav-link>
-                    <x-nav-link :href="route('alerts.index')" :active="request()->routeIs('alerts.*')">
-                        {{ __('Alerts') }}
-                    </x-nav-link>
-                    <x-nav-link :href="route('messages.index')" :active="request()->routeIs('messages.*')">
-                        {{ __('Chat') }}
-                        @if($unreadChats > 0)
-                            <span class="ms-1 inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-gray-800 text-white text-xs">{{ $unreadChats }}</span>
-                        @endif
-                    </x-nav-link>
-                    <x-nav-link :href="route('leaderboard.index')" :active="request()->routeIs('leaderboard.*')">
-                        {{ __('Scores') }}
-                    </x-nav-link>
-                    @can('analytics.view')
-                        <x-nav-link :href="route('analytics.index')" :active="request()->routeIs('analytics.*')">
-                            {{ __('Analytics') }}
-                        </x-nav-link>
-                    @endcan
-                    @can('users.manage')
-                        <x-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
-                            {{ __('Users') }}
-                        </x-nav-link>
-                    @endcan
-                    @can('roles.manage')
-                        <x-nav-link :href="route('admin.roles.index')" :active="request()->routeIs('admin.roles.*')">
-                            {{ __('Roles') }}
-                        </x-nav-link>
-                    @endcan
-                </div>
+        @auth
+            <div class="hidden items-center gap-6 lg:flex">
+                <x-nav-link :href="route('posts.index')" :active="request()->routeIs('posts.index', 'posts.show')">{{ __('Home') }}</x-nav-link>
+                <x-nav-link :href="route('explore.index')" :active="request()->routeIs('explore.*')">{{ __('Explore') }}</x-nav-link>
+                <x-nav-link :href="route('alerts.index')" :active="request()->routeIs('alerts.*')">{{ __('Alerts') }}</x-nav-link>
+                <!-- <x-nav-link :href="route('tips.index')" :active="request()->routeIs('tips.*') || (request()->routeIs('categories.show') && request()->route('category')?->slug === 'tips')">{{ __('Tips') }}</x-nav-link> -->
             </div>
 
-            <!-- Settings Dropdown -->
-            <div class="hidden sm:flex sm:items-center sm:ms-6">
+            <div class="hidden items-center gap-3 sm:flex">
+                <a href="{{ route('explore.index') }}" class="inline-flex h-10 w-10 items-center justify-center rounded-full text-gray-500 hover:bg-sand-50 hover:text-forest-800" aria-label="{{ __('Search') }}">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z"/></svg>
+                </a>
+                <a href="{{ route('messages.index') }}" class="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-gray-500 hover:bg-sand-50 hover:text-forest-800" aria-label="{{ __('Chat') }}">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M7 8h10M7 12h6m8 1a9 9 0 1 1-3.2-6.96L21 3v6h-6"/></svg>
+                    @if($unreadChats > 0)
+                        <span class="absolute -right-0.5 -top-0.5 inline-flex min-w-5 items-center justify-center rounded-full bg-lime-400 px-1 text-[10px] font-bold text-forest-900">{{ $unreadChats }}</span>
+                    @endif
+                </a>
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
-                        <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150">
-                            <div>{{ Auth::user()->name }}</div>
-                            <div class="ms-2 text-xs text-gray-400">{{ number_format(Auth::user()->score) }} pts</div>
-
-                            <div class="ms-1">
-                                <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                </svg>
-                            </div>
+                        <button type="button" class="inline-flex items-center gap-2 rounded-full p-0.5 hover:bg-sand-50">
+                            <x-user-avatar :user="auth()->user()" size="sm" />
+                            <span class="hidden text-sm font-medium text-forest-900 md:inline">{{ auth()->user()->name }}</span>
                         </button>
                     </x-slot>
-
                     <x-slot name="content">
-                        <x-dropdown-link :href="route('users.show', Auth::user())">
-                            {{ __('My profile') }}
-                        </x-dropdown-link>
-                        <x-dropdown-link :href="route('profile.edit')">
-                            {{ __('Edit profile') }}
-                        </x-dropdown-link>
-
-                        <!-- Authentication -->
+                        <x-dropdown-link :href="route('users.show', auth()->user())">{{ __('My profile') }}</x-dropdown-link>
+                        <x-dropdown-link :href="route('profile.edit')">{{ __('Edit profile') }}</x-dropdown-link>
+                        <x-dropdown-link :href="route('leaderboard.index')">{{ __('Scores') }}</x-dropdown-link>
+                        @can('analytics.view')
+                            <x-dropdown-link :href="route('analytics.index')">{{ __('Analytics') }}</x-dropdown-link>
+                        @endcan
+                        @can('users.manage')
+                            <x-dropdown-link :href="route('admin.users.index')">{{ __('Users') }}</x-dropdown-link>
+                        @endcan
+                        @can('roles.manage')
+                            <x-dropdown-link :href="route('admin.roles.index')">{{ __('Roles') }}</x-dropdown-link>
+                        @endcan
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
-
-                            <x-dropdown-link :href="route('logout')"
-                                    onclick="event.preventDefault();
-                                                this.closest('form').submit();">
+                            <x-dropdown-link :href="route('logout')" onclick="event.preventDefault(); this.closest('form').submit();">
                                 {{ __('Log Out') }}
                             </x-dropdown-link>
                         </form>
                     </x-slot>
                 </x-dropdown>
             </div>
-
-            <!-- Hamburger -->
-            <div class="-me-2 flex items-center sm:hidden">
-                <button @click="open = ! open" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 focus:text-gray-500 transition duration-150 ease-in-out">
-                    <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
-                        <path :class="{'hidden': open, 'inline-flex': ! open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                        <path :class="{'hidden': ! open, 'inline-flex': open }" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
+        @else
+            <div class="hidden items-center gap-6 md:flex">
+                <x-nav-link :href="route('home')" :active="request()->routeIs('home')">{{ __('Home') }}</x-nav-link>
+                <x-nav-link :href="route('about')" :active="request()->routeIs('about')">{{ __('About') }}</x-nav-link>
+                <x-nav-link :href="route('posts.index')" :active="request()->routeIs('posts.*', 'categories.*')">{{ __('Blog') }}</x-nav-link>
+                <x-nav-link :href="route('tips.index')" :active="request()->routeIs('tips.*')">{{ __('Tips') }}</x-nav-link>
+                <x-nav-link :href="route('alerts.index')" :active="request()->routeIs('alerts.*')">{{ __('Alerts') }}</x-nav-link>
             </div>
-        </div>
+            <div class="hidden items-center gap-2 sm:flex">
+                <a href="{{ route('login') }}" class="btn-secondary">{{ __('Login') }}</a>
+                <a href="{{ route('register') }}" class="btn-accent text-forest-900">{{ __('Sign Up') }}</a>
+            </div>
+        @endauth
+
+        <button type="button" class="inline-flex rounded-md p-2 text-gray-500 sm:hidden" @click="open = ! open" aria-label="{{ __('Open menu') }}">
+            <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                <path :class="{'hidden': open}" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                <path :class="{'hidden': ! open}" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
     </div>
 
-    <!-- Responsive Navigation Menu -->
-    <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
-        <div class="pt-2 pb-3 space-y-1">
-            <x-responsive-nav-link :href="route('posts.index')" :active="request()->routeIs('posts.*', 'categories.*', 'authors.*')">
-                {{ __('Stories') }}
-            </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('alerts.index')" :active="request()->routeIs('alerts.*')">
-                {{ __('Alerts') }}
-            </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('messages.index')" :active="request()->routeIs('messages.*')">
-                {{ __('Chat') }}
-                @if($unreadChats > 0)
-                    ({{ $unreadChats }})
-                @endif
-            </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('leaderboard.index')" :active="request()->routeIs('leaderboard.*')">
-                {{ __('Scores') }}
-            </x-responsive-nav-link>
-            @can('analytics.view')
-                <x-responsive-nav-link :href="route('analytics.index')" :active="request()->routeIs('analytics.*')">
-                    {{ __('Analytics') }}
-                </x-responsive-nav-link>
-            @endcan
-            @can('users.manage')
-                <x-responsive-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
-                    {{ __('Users') }}
-                </x-responsive-nav-link>
-            @endcan
-            @can('roles.manage')
-                <x-responsive-nav-link :href="route('admin.roles.index')" :active="request()->routeIs('admin.roles.*')">
-                    {{ __('Roles') }}
-                </x-responsive-nav-link>
-            @endcan
-        </div>
-
-        <!-- Responsive Settings Options -->
-        <div class="pt-4 pb-1 border-t border-gray-200">
-            <div class="px-4">
-                <div class="font-medium text-base text-gray-800">{{ Auth::user()->name }}</div>
-                <div class="font-medium text-sm text-gray-500">{{ Auth::user()->email }}</div>
-                <div class="font-medium text-sm text-gray-500">{{ number_format(Auth::user()->score) }} points · {{ Auth::user()->roleLabel() }}</div>
-            </div>
-
-            <div class="mt-3 space-y-1">
-                <x-responsive-nav-link :href="route('users.show', Auth::user())">
-                    {{ __('My profile') }}
-                </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('profile.edit')">
-                    {{ __('Edit profile') }}
-                </x-responsive-nav-link>
-
-                <!-- Authentication -->
+    <div :class="{'block': open, 'hidden': ! open}" class="hidden border-t border-gray-100 sm:hidden">
+        <div class="space-y-1 px-4 py-3">
+            @auth
+                <x-responsive-nav-link :href="route('posts.index')" :active="request()->routeIs('posts.*')">{{ __('Home') }}</x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('explore.index')">{{ __('Explore') }}</x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('alerts.index')">{{ __('Alerts') }}</x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('tips.index')">{{ __('Tips') }}</x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('messages.index')">{{ __('Chat') }} @if($unreadChats > 0) ({{ $unreadChats }}) @endif</x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('users.show', auth()->user())">{{ __('My profile') }}</x-responsive-nav-link>
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
-
-                    <x-responsive-nav-link :href="route('logout')"
-                            onclick="event.preventDefault();
-                                        this.closest('form').submit();">
-                        {{ __('Log Out') }}
-                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('logout')" onclick="event.preventDefault(); this.closest('form').submit();">{{ __('Log Out') }}</x-responsive-nav-link>
                 </form>
-            </div>
+            @else
+                <x-responsive-nav-link :href="route('home')">{{ __('Home') }}</x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('about')">{{ __('About') }}</x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('posts.index')">{{ __('Blog') }}</x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('tips.index')">{{ __('Tips') }}</x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('alerts.index')">{{ __('Alerts') }}</x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('login')">{{ __('Login') }}</x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('register')">{{ __('Sign Up') }}</x-responsive-nav-link>
+            @endauth
         </div>
     </div>
 </nav>

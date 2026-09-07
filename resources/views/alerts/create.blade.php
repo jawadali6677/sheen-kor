@@ -25,7 +25,7 @@
                 </div>
             @endif
 
-            <div class="bg-white shadow-sm sm:rounded-lg p-6">
+            <div class="sk-card p-6">
                 <p class="text-gray-600 mb-6">
                     See dumping, pollution, smoke, or other harm to nature? Take a photo and report the place so the community can see it.
                 </p>
@@ -108,10 +108,10 @@
                     @include('partials.short-video-input')
 
                     <div class="flex items-center gap-4">
-                        <button type="submit" class="px-5 py-2 bg-red-700 text-white rounded">
+                        <button type="submit" class="btn-primary">
                             Post Alert
                         </button>
-                        <a href="{{ route('alerts.index') }}" class="px-5 py-2 bg-gray-200 text-gray-700 rounded">
+                        <a href="{{ route('alerts.index') }}" class="btn-secondary">
                             Cancel
                         </a>
                     </div>

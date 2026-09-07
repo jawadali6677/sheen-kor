@@ -59,6 +59,8 @@ class ProfileController extends Controller
             'stories' => $stories,
             'alerts' => $alerts,
             'scoreEvents' => $scoreEvents,
+            'isFollowing' => auth()->id() !== $user->id && auth()->user()->isFollowing($user),
+            'isFollowedBy' => auth()->id() !== $user->id && $user->isFollowing(auth()->user()),
         ]);
     }
 

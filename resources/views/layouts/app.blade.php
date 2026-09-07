@@ -5,6 +5,22 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
+        @auth
+            @php
+                $chatReverb = [
+                    'key' => config('broadcasting.connections.reverb.key'),
+                    'host' => config('broadcasting.connections.reverb.options.host') ?: (parse_url((string) config('app.url'), PHP_URL_HOST) ?: '127.0.0.1'),
+                    'port' => (int) (config('broadcasting.connections.reverb.options.port') ?: 8080),
+                    'scheme' => config('broadcasting.connections.reverb.options.scheme') ?: 'http',
+                    'authEndpoint' => url('/broadcasting/auth'),
+                    'csrfToken' => csrf_token(),
+                ];
+            @endphp
+            <script>
+                window.chatReverb = @json($chatReverb);
+            </script>
+        @endauth
+
         <title>{{ config('app.name', 'Laravel') }}</title>
 
         <!-- Fonts -->

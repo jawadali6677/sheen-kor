@@ -6,6 +6,7 @@ use App\Enums\Permission;
 use App\Models\Role as AccessRole;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -76,6 +77,64 @@ class User extends Authenticatable
     public function likes(): HasMany
     {
         return $this->hasMany(Like::class);
+    }
+
+    public function followings(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'follows', 'follower_id', 'following_id')
+            ->withTimestamps();
+    }
+
+    public function followers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'follows', 'following_id', 'follower_id')
+            ->withTimestamps();
+    }
+
+    public function isFollowing(User $user): bool
+    {
+        if ($this->relationLoaded('followings')) {
+            return $this->followings->contains('id', $user->id);
+        }
+
+        return $this->followings()->where('users.id', $user->id)->exists();
+    }
+
+    public function isFollowedBy(User $user): bool
+    {
+        if ($this->relationLoaded('followers')) {
+            return $this->followers->contains('id', $user->id);
+        }
+
+        return $this->followers()->where('users.id', $user->id)->exists();
+    }
+
+    public function conversations(): BelongsToMany
+    {
+        return $this->belongsToMany(Conversation::class)
+            ->withPivot(['role', 'last_read_at'])
+            ->withTimestamps();
+    }
+
+    public function messages(): HasMany
+    {
+        return $this->hasMany(Message::class);
+    }
+
+    public function unreadConversationCount(): int
+    {
+        return $this->conversations()
+            ->whereExists(function ($query): void {
+                $query->selectRaw('1')
+                    ->from('messages')
+                    ->whereColumn('messages.conversation_id', 'conversations.id')
+                    ->where('messages.user_id', '!=', $this->id)
+                    ->where(function ($query): void {
+                        $query->whereNull('conversation_user.last_read_at')
+                            ->orWhereColumn('messages.created_at', '>', 'conversation_user.last_read_at');
+                    });
+            })
+            ->count();
     }
 
     public function sentTips(): HasMany

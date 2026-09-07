@@ -34,4 +34,14 @@ class UserPolicy
             ->whereKeyNot($user->id)
             ->exists();
     }
+
+    public function follow(User $actor, User $user): bool
+    {
+        return $actor->isNot($user) && $user->status;
+    }
+
+    public function unfollow(User $actor, User $user): bool
+    {
+        return $actor->isNot($user);
+    }
 }

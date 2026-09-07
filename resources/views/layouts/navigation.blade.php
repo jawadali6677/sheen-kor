@@ -1,4 +1,5 @@
 <nav x-data="{ open: false }" class="bg-white border-b border-gray-100">
+    @php($unreadChats = Auth::user()->unreadConversationCount())
     <!-- Primary Navigation Menu -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
@@ -17,6 +18,12 @@
                     </x-nav-link>
                     <x-nav-link :href="route('alerts.index')" :active="request()->routeIs('alerts.*')">
                         {{ __('Alerts') }}
+                    </x-nav-link>
+                    <x-nav-link :href="route('messages.index')" :active="request()->routeIs('messages.*')">
+                        {{ __('Chat') }}
+                        @if($unreadChats > 0)
+                            <span class="ms-1 inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-gray-800 text-white text-xs">{{ $unreadChats }}</span>
+                        @endif
                     </x-nav-link>
                     <x-nav-link :href="route('leaderboard.index')" :active="request()->routeIs('leaderboard.*')">
                         {{ __('Scores') }}
@@ -97,6 +104,12 @@
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('alerts.index')" :active="request()->routeIs('alerts.*')">
                 {{ __('Alerts') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('messages.index')" :active="request()->routeIs('messages.*')">
+                {{ __('Chat') }}
+                @if($unreadChats > 0)
+                    ({{ $unreadChats }})
+                @endif
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('leaderboard.index')" :active="request()->routeIs('leaderboard.*')">
                 {{ __('Scores') }}

@@ -27,6 +27,32 @@
                             <a href="{{ route('profile.edit') }}" class="mb-2 px-4 py-2 bg-gray-800 text-white rounded text-sm">
                                 Edit profile
                             </a>
+                        @elseif($profile->status)
+                            <div class="mb-2 flex flex-wrap items-center gap-2">
+                                @if($isFollowing)
+                                    <form method="POST" action="{{ route('users.follow.destroy', $profile) }}">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="px-4 py-2 border border-gray-300 text-gray-800 rounded text-sm">
+                                            Unfollow
+                                        </button>
+                                    </form>
+                                @else
+                                    <form method="POST" action="{{ route('users.follow.store', $profile) }}">
+                                        @csrf
+                                        <button type="submit" class="px-4 py-2 bg-gray-800 text-white rounded text-sm">
+                                            {{ $isFollowedBy ? 'Follow back' : 'Follow' }}
+                                        </button>
+                                    </form>
+                                @endif
+                                <form method="POST" action="{{ route('messages.direct.store') }}">
+                                    @csrf
+                                    <input type="hidden" name="user_id" value="{{ $profile->id }}">
+                                    <button type="submit" class="px-4 py-2 bg-gray-800 text-white rounded text-sm">
+                                        Message
+                                    </button>
+                                </form>
+                            </div>
                         @endif
                     </div>
 

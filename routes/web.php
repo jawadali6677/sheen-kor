@@ -5,9 +5,13 @@ use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\AlertController;
 use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\CommentController;
+use App\Http\Controllers\ConversationController;
+use App\Http\Controllers\ConversationParticipantController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\FollowController;
 use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\LikeController;
+use App\Http\Controllers\MessageController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -25,6 +29,12 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::get('/users/{user}', [ProfileController::class, 'show'])->name('users.show');
+    Route::post('/users/{user}/follow', [FollowController::class, 'store'])
+        ->middleware('throttle:60,1')
+        ->name('users.follow.store');
+    Route::delete('/users/{user}/follow', [FollowController::class, 'destroy'])
+        ->middleware('throttle:60,1')
+        ->name('users.follow.destroy');
 
     Route::get('/leaderboard', [LeaderboardController::class, 'index'])->name('leaderboard.index');
     Route::get('/analytics', [AnalyticsController::class, 'index'])->name('analytics.index');
@@ -72,6 +82,24 @@ Route::middleware('auth')->group(function () {
 
     Route::delete('comments/{comment}', [CommentController::class, 'destroy'])
         ->name('comments.destroy');
+
+    Route::get('/messages', [ConversationController::class, 'index'])->name('messages.index');
+    Route::post('/messages/direct', [ConversationController::class, 'storeDirect'])->name('messages.direct.store');
+    Route::get('/messages/groups/create', [ConversationController::class, 'createGroup'])->name('messages.groups.create');
+    Route::post('/messages/groups', [ConversationController::class, 'storeGroup'])->name('messages.groups.store');
+    Route::get('/messages/{conversation}', [ConversationController::class, 'show'])->name('messages.show');
+    Route::get('/messages/{conversation}/messages', [MessageController::class, 'index'])->name('messages.messages.index');
+    Route::post('/messages/{conversation}/messages', [MessageController::class, 'store'])
+        ->middleware('throttle:60,1')
+        ->name('messages.messages.store');
+    Route::post('/messages/{conversation}/participants', [ConversationParticipantController::class, 'store'])
+        ->name('messages.participants.store');
+    Route::delete('/messages/{conversation}/participants/{user}', [ConversationParticipantController::class, 'remove'])
+        ->name('messages.participants.remove');
+    Route::delete('/messages/{conversation}/participants', [ConversationParticipantController::class, 'destroy'])
+        ->name('messages.participants.destroy');
+    Route::delete('/messages/{conversation}', [ConversationController::class, 'destroy'])
+        ->name('messages.destroy');
 });
 
 Route::middleware(['auth', 'permission:users.manage'])->prefix('admin')->name('admin.')->group(function () {

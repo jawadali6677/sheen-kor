@@ -76,6 +76,10 @@
                         <input type="file" name="images[]" id="images" multiple accept="image/jpeg,image/png,image/webp" class="mt-1 block w-full">
                     </div>
 
+                    @include('partials.short-video-input', [
+                        'label' => 'Add short videos',
+                    ])
+
                     <div class="flex items-center gap-4">
                         <button type="submit" class="px-5 py-2 bg-gray-800 text-white rounded">Save Alert</button>
                         <a href="{{ route('alerts.show', $alert) }}" class="px-5 py-2 bg-gray-200 text-gray-700 rounded">Cancel</a>

@@ -45,7 +45,8 @@ img.feed-avatar {
     background: #111;
 }
 .feed-image-wrap img,
-.feed-image-wrap .feed-placeholder {
+.feed-image-wrap .feed-placeholder,
+.feed-image-wrap video {
     width: 100%;
     aspect-ratio: 4 / 5;
     max-height: 680px;
@@ -250,11 +251,17 @@ img.feed-avatar {
     border-radius: 12px;
     overflow: hidden;
 }
-.image-preview-thumb img {
+.image-preview-thumb img,
+.image-preview-video {
     display: block;
     width: 112px;
     height: 112px;
     object-fit: cover;
+}
+.media-clip {
+    display: block;
+    background: #111;
+    max-width: 100%;
 }
 img.js-lightbox {
     cursor: zoom-in;

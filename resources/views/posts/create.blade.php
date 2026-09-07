@@ -177,6 +177,8 @@
                         </p>
                     </div>
 
+                    @include('partials.short-video-input')
+
 
                     {{-- Buttons --}}
                     <div class="flex items-center gap-4">

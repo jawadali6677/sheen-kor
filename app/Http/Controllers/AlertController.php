@@ -67,7 +67,7 @@ class AlertController extends Controller
     {
         $this->authorize('create', Alert::class);
 
-        $request->validate([
+        $request->validate(array_merge([
             'title' => ['required', 'string', 'min:5', 'max:255'],
             'description' => ['required', 'string', 'min:20'],
             'location_name' => ['required', 'string', 'min:3', 'max:255'],
@@ -77,7 +77,7 @@ class AlertController extends Controller
             'featured_image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'images' => ['nullable', 'array', 'max:10'],
             'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-        ]);
+        ], shortVideoRules()));
 
         DB::beginTransaction();
 
@@ -101,15 +101,35 @@ class AlertController extends Controller
                 'views' => 0,
             ]);
 
+            $sortOrder = 0;
+
             if ($request->hasFile('images')) {
-                foreach ($request->file('images') as $key => $image) {
+                foreach ($request->file('images') as $image) {
                     AlertImage::create([
                         'alert_id' => $alert->id,
                         'image' => $image->store('alerts/images', 'public'),
                         'caption' => null,
-                        'sort_order' => $key,
+                        'sort_order' => $sortOrder,
                         'kind' => 'report',
+                        'media_type' => 'image',
                     ]);
+
+                    $sortOrder++;
+                }
+            }
+
+            if ($request->hasFile('videos')) {
+                foreach ($request->file('videos') as $video) {
+                    AlertImage::create([
+                        'alert_id' => $alert->id,
+                        'image' => $video->store('alerts/videos', 'public'),
+                        'caption' => null,
+                        'sort_order' => $sortOrder,
+                        'kind' => 'report',
+                        'media_type' => 'video',
+                    ]);
+
+                    $sortOrder++;
                 }
             }
 
@@ -171,7 +191,7 @@ class AlertController extends Controller
     {
         $this->authorize('update', $alert);
 
-        $request->validate([
+        $request->validate(array_merge([
             'title' => ['required', 'string', 'min:5', 'max:255'],
             'description' => ['required', 'string', 'min:20'],
             'location_name' => ['required', 'string', 'min:3', 'max:255'],
@@ -181,7 +201,7 @@ class AlertController extends Controller
             'featured_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'images' => ['nullable', 'array', 'max:10'],
             'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-        ]);
+        ], shortVideoRules()));
 
         DB::beginTransaction();
 
@@ -211,16 +231,35 @@ class AlertController extends Controller
                 }
             }
 
-            if ($request->hasFile('images')) {
-                $currentImageCount = $alert->images()->count();
+            $sortOrder = $alert->images()->count();
 
-                foreach ($request->file('images') as $key => $image) {
+            if ($request->hasFile('images')) {
+                foreach ($request->file('images') as $image) {
                     AlertImage::create([
                         'alert_id' => $alert->id,
                         'image' => $image->store('alerts/images', 'public'),
                         'caption' => null,
-                        'sort_order' => $currentImageCount + $key,
+                        'sort_order' => $sortOrder,
+                        'kind' => 'report',
+                        'media_type' => 'image',
                     ]);
+
+                    $sortOrder++;
+                }
+            }
+
+            if ($request->hasFile('videos')) {
+                foreach ($request->file('videos') as $video) {
+                    AlertImage::create([
+                        'alert_id' => $alert->id,
+                        'image' => $video->store('alerts/videos', 'public'),
+                        'caption' => null,
+                        'sort_order' => $sortOrder,
+                        'kind' => 'report',
+                        'media_type' => 'video',
+                    ]);
+
+                    $sortOrder++;
                 }
             }
 
@@ -348,13 +387,13 @@ class AlertController extends Controller
     {
         $this->authorize('markFixed', $alert);
 
-        $request->validate([
+        $request->validate(array_merge([
             'fixed_location_name' => ['nullable', 'string', 'min:3', 'max:255'],
             'fixed_latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'fixed_longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'fix_images' => ['nullable', 'array', 'max:10'],
             'fix_images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-        ]);
+        ], shortVideoRules('fix_videos')));
 
         DB::beginTransaction();
 
@@ -368,16 +407,35 @@ class AlertController extends Controller
                 'fixed_longitude' => $request->fixed_longitude,
             ]);
 
+            $sortOrder = $alert->fixImages()->count();
+
             if ($request->hasFile('fix_images')) {
-                foreach ($request->file('fix_images') as $key => $image) {
+                foreach ($request->file('fix_images') as $image) {
                     AlertImage::create([
                         'alert_id' => $alert->id,
                         'image' => $image->store('alerts/fixes', 'public'),
                         'caption' => null,
-                        'sort_order' => $key,
-                        'kind' => 'report',
+                        'sort_order' => $sortOrder,
                         'kind' => 'fix',
+                        'media_type' => 'image',
                     ]);
+
+                    $sortOrder++;
+                }
+            }
+
+            if ($request->hasFile('fix_videos')) {
+                foreach ($request->file('fix_videos') as $video) {
+                    AlertImage::create([
+                        'alert_id' => $alert->id,
+                        'image' => $video->store('alerts/fixes', 'public'),
+                        'caption' => null,
+                        'sort_order' => $sortOrder,
+                        'kind' => 'fix',
+                        'media_type' => 'video',
+                    ]);
+
+                    $sortOrder++;
                 }
             }
 

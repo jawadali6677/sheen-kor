@@ -124,6 +124,13 @@
                                         <p class="text-sm text-gray-500 mt-1">Show the cleaned place. Up to 10 images, 5 MB each. Preview them below, then click to open larger.</p>
                                     </div>
 
+                                    @include('partials.short-video-input', [
+                                        'field' => 'fix_videos',
+                                        'inputId' => 'fix_videos',
+                                        'label' => 'After videos (optional)',
+                                        'hint' => 'Short clips of the cleaned place. Up to 3 videos, 20 MB each.',
+                                    ])
+
                                     @include('partials.location-map', [
                                         'mapId' => 'alert-fix-map',
                                         'latName' => 'fixed_latitude',
@@ -182,14 +189,10 @@
 
                             @if($alert->fixImages->count())
                                 <div class="mt-4">
-                                    <p class="font-medium text-gray-800 mb-3">After photos</p>
+                                    <p class="font-medium text-gray-800 mb-3">After photos and videos</p>
                                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                                         @foreach($alert->fixImages as $image)
-                                            <img
-                                                src="{{ asset('storage/' . $image->image) }}"
-                                                alt="After the fix"
-                                                class="w-full h-40 object-cover rounded-lg js-lightbox"
-                                            >
+                                            <x-media-item :media="$image" alt="After the fix" class="w-full h-40 object-cover rounded-lg" />
                                         @endforeach
                                     </div>
                                 </div>
@@ -199,14 +202,10 @@
 
                     @if($alert->reportImages->count())
                         <div class="mt-10">
-                            <h2 class="text-2xl font-semibold mb-5">More photos</h2>
+                            <h2 class="text-2xl font-semibold mb-5">More photos and videos</h2>
                             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
                                 @foreach($alert->reportImages as $image)
-                                    <img
-                                        src="{{ asset('storage/' . $image->image) }}"
-                                        alt="{{ $image->caption ?? $alert->title }}"
-                                        class="w-full h-64 object-cover rounded-lg js-lightbox"
-                                    >
+                                    <x-media-item :media="$image" :alt="$image->caption ?? $alert->title" class="w-full h-64 object-cover rounded-lg" />
                                 @endforeach
                             </div>
                         </div>

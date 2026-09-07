@@ -91,7 +91,7 @@ class PostController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $request->validate([
+        $request->validate(array_merge([
             'title' => [
                 'required',
                 'string',
@@ -135,7 +135,7 @@ class PostController extends Controller
                 'mimes:jpg,jpeg,png,webp',
                 'max:5120',
             ],
-        ]);
+        ], shortVideoRules()));
 
         DB::beginTransaction();
 
@@ -185,21 +185,35 @@ class PostController extends Controller
             |--------------------------------------------------------------------------
             */
 
-            if ($request->hasFile('images')) {
+            if ($request->hasFile('images') || $request->hasFile('videos')) {
+                $sortOrder = 0;
 
-                foreach ($request->file('images') as $key => $image) {
+                if ($request->hasFile('images')) {
+                    foreach ($request->file('images') as $image) {
+                        PostImage::create([
+                            'post_id' => $post->id,
+                            'image' => $image->store('posts/images', 'public'),
+                            'caption' => null,
+                            'sort_order' => $sortOrder,
+                            'media_type' => 'image',
+                        ]);
 
-                    $imagePath = $image->store(
-                        'posts/images',
-                        'public'
-                    );
+                        $sortOrder++;
+                    }
+                }
 
-                    PostImage::create([
-                        'post_id' => $post->id,
-                        'image' => $imagePath,
-                        'caption' => null,
-                        'sort_order' => $key,
-                    ]);
+                if ($request->hasFile('videos')) {
+                    foreach ($request->file('videos') as $video) {
+                        PostImage::create([
+                            'post_id' => $post->id,
+                            'image' => $video->store('posts/videos', 'public'),
+                            'caption' => null,
+                            'sort_order' => $sortOrder,
+                            'media_type' => 'video',
+                        ]);
+
+                        $sortOrder++;
+                    }
                 }
             }
 
@@ -398,7 +412,7 @@ class PostController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $request->validate([
+        $request->validate(array_merge([
             'title' => [
                 'required',
                 'string',
@@ -442,7 +456,7 @@ class PostController extends Controller
                 'mimes:jpg,jpeg,png,webp',
                 'max:5120',
             ],
-        ]);
+        ], shortVideoRules()));
 
         DB::beginTransaction();
 
@@ -503,25 +517,35 @@ class PostController extends Controller
             |--------------------------------------------------------------------------
             */
 
-            if ($request->hasFile('images')) {
+            if ($request->hasFile('images') || $request->hasFile('videos')) {
+                $sortOrder = $post->images()->count();
 
-                $currentImageCount = $post
-                    ->images()
-                    ->count();
+                if ($request->hasFile('images')) {
+                    foreach ($request->file('images') as $image) {
+                        PostImage::create([
+                            'post_id' => $post->id,
+                            'image' => $image->store('posts/images', 'public'),
+                            'caption' => null,
+                            'sort_order' => $sortOrder,
+                            'media_type' => 'image',
+                        ]);
 
-                foreach ($request->file('images') as $key => $image) {
+                        $sortOrder++;
+                    }
+                }
 
-                    $imagePath = $image->store(
-                        'posts/images',
-                        'public'
-                    );
+                if ($request->hasFile('videos')) {
+                    foreach ($request->file('videos') as $video) {
+                        PostImage::create([
+                            'post_id' => $post->id,
+                            'image' => $video->store('posts/videos', 'public'),
+                            'caption' => null,
+                            'sort_order' => $sortOrder,
+                            'media_type' => 'video',
+                        ]);
 
-                    PostImage::create([
-                        'post_id' => $post->id,
-                        'image' => $imagePath,
-                        'caption' => null,
-                        'sort_order' => $currentImageCount + $key,
-                    ]);
+                        $sortOrder++;
+                    }
                 }
             }
 

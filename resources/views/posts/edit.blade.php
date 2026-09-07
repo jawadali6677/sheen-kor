@@ -184,7 +184,7 @@
                         <div class="mb-6">
 
                             <p class="font-medium text-sm text-gray-700 mb-3">
-                                Current Additional Images
+                                Current gallery
                             </p>
 
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -192,13 +192,7 @@
                                 @foreach($post->images as $image)
 
                                     <div>
-
-                                        <img
-                                            src="{{ asset('storage/' . $image->image) }}"
-                                            alt="Post image"
-                                            class="w-full h-32 object-cover rounded js-lightbox"
-                                        >
-
+                                        <x-media-item :media="$image" alt="Story media" class="w-full h-32 object-cover rounded" />
                                     </div>
 
                                 @endforeach
@@ -234,6 +228,11 @@
                         </p>
 
                     </div>
+
+                    @include('partials.short-video-input', [
+                        'label' => 'Add short videos',
+                        'hint' => 'New clips are added to the gallery. Up to 3 videos, 20 MB each.',
+                    ])
 
 
                     {{-- Buttons --}}

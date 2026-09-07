@@ -3,10 +3,16 @@
 
     var objectUrls = [];
 
-    function isImageFileInput(input) {
-        return input instanceof HTMLInputElement
-            && input.type === 'file'
-            && (!input.accept || input.accept.indexOf('image') !== -1);
+    function isPreviewableFileInput(input) {
+        if (! (input instanceof HTMLInputElement) || input.type !== 'file') {
+            return false;
+        }
+
+        if (! input.accept) {
+            return true;
+        }
+
+        return input.accept.indexOf('image') !== -1 || input.accept.indexOf('video') !== -1;
     }
 
     function revokeUrl(url) {
@@ -31,14 +37,20 @@
     }
 
     function clearPreviewList(list) {
-        list.querySelectorAll('img').forEach(function (img) {
-            revokeUrl(img.src);
+        list.querySelectorAll('img, video').forEach(function (el) {
+            revokeUrl(el.src);
         });
         list.innerHTML = '';
     }
 
-    function imageFiles(input) {
+    function mediaFiles(input) {
         return Array.prototype.filter.call(input.files || [], function (file) {
+            return file.type.indexOf('image/') === 0 || file.type.indexOf('video/') === 0;
+        });
+    }
+
+    function imageFiles(files) {
+        return files.filter(function (file) {
             return file.type.indexOf('image/') === 0;
         });
     }
@@ -46,32 +58,33 @@
     function showTargetPreview(input, files) {
         var selector = input.getAttribute('data-preview-target');
 
-        if (!selector) {
+        if (! selector) {
             return false;
         }
 
         var target = document.querySelector(selector);
 
-        if (!target) {
+        if (! target) {
             return false;
         }
 
+        var photos = imageFiles(files);
         var hideSelector = input.getAttribute('data-preview-hide');
         var hideEl = hideSelector ? document.querySelector(hideSelector) : null;
 
-        if (!files.length) {
+        if (! photos.length) {
             return true;
         }
 
         revokeUrl(target.getAttribute('data-object-url'));
 
-        var url = URL.createObjectURL(files[0]);
+        var url = URL.createObjectURL(photos[0]);
         objectUrls.push(url);
         target.setAttribute('data-object-url', url);
         target.src = url;
         target.classList.remove('hidden', 'd-none');
         target.classList.add('js-lightbox');
-        target.alt = files[0].name;
+        target.alt = photos[0].name;
 
         if (hideEl) {
             hideEl.classList.add('hidden');
@@ -84,18 +97,32 @@
         var list = previewListFor(input);
         clearPreviewList(list);
 
-        if (!files.length) {
+        if (! files.length) {
             return;
         }
 
         var hint = document.createElement('p');
         hint.className = 'image-preview-hint';
-        hint.textContent = 'Click a photo to open it larger before you upload.';
+        hint.textContent = 'Photos open larger when clicked. Videos play here before you upload.';
         list.appendChild(hint);
 
         files.forEach(function (file) {
             var url = URL.createObjectURL(file);
             objectUrls.push(url);
+            var isVideo = file.type.indexOf('video/') === 0;
+
+            if (isVideo) {
+                var video = document.createElement('video');
+                video.src = url;
+                video.controls = true;
+                video.playsInline = true;
+                video.muted = true;
+                video.preload = 'metadata';
+                video.className = 'image-preview-video';
+                list.appendChild(video);
+
+                return;
+            }
 
             var button = document.createElement('button');
             button.type = 'button';
@@ -113,7 +140,7 @@
     }
 
     function renderPreviews(input) {
-        var files = imageFiles(input);
+        var files = mediaFiles(input);
 
         if (showTargetPreview(input, files)) {
             return;
@@ -134,7 +161,7 @@
         var overlay = lightbox();
         var image = lightboxImage();
 
-        if (!overlay || !image || !src) {
+        if (! overlay || ! image || ! src) {
             return;
         }
 
@@ -149,7 +176,7 @@
         var overlay = lightbox();
         var image = lightboxImage();
 
-        if (!overlay || !image) {
+        if (! overlay || ! image) {
             return;
         }
 
@@ -160,7 +187,7 @@
     }
 
     document.addEventListener('change', function (event) {
-        if (isImageFileInput(event.target)) {
+        if (isPreviewableFileInput(event.target)) {
             renderPreviews(event.target);
         }
     });
@@ -178,7 +205,7 @@
 
         var img = event.target.closest('img.js-lightbox');
 
-        if (!img || !img.src) {
+        if (! img || ! img.src) {
             return;
         }
 

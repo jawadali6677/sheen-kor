@@ -105,6 +105,8 @@
                         <p class="text-sm text-gray-500 mt-1">Up to 10 extra images, 5 MB each.</p>
                     </div>
 
+                    @include('partials.short-video-input')
+
                     <div class="flex items-center gap-4">
                         <button type="submit" class="px-5 py-2 bg-red-700 text-white rounded">
                             Post Alert

@@ -17,6 +17,8 @@ class PostImageFactory extends Factory
             'caption' => fake()->sentence(),
 
             'sort_order' => fake()->numberBetween(0, 5),
+
+            'media_type' => 'image',
         ];
     }
 }

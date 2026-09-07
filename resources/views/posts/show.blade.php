@@ -151,7 +151,7 @@
                         <div class="mt-10">
 
                             <h2 class="text-2xl font-semibold mb-5">
-                                Photos
+                                Photos and videos
                             </h2>
 
 
@@ -160,12 +160,7 @@
                                 @foreach($post->images as $image)
 
                                     <div>
-
-                                        <img
-                                            src="{{ asset('storage/' . $image->image) }}"
-                                            alt="{{ $image->caption ?? $post->title }}"
-                                            class="w-full h-64 object-cover rounded-lg js-lightbox"
-                                        >
+                                        <x-media-item :media="$image" :alt="$image->caption ?? $post->title" class="w-full h-64 object-cover rounded-lg" />
 
 
                                         @if($image->caption)

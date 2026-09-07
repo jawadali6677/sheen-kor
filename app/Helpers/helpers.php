@@ -18,10 +18,27 @@ if (! function_exists('generateUniqueSlug')) {
                 })
                 ->exists()
         ) {
-            $slug = $originalSlug . '-' . $counter;
+            $slug = $originalSlug.'-'.$counter;
             $counter++;
         }
 
         return $slug;
+    }
+}
+
+if (! function_exists('shortVideoRules')) {
+    /**
+     * @return array<string, list<mixed>>
+     */
+    function shortVideoRules(string $field = 'videos'): array
+    {
+        return [
+            $field => ['nullable', 'array', 'max:3'],
+            $field.'.*' => [
+                'file',
+                'mimetypes:video/mp4,video/webm,video/quicktime',
+                'max:20480',
+            ],
+        ];
     }
 }

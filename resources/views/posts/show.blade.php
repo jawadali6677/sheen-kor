@@ -3,10 +3,10 @@
         <x-flash />
 
         <article class="sk-card overflow-hidden">
-            @if($post->featured_image)
-                <img src="{{ asset('storage/'.$post->featured_image) }}" alt="{{ $post->title }}" class="max-h-[32rem] w-full object-cover js-lightbox">
+            @if($post->hasMedia())
+                <x-media-carousel :slides="$post->mediaSlides()" />
             @endif
-            <div class="p-6 md:p-10">
+            <div class="p-6 md:p-10 {{ $post->hasMedia() ? '' : 'md:px-16' }}">
                 @if($post->category)
                     <a href="{{ route('categories.show', $post->category) }}" class="text-sm font-semibold text-forest-700 hover:underline">{{ $post->category->name }}</a>
                 @endif
@@ -21,22 +21,20 @@
                     <span>{{ ($post->published_at ?? $post->created_at)?->format('M d, Y') }}</span>
                     <span>{{ $post->views }} views</span>
                 </div>
-                <div class="prose mt-8 max-w-none text-gray-700">{!! nl2br(e($post->content)) !!}</div>
-
-                @if($post->images->count())
-                    <div class="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
-                        @foreach($post->images as $image)
-                            <x-media-item :media="$image" :alt="$image->caption ?? $post->title" class="h-64 w-full rounded-xl object-cover" />
-                        @endforeach
-                    </div>
-                @endif
+                <div class="prose mt-8 max-w-none text-lg leading-8 text-gray-700">{!! nl2br(e($post->content)) !!}</div>
 
                 <div class="mt-10 flex flex-wrap gap-3 border-t border-gray-100 pt-6">
                     @can('update', $post)
                         <a href="{{ route('posts.edit', $post) }}" class="btn-primary">Edit Story</a>
                     @endcan
                     @can('delete', $post)
-                        <form action="{{ route('posts.destroy', $post) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this story?')">
+                        <form
+                            action="{{ route('posts.destroy', $post) }}"
+                            method="POST"
+                            data-confirm="Delete this post?"
+                            data-confirm-message="This action cannot be undone."
+                            data-confirm-action="Delete"
+                        >
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="btn-secondary text-red-700">Delete Story</button>

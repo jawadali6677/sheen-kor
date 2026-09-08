@@ -3,12 +3,14 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasEngagement;
+use App\Models\Concerns\PresentsMedia;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 
 class Post extends Model
 {
-    use HasEngagement, HasFactory;
+    use HasEngagement, HasFactory, PresentsMedia;
 
     protected $fillable = [
         'user_id',
@@ -43,6 +45,11 @@ class Post extends Model
     public function images()
     {
         return $this->hasMany(PostImage::class)->orderBy('sort_order');
+    }
+
+    protected function galleryMedia(): Collection
+    {
+        return $this->images;
     }
 
     public function tips()

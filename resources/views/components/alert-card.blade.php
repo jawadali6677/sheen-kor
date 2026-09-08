@@ -1,5 +1,10 @@
 @props(['alert'])
 
+@php
+    $slides = $alert->mediaSlides();
+    $hasMedia = $alert->hasMedia();
+@endphp
+
 <article class="sk-card">
     <div class="flex items-center gap-3 px-4 py-3">
         @if($alert->user)
@@ -18,18 +23,11 @@
         <x-status-badge :alert="$alert" />
     </div>
 
-    <a href="{{ route('alerts.show', $alert) }}" class="block bg-gray-900">
-        <img src="{{ asset('storage/'.$alert->featured_image) }}" alt="{{ $alert->title }}" class="max-h-[28rem] w-full object-cover" loading="lazy">
-    </a>
+    @if($hasMedia)
+        <x-media-carousel :slides="$slides" :href="route('alerts.show', $alert)" />
+    @endif
 
     <div class="space-y-2 px-4 py-3">
-        @include('posts.partials.engagement-bar', [
-            'model' => $alert,
-            'liked' => (bool) $alert->liked_by_user,
-            'likesCount' => $alert->likes_count,
-            'commentsCount' => $alert->comments_count,
-            'compact' => true,
-        ])
         <div class="flex flex-wrap items-center gap-2">
             <x-severity-badge :severity="$alert->severity" />
         </div>
@@ -37,5 +35,12 @@
             <a href="{{ route('alerts.show', $alert) }}" class="hover:underline">{{ $alert->title }}</a>
         </h3>
         <p class="text-sm text-gray-600">{{ \Illuminate\Support\Str::limit($alert->description, 140) }}</p>
+        @include('posts.partials.engagement-bar', [
+            'model' => $alert,
+            'liked' => (bool) $alert->liked_by_user,
+            'likesCount' => $alert->likes_count,
+            'commentsCount' => $alert->comments_count,
+            'compact' => true,
+        ])
     </div>
 </article>

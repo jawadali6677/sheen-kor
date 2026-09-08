@@ -26,18 +26,19 @@
             <button type="submit" class="btn-secondary">Search</button>
         </form>
 
-        @forelse($alerts as $index => $alert)
-            <x-alert-card :alert="$alert" />
-            @if((($alerts->firstItem() ?? 1) + $index) % 5 === 0)
-                <x-in-feed-ad :ad="demo_ads()[($index) % count(demo_ads())]" />
-            @endif
-        @empty
-            <x-empty-state title="No alerts yet" :action-label="auth()->check() ? 'Report an alert' : 'Join Sheen Kor'" :action-url="auth()->check() ? route('alerts.create') : route('register')">
-                Report dumping, pollution, or other environmental harm so the community can respond.
-            </x-empty-state>
-        @endforelse
-
-        <div>{{ $alerts->links() }}</div>
+        <div
+            x-data="infiniteFeed({
+                nextUrl: @js($alerts->nextPageUrl()),
+                finishedText: 'No more alerts',
+            })"
+        >
+            <div x-ref="items" class="space-y-4">
+                @include('alerts.partials.feed-items')
+            </div>
+            <div x-ref="sentinel" class="h-8"></div>
+            <p class="py-4 text-center text-sm text-gray-500" x-show="loading" x-cloak>Loading...</p>
+            <p class="py-4 text-center text-sm text-gray-500" x-show="finished && ! loading && {{ $alerts->total() > 0 ? 'true' : 'false' }}" x-cloak>No more alerts</p>
+        </div>
     </div>
 
     @include('posts.partials.engagement-assets')

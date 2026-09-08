@@ -8,6 +8,10 @@
             return false;
         }
 
+        if (input.hasAttribute('data-skip-preview') || input.closest('.js-media-uploader')) {
+            return false;
+        }
+
         if (! input.accept) {
             return true;
         }

@@ -6,12 +6,14 @@
     $nameLabel = $nameLabel ?? 'Location';
     $requiredName = $requiredName ?? false;
     $readonly = $readonly ?? false;
+    $mapClass = $mapClass ?? '';
+    $wrapperClass = $wrapperClass ?? 'mb-6';
     $latValue = old($latName, $lat ?? '');
     $lngValue = old($lngName, $lng ?? '');
     $nameValue = old($nameField, $name ?? '');
 @endphp
 
-<div class="location-picker mb-6">
+<div class="location-picker {{ $wrapperClass }}">
     @unless($readonly)
         <label class="block font-medium text-sm text-gray-700 mb-1">{{ $nameLabel }}</label>
         <div class="flex gap-2 mb-2">
@@ -33,7 +35,7 @@
 
     <div
         id="{{ $mapId }}"
-        class="location-map border js-location-map"
+        class="location-map border js-location-map {{ $mapClass }}"
         data-lat-selector="{{ $readonly ? '' : '#'.$latName }}"
         data-lng-selector="{{ $readonly ? '' : '#'.$lngName }}"
         data-name-selector="{{ $readonly ? '' : '#'.$nameField }}"

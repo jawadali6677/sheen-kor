@@ -91,10 +91,10 @@
                             <x-dropdown-link :href="route('users.show', $other)">View profile</x-dropdown-link>
                         @endif
                         @can('leave', $conversation)
-                            <form method="POST" action="{{ route('messages.participants.destroy', $conversation) }}" onsubmit="return confirm('Leave this conversation?')">
+                            <form method="POST" action="{{ route('messages.participants.destroy', $conversation) }}" data-confirm="Leave this conversation?" data-confirm-message="You will no longer receive messages from this chat." data-confirm-action="Leave">
                                 @csrf
                                 @method('DELETE')
-                                <x-dropdown-link :href="route('messages.participants.destroy', $conversation)" onclick="event.preventDefault(); this.closest('form').submit();">Leave</x-dropdown-link>
+                                <x-dropdown-link :href="route('messages.participants.destroy', $conversation)" onclick="event.preventDefault(); this.closest('form').requestSubmit();">Leave</x-dropdown-link>
                             </form>
                         @endcan
                     </x-slot>

@@ -3,12 +3,14 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasEngagement;
+use App\Models\Concerns\PresentsMedia;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 
 class Alert extends Model
 {
-    use HasEngagement, HasFactory;
+    use HasEngagement, HasFactory, PresentsMedia;
 
     protected $fillable = [
         'user_id',
@@ -69,6 +71,11 @@ class Alert extends Model
         return $this->hasMany(AlertImage::class)
             ->where('kind', 'fix')
             ->orderBy('sort_order');
+    }
+
+    protected function galleryMedia(): Collection
+    {
+        return $this->reportImages;
     }
 
     public function isOpen(): bool

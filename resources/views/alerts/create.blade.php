@@ -79,33 +79,11 @@
                         >{{ old('description') }}</textarea>
                     </div>
 
-                    <div class="mb-6">
-                        <label for="featured_image" class="block font-medium text-sm text-gray-700">Photo (required)</label>
-                        <input
-                            type="file"
-                            name="featured_image"
-                            id="featured_image"
-                            accept="image/jpeg,image/png,image/webp"
-                            class="mt-1 block w-full"
-                            required
-                        >
-                        <p class="text-sm text-gray-500 mt-1">Maximum size: 5 MB. Preview appears after you choose a photo. Click it to open it larger.</p>
-                    </div>
-
-                    <div class="mb-6">
-                        <label for="images" class="block font-medium text-sm text-gray-700">More photos</label>
-                        <input
-                            type="file"
-                            name="images[]"
-                            id="images"
-                            multiple
-                            accept="image/jpeg,image/png,image/webp"
-                            class="mt-1 block w-full"
-                        >
-                        <p class="text-sm text-gray-500 mt-1">Up to 10 extra images, 5 MB each.</p>
-                    </div>
-
-                    @include('partials.short-video-input')
+                    <x-media-uploader
+                        label="Add photos & videos"
+                        hint="Add at least one photo as evidence. Extra photos and short videos are optional."
+                        :require-image="true"
+                    />
 
                     <div class="flex items-center gap-4">
                         <button type="submit" class="btn-primary">

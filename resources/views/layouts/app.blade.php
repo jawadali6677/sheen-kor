@@ -64,6 +64,7 @@
         </div>
 
         @include('layouts.partials.mobile-nav')
+        <x-confirm-dialog />
 
         <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

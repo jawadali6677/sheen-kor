@@ -133,106 +133,31 @@
                     </div>
 
 
-                    {{-- Current Featured Image --}}
-                    @if($post->featured_image)
-
+                    @if($post->hasMedia())
                         <div class="mb-6">
-
-                            <p class="font-medium text-sm text-gray-700 mb-2">
-                                Current Featured Image
-                            </p>
-
-                            <img
-                                src="{{ asset('storage/' . $post->featured_image) }}"
-                                alt="{{ $post->title }}"
-                                class="w-48 h-32 object-cover rounded js-lightbox"
-                            >
-
-                        </div>
-
-                    @endif
-
-
-                    {{-- New Featured Image --}}
-                    <div class="mb-6">
-
-                        <label
-                            for="featured_image"
-                            class="block font-medium text-sm text-gray-700"
-                        >
-                            Replace Featured Image
-                        </label>
-
-                        <input
-                            type="file"
-                            name="featured_image"
-                            id="featured_image"
-                            accept="image/jpeg,image/png,image/webp"
-                            class="mt-1 block w-full"
-                        >
-
-                        <p class="text-sm text-gray-500 mt-1">
-                            Leave empty if you want to keep the current image.
-                        </p>
-
-                    </div>
-
-
-                    {{-- Existing Additional Images --}}
-                    @if($post->images->count())
-
-                        <div class="mb-6">
-
-                            <p class="font-medium text-sm text-gray-700 mb-3">
-                                Current gallery
-                            </p>
-
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-
+                            <p class="mb-3 text-sm font-medium text-gray-700">Current media</p>
+                            <div class="flex flex-wrap gap-3">
+                                @if($post->featured_image)
+                                    <img
+                                        src="{{ asset('storage/' . $post->featured_image) }}"
+                                        alt="{{ $post->title }}"
+                                        class="h-32 w-40 rounded-xl object-cover js-lightbox"
+                                    >
+                                @endif
                                 @foreach($post->images as $image)
-
-                                    <div>
-                                        <x-media-item :media="$image" alt="Story media" class="w-full h-32 object-cover rounded" />
+                                    <div class="h-32 w-40 overflow-hidden rounded-xl">
+                                        <x-media-item :media="$image" alt="Story media" class="h-32 w-40 object-cover" />
                                     </div>
-
                                 @endforeach
-
                             </div>
-
+                            <p class="mt-2 text-sm text-gray-500">Existing media stays unless you add a new cover photo. New files are added to the gallery.</p>
                         </div>
-
                     @endif
 
-
-                    {{-- New Additional Images --}}
-                    <div class="mb-6">
-
-                        <label
-                            for="images"
-                            class="block font-medium text-sm text-gray-700"
-                        >
-                            Add More Images
-                        </label>
-
-                        <input
-                            type="file"
-                            name="images[]"
-                            id="images"
-                            multiple
-                            accept="image/jpeg,image/png,image/webp"
-                            class="mt-1 block w-full"
-                        >
-
-                        <p class="text-sm text-gray-500 mt-1">
-                            New images will be added to the existing gallery.
-                        </p>
-
-                    </div>
-
-                    @include('partials.short-video-input', [
-                        'label' => 'Add short videos',
-                        'hint' => 'New clips are added to the gallery. Up to 3 videos, 20 MB each.',
-                    ])
+                    <x-media-uploader
+                        label="Add photos & videos"
+                        hint="New photos and videos are added to this story. The first new photo replaces the cover."
+                    />
 
 
                     {{-- Buttons --}}

@@ -79,11 +79,12 @@
     color: #b42318;
 }
 
-.location-map {
-    height: 280px;
-    width: 100%;
-    border-radius: 16px;
-    z-index: 1;
+.location-map-prominent {
+    height: min(28rem, 70vh);
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
 }
 
 .comment-thread {

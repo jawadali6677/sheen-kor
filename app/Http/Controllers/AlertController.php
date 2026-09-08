@@ -25,7 +25,7 @@ class AlertController extends Controller
         $search = trim((string) $request->input('q', ''));
 
         $alerts = Alert::query()
-            ->with(['user', 'actionUser'])
+            ->with(['user', 'actionUser', 'reportImages'])
             ->withCount([
                 'likes',
                 'comments' => function ($query) {
@@ -52,6 +52,10 @@ class AlertController extends Controller
             ->latest('created_at')
             ->paginate(10)
             ->withQueryString();
+
+        if ($request->boolean('partial') || $request->headers->has('X-Infinite-Scroll')) {
+            return view('alerts.partials.feed-items', compact('alerts'));
+        }
 
         return view('alerts.index', compact('alerts', 'status', 'search'));
     }
@@ -182,7 +186,7 @@ class AlertController extends Controller
     {
         $this->authorize('update', $alert);
 
-        $alert->load('images');
+        $alert->load('reportImages');
 
         return view('alerts.edit', compact('alert'));
     }

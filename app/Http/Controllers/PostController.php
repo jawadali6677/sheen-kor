@@ -352,6 +352,10 @@ class PostController extends Controller
             ->orderBy('name')
             ->get();
 
+        if (request()->boolean('partial') || request()->headers->has('X-Infinite-Scroll')) {
+            return view('posts.partials.feed-items', compact('posts'));
+        }
+
         return view('posts.index', compact(
             'posts',
             'categories',

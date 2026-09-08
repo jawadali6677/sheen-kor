@@ -394,29 +394,43 @@
     });
 
     $(document).on('click', '.js-delete-comment', function () {
-        if (!window.confirm('Delete this comment?')) {
-            return;
-        }
-
         var $item = $(this).closest('.comment-item');
         var $button = $(this);
 
-        $button.prop('disabled', true);
+        var deleteComment = function () {
+            $button.prop('disabled', true);
 
-        $.ajax({
-            url: commentEndpoint($item.data('comment-id')),
-            method: 'DELETE'
-        })
-            .done(function (response) {
-                $item.remove();
-                paintModalLike(currentBar ? isLiked(currentBar) : false, null, response.comments_count);
-                $('#modal-comments-empty').toggleClass('d-none', $('#modal-comments-list .comment-item').length > 0);
-                showModalAlert(response.message, 'success');
+            $.ajax({
+                url: commentEndpoint($item.data('comment-id')),
+                method: 'DELETE'
             })
-            .fail(function (xhr) {
-                showModalAlert(firstError(xhr), 'danger');
-                $button.prop('disabled', false);
+                .done(function (response) {
+                    $item.remove();
+                    paintModalLike(currentBar ? isLiked(currentBar) : false, null, response.comments_count);
+                    $('#modal-comments-empty').toggleClass('d-none', $('#modal-comments-list .comment-item').length > 0);
+                    showModalAlert(response.message, 'success');
+                })
+                .fail(function (xhr) {
+                    showModalAlert(firstError(xhr), 'danger');
+                    $button.prop('disabled', false);
+                });
+        };
+
+        if (window.skConfirm) {
+            window.skConfirm({
+                title: 'Delete this comment?',
+                message: 'This action cannot be undone.',
+                actionLabel: 'Delete'
+            }).then(function (confirmed) {
+                if (confirmed) {
+                    deleteComment();
+                }
             });
+
+            return;
+        }
+
+        deleteComment();
     });
 
     $modal.on('click', function (event) {

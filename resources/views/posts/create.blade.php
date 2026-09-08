@@ -112,54 +112,10 @@
                     </div>
 
 
-                    {{-- Featured Image --}}
-                    <div class="mb-6">
-                        <label
-                            for="featured_image"
-                            class="block font-medium text-sm text-gray-700"
-                        >
-                            Featured Image
-                        </label>
-
-                        <input
-                            type="file"
-                            name="featured_image"
-                            id="featured_image"
-                            accept="image/jpeg,image/png,image/webp"
-                            class="mt-1 block w-full"
-                        >
-
-                        <p class="text-sm text-gray-500 mt-1">
-                            Maximum size: 5 MB. The photo appears below so you can check it before you submit. Click it to open it larger.
-                        </p>
-                    </div>
-
-
-                    {{-- Additional Images --}}
-                    <div class="mb-6">
-                        <label
-                            for="images"
-                            class="block font-medium text-sm text-gray-700"
-                        >
-                            Additional Images
-                        </label>
-
-                        <input
-                            type="file"
-                            name="images[]"
-                            id="images"
-                            multiple
-                            accept="image/jpeg,image/png,image/webp"
-                            class="mt-1 block w-full"
-                        >
-
-                        <p class="text-sm text-gray-500 mt-1">
-                            You can upload up to 10 additional images.
-                            Maximum 5 MB each.
-                        </p>
-                    </div>
-
-                    @include('partials.short-video-input')
+                    <x-media-uploader
+                        label="Add photos & videos"
+                        hint="The first photo becomes the cover. You can add more photos (5 MB each) and up to 3 short videos (20 MB)."
+                    />
 
 
                     {{-- Buttons --}}

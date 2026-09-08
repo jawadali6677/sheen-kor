@@ -34,18 +34,19 @@
             <button type="submit" class="btn-secondary">Search</button>
         </form>
 
-        @forelse($posts as $index => $post)
-            <x-post-card :post="$post" />
-            @if((($posts->firstItem() ?? 1) + $index) % 5 === 0)
-                <x-in-feed-ad :ad="demo_ads()[($index) % count(demo_ads())]" />
-            @endif
-        @empty
-            <x-empty-state title="No posts yet" :action-label="auth()->check() ? 'Create a post' : 'Join Sheen Kor'" :action-url="auth()->check() ? route('posts.create') : route('register')">
-                Be the first to share a photo, story, or idea with the community.
-            </x-empty-state>
-        @endforelse
-
-        <div>{{ $posts->links() }}</div>
+        <div
+            x-data="infiniteFeed({
+                nextUrl: @js($posts->nextPageUrl()),
+                finishedText: 'No more posts',
+            })"
+        >
+            <div x-ref="items" class="space-y-4">
+                @include('posts.partials.feed-items')
+            </div>
+            <div x-ref="sentinel" class="h-8"></div>
+            <p class="py-4 text-center text-sm text-gray-500" x-show="loading" x-cloak>Loading...</p>
+            <p class="py-4 text-center text-sm text-gray-500" x-show="finished && ! loading && {{ $posts->total() > 0 ? 'true' : 'false' }}" x-cloak>No more posts</p>
+        </div>
     </div>
 
     @include('posts.partials.engagement-assets')

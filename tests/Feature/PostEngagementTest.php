@@ -2,11 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Events\PostEngagementUpdated;
 use App\Models\Comment;
 use App\Models\Like;
 use App\Models\Post;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
 class PostEngagementTest extends TestCase
@@ -78,6 +80,51 @@ class PostEngagementTest extends TestCase
             'likeable_id' => $post->id,
             'likeable_type' => 'post',
         ]);
+    }
+
+    public function test_liking_and_unliking_a_post_broadcasts_engagement_counts(): void
+    {
+        $user = User::factory()->create();
+        $post = $this->publishedPost();
+
+        Event::fake([PostEngagementUpdated::class]);
+
+        $this->actingAs($user)
+            ->postJson(route('posts.likes.store', $post))
+            ->assertOk();
+
+        Event::assertDispatched(PostEngagementUpdated::class, function (PostEngagementUpdated $event) use ($post): bool {
+            return $event->postId === $post->id
+                && $event->likesCount === 1;
+        });
+
+        $this->actingAs($user)
+            ->deleteJson(route('posts.likes.destroy', $post))
+            ->assertOk();
+
+        Event::assertDispatched(PostEngagementUpdated::class, function (PostEngagementUpdated $event) use ($post): bool {
+            return $event->postId === $post->id
+                && $event->likesCount === 0;
+        });
+    }
+
+    public function test_commenting_on_a_post_broadcasts_engagement_counts(): void
+    {
+        $user = User::factory()->create();
+        $post = $this->publishedPost();
+
+        Event::fake([PostEngagementUpdated::class]);
+
+        $this->actingAs($user)
+            ->postJson(route('posts.comments.store', $post), [
+                'content' => 'This is a comment.',
+            ])
+            ->assertCreated();
+
+        Event::assertDispatched(PostEngagementUpdated::class, function (PostEngagementUpdated $event) use ($post): bool {
+            return $event->postId === $post->id
+                && $event->commentsCount === 1;
+        });
     }
 
     public function test_user_cannot_like_an_unpublished_post(): void

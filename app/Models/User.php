@@ -3,14 +3,18 @@
 namespace App\Models;
 
 use App\Enums\Permission;
+use App\Events\UserNotificationBroadcasted;
 use App\Models\Role as AccessRole;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Notifications\Notification;
 use Illuminate\Support\Str;
+use Throwable;
 
 class User extends Authenticatable
 {
@@ -119,6 +123,58 @@ class User extends Authenticatable
     public function messages(): HasMany
     {
         return $this->hasMany(Message::class);
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function notificationInbox(int $limit = 20): array
+    {
+        return $this->notifications()
+            ->limit($limit)
+            ->get()
+            ->map(fn (DatabaseNotification $notification): array => $this->formatInboxNotification($notification))
+            ->values()
+            ->all();
+    }
+
+    public function notifyInbox(Notification $notification): void
+    {
+        $this->notifyNow($notification);
+
+        $saved = $this->notifications()->first();
+
+        if ($saved) {
+            $this->pushInboxNotification($saved);
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function formatInboxNotification(DatabaseNotification $notification): array
+    {
+        return [
+            'id' => $notification->id,
+            'kind' => $notification->data['kind'] ?? '',
+            'title' => $notification->data['title'] ?? '',
+            'body' => $notification->data['body'] ?? '',
+            'url' => $notification->data['url'] ?? url('/'),
+            'actor_name' => $notification->data['actor_name'] ?? '',
+            'actor_avatar_url' => $notification->data['actor_avatar_url'] ?? null,
+            'conversation_id' => $notification->data['conversation_id'] ?? null,
+            'read_at' => $notification->read_at?->toIso8601String(),
+            'created_at' => $notification->created_at?->diffForHumans() ?? 'Just now',
+        ];
+    }
+
+    public function pushInboxNotification(DatabaseNotification $notification): void
+    {
+        try {
+            broadcast(new UserNotificationBroadcasted($this->id, $this->formatInboxNotification($notification)));
+        } catch (Throwable $exception) {
+            report($exception);
+        }
     }
 
     public function unreadConversationCount(): int

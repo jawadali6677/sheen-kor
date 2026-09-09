@@ -7,6 +7,7 @@ use App\Actions\FindOrCreateDirectConversation;
 use App\Enums\ConversationType;
 use App\Models\Conversation;
 use App\Models\User;
+use App\Notifications\ConversationMessageReceived;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -42,6 +43,17 @@ class ConversationController extends Controller
             $conversation->participants()->updateExistingPivot($user->id, [
                 'last_read_at' => now(),
             ]);
+
+            $user->unreadNotifications()
+                ->where('type', ConversationMessageReceived::class)
+                ->get()
+                ->each(function ($notification) use ($conversation): void {
+                    if ((int) ($notification->data['conversation_id'] ?? 0) !== (int) $conversation->id) {
+                        return;
+                    }
+
+                    $notification->markAsRead();
+                });
         }
 
         $messages = $conversation->messages()

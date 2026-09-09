@@ -6,14 +6,16 @@ window.Pusher = Pusher;
 const reverb = window.chatReverb;
 
 if (reverb?.key) {
+    const useTls = reverb.scheme === 'https';
+
     window.Echo = new Echo({
         broadcaster: 'reverb',
         key: reverb.key,
         wsHost: reverb.host,
         wsPort: reverb.port,
         wssPort: reverb.port,
-        forceTLS: reverb.scheme === 'https',
-        enabledTransports: ['ws', 'wss'],
+        forceTLS: useTls,
+        enabledTransports: useTls ? ['wss'] : ['ws'],
         authEndpoint: reverb.authEndpoint,
         auth: {
             headers: {

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Alert;
 use App\Models\Post;
+use App\Notifications\ContentLiked;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
@@ -59,10 +60,20 @@ class LikeController extends Controller
 
             DB::commit();
 
+            if (! $existingLike) {
+                $this->notifyOwnerOfLike($likeable);
+            }
+
+            $likesCount = $likeable->likes()->count();
+
+            if ($likeable instanceof Post || $likeable instanceof Alert) {
+                $likeable->broadcastEngagementCounts($likesCount);
+            }
+
             return response()->json([
                 'success' => true,
                 'liked' => true,
-                'likes_count' => $likeable->likes()->count(),
+                'likes_count' => $likesCount,
                 'message' => $existingLike
                     ? "You already liked this {$noun}."
                     : "You liked this {$noun}.",
@@ -72,10 +83,16 @@ class LikeController extends Controller
 
             DB::rollBack();
 
+            $likesCount = $likeable->likes()->count();
+
+            if ($likeable instanceof Post || $likeable instanceof Alert) {
+                $likeable->broadcastEngagementCounts($likesCount);
+            }
+
             return response()->json([
                 'success' => true,
                 'liked' => true,
-                'likes_count' => $likeable->likes()->count(),
+                'likes_count' => $likesCount,
                 'message' => "You liked this {$noun}.",
             ]);
 
@@ -112,10 +129,16 @@ class LikeController extends Controller
 
             DB::commit();
 
+            $likesCount = $likeable->likes()->count();
+
+            if ($likeable instanceof Post || $likeable instanceof Alert) {
+                $likeable->broadcastEngagementCounts($likesCount);
+            }
+
             return response()->json([
                 'success' => true,
                 'liked' => false,
-                'likes_count' => $likeable->likes()->count(),
+                'likes_count' => $likesCount,
                 'message' => "You unliked this {$noun}.",
             ]);
 
@@ -147,5 +170,20 @@ class LikeController extends Controller
     private function noun(Model $likeable): string
     {
         return $likeable instanceof Alert ? 'alert' : 'story';
+    }
+
+    private function notifyOwnerOfLike(Model $likeable): void
+    {
+        $owner = $likeable->user;
+
+        if (! $owner || $owner->id === auth()->id()) {
+            return;
+        }
+
+        try {
+            $owner->notifyInbox(new ContentLiked(auth()->user(), $likeable));
+        } catch (Throwable $exception) {
+            report($exception);
+        }
     }
 }

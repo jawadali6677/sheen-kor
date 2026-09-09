@@ -6,6 +6,7 @@ use App\Actions\SendMessage;
 use App\Events\MessageSent;
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Notifications\ConversationMessageReceived;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -63,6 +64,7 @@ class MessageController extends Controller
         $message = $sendMessage->handle($request->user(), $conversation, $validated['body']);
 
         $this->broadcastSentMessage($request, $message);
+        $this->notifyConversationParticipants($message);
 
         return response()->json([
             'success' => true,
@@ -83,6 +85,23 @@ class MessageController extends Controller
             unset($pending);
         } catch (Throwable $exception) {
             report($exception);
+        }
+    }
+
+    private function notifyConversationParticipants(Message $message): void
+    {
+        $message->loadMissing('conversation.participants');
+
+        foreach ($message->conversation->participants as $participant) {
+            if ($participant->id === $message->user_id) {
+                continue;
+            }
+
+            try {
+                $participant->notifyInbox(new ConversationMessageReceived($message));
+            } catch (Throwable $exception) {
+                report($exception);
+            }
         }
     }
 }

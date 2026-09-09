@@ -66,6 +66,20 @@
         @include('layouts.partials.mobile-nav')
         <x-confirm-dialog />
 
+        @auth
+            <div
+                x-data
+                x-cloak
+                x-show="$store.notifications.toast"
+                x-transition
+                class="fixed right-4 top-20 z-[90] w-80 rounded-2xl border border-gray-100 bg-white p-4 shadow-card"
+                role="status"
+            >
+                <p class="text-sm font-semibold text-forest-900" x-text="$store.notifications.toast?.title"></p>
+                <p class="mt-1 truncate text-sm text-gray-600" x-text="$store.notifications.toast?.body"></p>
+            </div>
+        @endauth
+
         <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <script src="{{ asset('js/location-map.js') }}"></script>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Alert;
 use App\Models\Comment;
 use App\Models\Post;
+use App\Notifications\ContentCommented;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -112,6 +113,10 @@ class CommentController extends Controller
                 ->where('commentable_id', $commentableId)
                 ->where('status', 'approved')
                 ->count();
+
+            if ($commentable instanceof Post || $commentable instanceof Alert) {
+                $commentable->broadcastEngagementCounts(commentsCount: $commentsCount);
+            }
 
             return response()->json([
                 'success' => true,
@@ -243,13 +248,21 @@ class CommentController extends Controller
 
             DB::commit();
 
+            $this->notifyOwnerOfComment($commentable, $comment);
+
+            $commentsCount = $this->approvedCommentsCount($commentable);
+
+            if ($commentable instanceof Post || $commentable instanceof Alert) {
+                $commentable->broadcastEngagementCounts(commentsCount: $commentsCount);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => $comment->parent_id
                     ? 'Your reply has been added.'
                     : 'Your comment has been added.',
                 'comment' => $comment->toEngagementPayload(auth()->user()),
-                'comments_count' => $this->approvedCommentsCount($commentable),
+                'comments_count' => $commentsCount,
             ], 201);
 
         } catch (Throwable $e) {
@@ -275,5 +288,20 @@ class CommentController extends Controller
         return $commentable->comments()
             ->where('status', 'approved')
             ->count();
+    }
+
+    private function notifyOwnerOfComment(Model $commentable, Comment $comment): void
+    {
+        $owner = $commentable->user;
+
+        if (! $owner || $owner->id === auth()->id()) {
+            return;
+        }
+
+        try {
+            $owner->notifyInbox(new ContentCommented(auth()->user(), $commentable, $comment));
+        } catch (Throwable $exception) {
+            report($exception);
+        }
     }
 }

@@ -13,6 +13,7 @@ use App\Http\Controllers\FollowController;
 use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\LikeController;
 use App\Http\Controllers\MessageController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ProfileController;
 use App\Models\Category;
@@ -52,6 +53,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::post('/notifications/{notification}/read', [NotificationController::class, 'update'])
+        ->name('notifications.read');
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])
+        ->name('notifications.read-all');
     Route::post('/users/{user}/follow', [FollowController::class, 'store'])
         ->middleware('throttle:60,1')
         ->name('users.follow.store');

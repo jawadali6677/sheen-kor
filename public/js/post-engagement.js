@@ -446,4 +446,126 @@
     $modal.on('hidden.bs.modal', function () {
         hideCommentModal();
     });
+
+    var subscribedPostCounts = {};
+
+    function applyPostEngagementCounts(payload) {
+        var postId = String(payload.post_id || '');
+
+        if (!postId) {
+            return;
+        }
+
+        $('.post-engagement-bar').filter(function () {
+            return String($(this).attr('data-item-key')) === 'post-' + postId;
+        }).each(function () {
+            var $bar = $(this);
+
+            if (typeof payload.likes_count !== 'undefined' && payload.likes_count !== null) {
+                $bar.find('.js-likes-count').text(payload.likes_count);
+            }
+
+            if (typeof payload.comments_count !== 'undefined' && payload.comments_count !== null) {
+                $bar.find('.js-comments-count').text(payload.comments_count);
+            }
+        });
+
+        if (currentBar && String(currentBar.attr('data-item-key')) === 'post-' + postId) {
+            if (typeof payload.likes_count !== 'undefined' && payload.likes_count !== null) {
+                $('#modal-likes-count').text(payload.likes_count);
+            }
+
+            if (typeof payload.comments_count !== 'undefined' && payload.comments_count !== null) {
+                $('#modal-comments-count').text(payload.comments_count);
+            }
+        }
+    }
+
+    function subscribePostEngagementCounts() {
+        if (!window.Echo) {
+            if (window.chatReverb) {
+                window.setTimeout(subscribePostEngagementCounts, 50);
+            }
+
+            return;
+        }
+
+        $('.post-engagement-bar').each(function () {
+            var itemKey = String($(this).attr('data-item-key') || '');
+
+            if (itemKey.indexOf('post-') !== 0) {
+                return;
+            }
+
+            var postId = String($(this).attr('data-post-id') || '');
+
+            if (!postId || subscribedPostCounts[postId]) {
+                return;
+            }
+
+            subscribedPostCounts[postId] = true;
+
+            window.Echo.channel('posts.' + postId)
+                .listen('.PostEngagementUpdated', applyPostEngagementCounts);
+        });
+
+        subscribeAlertEngagementCounts();
+    }
+
+    var subscribedAlertCounts = {};
+
+    function applyAlertEngagementCounts(payload) {
+        var alertId = String(payload.alert_id || '');
+
+        if (!alertId) {
+            return;
+        }
+
+        $('.post-engagement-bar').filter(function () {
+            return String($(this).attr('data-item-key')) === 'alert-' + alertId;
+        }).each(function () {
+            var $bar = $(this);
+
+            if (typeof payload.likes_count !== 'undefined' && payload.likes_count !== null) {
+                $bar.find('.js-likes-count').text(payload.likes_count);
+            }
+
+            if (typeof payload.comments_count !== 'undefined' && payload.comments_count !== null) {
+                $bar.find('.js-comments-count').text(payload.comments_count);
+            }
+        });
+
+        if (currentBar && String(currentBar.attr('data-item-key')) === 'alert-' + alertId) {
+            if (typeof payload.likes_count !== 'undefined' && payload.likes_count !== null) {
+                $('#modal-likes-count').text(payload.likes_count);
+            }
+
+            if (typeof payload.comments_count !== 'undefined' && payload.comments_count !== null) {
+                $('#modal-comments-count').text(payload.comments_count);
+            }
+        }
+    }
+
+    function subscribeAlertEngagementCounts() {
+        $('.post-engagement-bar').each(function () {
+            var itemKey = String($(this).attr('data-item-key') || '');
+
+            if (itemKey.indexOf('alert-') !== 0) {
+                return;
+            }
+
+            var alertId = String($(this).attr('data-post-id') || '');
+
+            if (!alertId || subscribedAlertCounts[alertId]) {
+                return;
+            }
+
+            subscribedAlertCounts[alertId] = true;
+
+            window.Echo.channel('alerts.' + alertId)
+                .listen('.AlertEngagementUpdated', applyAlertEngagementCounts);
+        });
+    }
+
+    subscribePostEngagementCounts();
 })(window.jQuery);

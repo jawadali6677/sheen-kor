@@ -2,12 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Events\AlertEngagementUpdated;
 use App\Models\Alert;
 use App\Models\Comment;
 use App\Models\Like;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -102,6 +104,43 @@ class AlertTest extends TestCase
             ->assertJsonPath('liked', false);
 
         $this->assertSame(0, Like::query()->where('likeable_id', $alert->id)->where('likeable_type', 'alert')->count());
+    }
+
+    public function test_liking_and_commenting_on_an_alert_broadcasts_engagement_counts(): void
+    {
+        $user = User::factory()->create();
+        $alert = Alert::factory()->create();
+
+        Event::fake([AlertEngagementUpdated::class]);
+
+        $this->actingAs($user)
+            ->postJson(route('alerts.likes.store', $alert))
+            ->assertOk();
+
+        Event::assertDispatched(AlertEngagementUpdated::class, function (AlertEngagementUpdated $event) use ($alert): bool {
+            return $event->alertId === $alert->id
+                && $event->likesCount === 1;
+        });
+
+        $this->actingAs($user)
+            ->postJson(route('alerts.comments.store', $alert), [
+                'content' => 'I saw this too yesterday.',
+            ])
+            ->assertCreated();
+
+        Event::assertDispatched(AlertEngagementUpdated::class, function (AlertEngagementUpdated $event) use ($alert): bool {
+            return $event->alertId === $alert->id
+                && $event->commentsCount === 1;
+        });
+
+        $this->actingAs($user)
+            ->deleteJson(route('alerts.likes.destroy', $alert))
+            ->assertOk();
+
+        Event::assertDispatched(AlertEngagementUpdated::class, function (AlertEngagementUpdated $event) use ($alert): bool {
+            return $event->alertId === $alert->id
+                && $event->likesCount === 0;
+        });
     }
 
     public function test_only_owner_can_update_or_delete_an_alert(): void

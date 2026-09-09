@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Events\AlertEngagementUpdated;
 use App\Models\Concerns\HasEngagement;
 use App\Models\Concerns\PresentsMedia;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use Throwable;
 
 class Alert extends Model
 {
@@ -103,5 +105,18 @@ class Alert extends Model
         return $userId !== null
             && $this->isInProgress()
             && $this->action_user_id === $userId;
+    }
+
+    public function broadcastEngagementCounts(?int $likesCount = null, ?int $commentsCount = null): void
+    {
+        try {
+            broadcast(new AlertEngagementUpdated(
+                $this->id,
+                $likesCount ?? $this->likes()->count(),
+                $commentsCount ?? $this->comments()->where('status', 'approved')->count(),
+            ));
+        } catch (Throwable $exception) {
+            report($exception);
+        }
     }
 }

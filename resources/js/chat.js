@@ -13,6 +13,7 @@ export function registerChat(Alpine) {
         pollTimer: null,
 
         init() {
+            window.activeConversationId = this.conversationId;
             this.scrollToBottom();
             this.subscribeToEcho();
             this.pollTimer = window.setInterval(() => {
@@ -21,6 +22,10 @@ export function registerChat(Alpine) {
         },
 
         destroy() {
+            if (Number(window.activeConversationId) === Number(this.conversationId)) {
+                window.activeConversationId = null;
+            }
+
             if (this.pollTimer) {
                 window.clearInterval(this.pollTimer);
             }

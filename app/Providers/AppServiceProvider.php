@@ -22,6 +22,7 @@ class AppServiceProvider extends ServiceProvider
         Relation::enforceMorphMap([
             'post' => Post::class,
             'alert' => Alert::class,
+            'user' => User::class,
         ]);
 
         foreach (Permission::cases() as $permission) {

@@ -1,5 +1,23 @@
-<nav x-data="{ open: false }" class="sticky top-0 z-40 border-b border-gray-100 bg-white/95 backdrop-blur">
-    @php($unreadChats = auth()->check() ? auth()->user()->unreadConversationCount() : 0)
+@php
+    $unreadChats = 0;
+    $unreadNotifications = 0;
+    $notificationConfig = [];
+
+    if (auth()->check()) {
+        $unreadChats = auth()->user()->unreadConversationCount();
+        $unreadNotifications = auth()->user()->unreadNotifications()->count();
+        $notificationConfig = [
+            'userId' => auth()->id(),
+            'unread' => $unreadNotifications,
+            'chatUnread' => $unreadChats,
+            'items' => auth()->user()->notificationInbox(),
+            'markReadTemplate' => url('/notifications/__ID__/read'),
+            'markAllUrl' => route('notifications.read-all'),
+            'csrfToken' => csrf_token(),
+        ];
+    }
+@endphp
+<nav x-data="{ open: false }" @if(auth()->check()) x-init="$store.notifications.boot(@js($notificationConfig))" @endif class="sticky top-0 z-40 border-b border-gray-100 bg-white/95 backdrop-blur">
     <div class="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <a href="{{ auth()->check() ? route('posts.index') : route('home') }}" class="shrink-0">
             <x-brand />
@@ -19,10 +37,14 @@
                 </a>
                 <a href="{{ route('messages.index') }}" class="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-gray-500 hover:bg-sand-50 hover:text-forest-800" aria-label="{{ __('Chat') }}">
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M7 8h10M7 12h6m8 1a9 9 0 1 1-3.2-6.96L21 3v6h-6"/></svg>
-                    @if($unreadChats > 0)
-                        <span class="absolute -right-0.5 -top-0.5 inline-flex min-w-5 items-center justify-center rounded-full bg-lime-400 px-1 text-[10px] font-bold text-forest-900">{{ $unreadChats }}</span>
-                    @endif
+                    <span
+                        x-show="$store.notifications.chatUnread > 0"
+                        x-cloak
+                        x-text="$store.notifications.chatUnread"
+                        class="absolute -right-0.5 -top-0.5 inline-flex min-w-5 items-center justify-center rounded-full bg-lime-400 px-1 text-[10px] font-bold text-forest-900"
+                    >{{ $unreadChats }}</span>
                 </a>
+                @include('layouts.partials.notification-bell')
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button type="button" class="inline-flex items-center gap-2 rounded-full p-0.5 hover:bg-sand-50">
@@ -81,8 +103,11 @@
                 <x-responsive-nav-link :href="route('explore.index')">{{ __('Explore') }}</x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('alerts.index')">{{ __('Alerts') }}</x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('tips.index')">{{ __('Tips') }}</x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('messages.index')">{{ __('Chat') }} @if($unreadChats > 0) ({{ $unreadChats }}) @endif</x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('messages.index')">{{ __('Chat') }} <span x-show="$store.notifications.chatUnread > 0" x-cloak x-text="'(' + $store.notifications.chatUnread + ')'">@if($unreadChats > 0) ({{ $unreadChats }}) @endif</span></x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('users.show', auth()->user())">{{ __('My profile') }}</x-responsive-nav-link>
+                <div class="px-3 py-2">
+                    @include('layouts.partials.notification-bell')
+                </div>
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
                     <x-responsive-nav-link :href="route('logout')" onclick="event.preventDefault(); this.closest('form').submit();">{{ __('Log Out') }}</x-responsive-nav-link>

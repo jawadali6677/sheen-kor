@@ -27,7 +27,7 @@
             <label for="conversation-search" class="sr-only">Search conversations</label>
             <input id="conversation-search" type="search" x-model="query" class="sk-input" placeholder="Search messages or people">
         </div>
-        <div class="flex-1 overflow-y-auto">
+        <div class="flex-1 overflow-y-auto" data-conversation-list>
             @forelse($conversations as $item)
                 @php
                     $title = $item->displayTitle(auth()->user());
@@ -36,6 +36,7 @@
                 @endphp
                 <a
                     href="{{ route('messages.show', $item) }}"
+                    data-conversation-id="{{ $item->id }}"
                     class="flex items-center gap-3 px-4 py-3 hover:bg-sand-50 {{ $conversation && $conversation->id === $item->id ? 'bg-forest-50' : '' }}"
                     data-search="{{ $haystack }}"
                     x-show="query === '' || ($el.dataset.search || '').includes(query.toLowerCase())"
@@ -43,13 +44,13 @@
                     <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-forest-800 text-sm font-semibold text-white">{{ mb_strtoupper(mb_substr($title, 0, 1)) }}</div>
                     <div class="min-w-0 flex-1">
                         <div class="flex items-center justify-between gap-2">
-                            <p class="truncate text-sm {{ $item->unread_count > 0 ? 'font-bold text-forest-900' : 'font-medium text-forest-800' }}">{{ $title }}</p>
-                            <span class="shrink-0 text-[11px] text-gray-400">{{ $item->latestMessage?->created_at?->diffForHumans() }}</span>
+                            <p data-conversation-title class="truncate text-sm {{ $item->unread_count > 0 ? 'font-bold text-forest-900' : 'font-medium text-forest-800' }}">{{ $title }}</p>
+                            <span data-conversation-time class="shrink-0 text-[11px] text-gray-400">{{ $item->latestMessage?->created_at?->diffForHumans() }}</span>
                         </div>
-                        <div class="flex items-center justify-between gap-2">
-                            <p class="truncate text-sm {{ $item->unread_count > 0 ? 'font-semibold text-gray-700' : 'text-gray-500' }}">{{ $preview }}</p>
+                        <div class="flex items-center justify-between gap-2" data-conversation-unread-holder>
+                            <p data-conversation-preview class="truncate text-sm {{ $item->unread_count > 0 ? 'font-semibold text-gray-700' : 'text-gray-500' }}">{{ $preview }}</p>
                             @if($item->unread_count > 0)
-                                <span class="inline-flex min-w-5 items-center justify-center rounded-full bg-lime-400 px-1.5 text-[11px] font-bold text-forest-900">{{ $item->unread_count }}</span>
+                                <span data-conversation-unread class="inline-flex min-w-5 items-center justify-center rounded-full bg-lime-400 px-1.5 text-[11px] font-bold text-forest-900">{{ $item->unread_count }}</span>
                             @endif
                         </div>
                     </div>

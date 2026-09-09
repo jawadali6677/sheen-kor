@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Events\PostEngagementUpdated;
 use App\Models\Concerns\HasEngagement;
 use App\Models\Concerns\PresentsMedia;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use Throwable;
 
 class Post extends Model
 {
@@ -55,5 +57,18 @@ class Post extends Model
     public function tips()
     {
         return $this->hasMany(Tip::class);
+    }
+
+    public function broadcastEngagementCounts(?int $likesCount = null, ?int $commentsCount = null): void
+    {
+        try {
+            broadcast(new PostEngagementUpdated(
+                $this->id,
+                $likesCount ?? $this->likes()->count(),
+                $commentsCount ?? $this->comments()->where('status', 'approved')->count(),
+            ));
+        } catch (Throwable $exception) {
+            report($exception);
+        }
     }
 }

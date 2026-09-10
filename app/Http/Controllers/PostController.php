@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Actions\AwardScore;
+use App\Actions\ModerateContent;
 use App\Actions\RevokeScore;
+use App\Enums\ModerationDecision;
 use App\Enums\ScoreReason;
 use App\Models\Category;
 use App\Models\Post;
@@ -19,6 +21,7 @@ class PostController extends Controller
     public function __construct(
         private AwardScore $awardScore,
         private RevokeScore $revokeScore,
+        private ModerateContent $moderateContent,
     ) {}
 
     /**
@@ -220,14 +223,6 @@ class PostController extends Controller
             $this->awardScore->handle($request->user(), ScoreReason::PostCreated, $post);
 
             DB::commit();
-
-            return redirect()
-                ->route('posts.index')
-                ->with(
-                    'success',
-                    'Your story has been submitted successfully and is awaiting review.'
-                );
-
         } catch (Throwable $e) {
 
             DB::rollBack();
@@ -241,6 +236,15 @@ class PostController extends Controller
                     'Something went wrong while creating your story.'
                 );
         }
+
+        $this->applyContentModeration($post);
+
+        return redirect()
+            ->route('posts.index')
+            ->with(
+                'success',
+                $this->moderationFlashMessage($post, created: true)
+            );
     }
 
     /**
@@ -554,14 +558,6 @@ class PostController extends Controller
             }
 
             DB::commit();
-
-            return redirect()
-                ->route('posts.index')
-                ->with(
-                    'success',
-                    'Your story has been updated successfully and is awaiting review.'
-                );
-
         } catch (Throwable $e) {
 
             DB::rollBack();
@@ -575,6 +571,15 @@ class PostController extends Controller
                     'Something went wrong while updating your story.'
                 );
         }
+
+        $this->applyContentModeration($post);
+
+        return redirect()
+            ->route('posts.index')
+            ->with(
+                'success',
+                $this->moderationFlashMessage($post, created: false)
+            );
     }
 
     /**
@@ -656,5 +661,84 @@ class PostController extends Controller
                     'Something went wrong while deleting your story.'
                 );
         }
+    }
+
+    private function applyContentModeration(Post $post): void
+    {
+        try {
+            $post->refresh()->load('images');
+
+            $text = trim(implode("\n\n", array_filter([
+                $post->title,
+                $post->excerpt,
+                $post->content,
+            ], fn (?string $value): bool => filled($value))));
+
+            $imagePaths = [];
+            $videoPaths = [];
+
+            if (filled($post->featured_image)) {
+                $imagePaths[] = Storage::disk('public')->path($post->featured_image);
+            }
+
+            foreach ($post->images as $media) {
+                $path = Storage::disk('public')->path($media->image);
+
+                if ($media->isVideo()) {
+                    $videoPaths[] = $path;
+
+                    continue;
+                }
+
+                $imagePaths[] = $path;
+            }
+
+            $decision = $this->moderateContent->handle($text, $imagePaths, $videoPaths);
+
+            if ($decision === ModerationDecision::Allow) {
+                $post->update([
+                    'status' => 'published',
+                    'published_at' => now(),
+                ]);
+
+                return;
+            }
+
+            if ($decision === ModerationDecision::Reject) {
+                $post->update([
+                    'status' => 'rejected',
+                    'published_at' => null,
+                ]);
+
+                return;
+            }
+
+            $post->update([
+                'status' => 'pending',
+                'published_at' => null,
+            ]);
+        } catch (Throwable $exception) {
+            report($exception);
+
+            $post->update([
+                'status' => 'pending',
+                'published_at' => null,
+            ]);
+        }
+    }
+
+    private function moderationFlashMessage(Post $post, bool $created): string
+    {
+        $post->refresh();
+
+        return match ($post->status) {
+            'published' => $created
+                ? 'Your story has been published.'
+                : 'Your story has been updated and published.',
+            'rejected' => 'Your story was not published because it did not meet community guidelines.',
+            default => $created
+                ? 'Your story has been submitted successfully and is awaiting review.'
+                : 'Your story has been updated successfully and is awaiting review.',
+        };
     }
 }

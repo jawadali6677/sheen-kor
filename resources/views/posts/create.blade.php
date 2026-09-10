@@ -15,6 +15,9 @@
                     action="{{ route('posts.store') }}"
                     method="POST"
                     enctype="multipart/form-data"
+                    class="relative"
+                    x-data="postComposer()"
+                    @submit="onSubmit($event)"
                 >
 
                     @csrf
@@ -121,7 +124,7 @@
                     {{-- Buttons --}}
                     <div class="flex items-center gap-4">
 
-                        <button type="submit" class="btn-primary">
+                        <button type="submit" class="btn-primary" x-bind:disabled="submitting">
                             Submit Story
                         </button>
 
@@ -129,6 +132,18 @@
                             Cancel
                         </a>
 
+                    </div>
+
+                    <div
+                        x-cloak
+                        x-show="submitting"
+                        class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-xl bg-white/90 px-6 text-center"
+                        role="status"
+                        aria-live="polite"
+                        aria-busy="true"
+                    >
+                        <p class="font-semibold text-forest-900">Checking your post...</p>
+                        <p class="text-sm text-gray-500">Verifying content...</p>
                     </div>
 
                 </form>

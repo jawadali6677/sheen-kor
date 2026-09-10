@@ -31,6 +31,25 @@ export function registerSheenUi(Alpine) {
 
     window.skConfirm = (options) => Alpine.store('confirm').ask(options);
 
+    window.skBackToStories = (event) => {
+        if (window.history.length <= 1 || ! document.referrer) {
+            return;
+        }
+
+        try {
+            const referrer = new URL(document.referrer);
+
+            if (referrer.origin !== window.location.origin) {
+                return;
+            }
+        } catch (error) {
+            return;
+        }
+
+        event.preventDefault();
+        window.history.back();
+    };
+
     Alpine.data('mediaCarousel', (count) => ({
         index: 0,
         count,
@@ -56,7 +75,17 @@ export function registerSheenUi(Alpine) {
         loading: false,
         finished: ! config.nextUrl,
         observer: null,
+        onPageShow: null,
         init() {
+            this.restoreScroll();
+            this.onPageShow = (event) => {
+                if (! event.persisted) {
+                    this.restoreScroll();
+                }
+            };
+            window.addEventListener('pagehide', () => this.saveScroll());
+            window.addEventListener('pageshow', this.onPageShow);
+
             if (! this.$refs.sentinel || this.finished) {
                 return;
             }
@@ -68,6 +97,23 @@ export function registerSheenUi(Alpine) {
             }, { rootMargin: '480px 0px' });
 
             this.observer.observe(this.$refs.sentinel);
+        },
+        saveScroll() {
+            sessionStorage.setItem('sk-feed-scroll', JSON.stringify({
+                key: window.location.pathname + window.location.search,
+                y: window.scrollY,
+            }));
+        },
+        restoreScroll() {
+            try {
+                const saved = JSON.parse(sessionStorage.getItem('sk-feed-scroll') || 'null');
+
+                if (saved?.key === window.location.pathname + window.location.search) {
+                    window.requestAnimationFrame(() => window.scrollTo(0, Number(saved.y) || 0));
+                }
+            } catch (error) {
+                // Ignore unreadable session storage.
+            }
         },
         async loadMore() {
             if (this.loading || ! this.nextUrl) {
@@ -138,7 +184,7 @@ export function registerSheenUi(Alpine) {
                     event.preventDefault();
                     event.stopPropagation();
                 }
-            });
+            }, true);
         },
         openPicker() {
             this.$refs.picker?.click();
@@ -263,6 +309,22 @@ export function registerSheenUi(Alpine) {
             this.assignFiles(this.$refs.videos, videos);
 
             return true;
+        },
+    }));
+
+    Alpine.data('postComposer', () => ({
+        submitting: false,
+        onSubmit(event) {
+            if (event.defaultPrevented) {
+                return;
+            }
+
+            if (this.submitting) {
+                event.preventDefault();
+                return;
+            }
+
+            this.submitting = true;
         },
     }));
 

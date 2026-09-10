@@ -34,6 +34,9 @@
                     action="{{ route('posts.update', $post) }}"
                     method="POST"
                     enctype="multipart/form-data"
+                    class="relative"
+                    x-data="postComposer()"
+                    @submit="onSubmit($event)"
                 >
 
                     @csrf
@@ -166,6 +169,7 @@
                         <button
                             type="submit"
                             class="px-5 py-2 bg-gray-800 text-white rounded"
+                            x-bind:disabled="submitting"
                         >
                             Update Story
                         </button>
@@ -177,6 +181,18 @@
                             Cancel
                         </a>
 
+                    </div>
+
+                    <div
+                        x-cloak
+                        x-show="submitting"
+                        class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-xl bg-white/90 px-6 text-center"
+                        role="status"
+                        aria-live="polite"
+                        aria-busy="true"
+                    >
+                        <p class="font-semibold text-forest-900">Checking your post...</p>
+                        <p class="text-sm text-gray-500">Verifying content...</p>
                     </div>
 
                 </form>

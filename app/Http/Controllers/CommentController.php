@@ -211,6 +211,8 @@ class CommentController extends Controller
             ],
         ]);
 
+        $threadParentId = null;
+
         if ($request->filled('parent_id')) {
             $parent = Comment::query()->find($request->integer('parent_id'));
 
@@ -218,19 +220,20 @@ class CommentController extends Controller
                 ! $parent ||
                 $parent->commentable_id !== $commentable->id ||
                 $parent->commentable_type !== $commentable->getMorphClass() ||
-                $parent->status !== 'approved' ||
-                $parent->parent_id !== null
+                $parent->status !== 'approved'
             ) {
                 return response()->json([
                     'success' => false,
-                    'message' => "You can only reply to a top-level comment on this {$noun}.",
+                    'message' => "You can only reply to a comment on this {$noun}.",
                     'errors' => [
                         'parent_id' => [
-                            "You can only reply to a top-level comment on this {$noun}.",
+                            "You can only reply to a comment on this {$noun}.",
                         ],
                     ],
                 ], 422);
             }
+
+            $threadParentId = $parent->parent_id ?: $parent->id;
         }
 
         DB::beginTransaction();
@@ -239,7 +242,7 @@ class CommentController extends Controller
 
             $comment = $commentable->comments()->create([
                 'user_id' => auth()->id(),
-                'parent_id' => $request->input('parent_id'),
+                'parent_id' => $threadParentId,
                 'content' => $request->content,
                 'status' => 'approved',
             ]);

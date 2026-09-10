@@ -166,9 +166,7 @@
         var name = (comment.user && comment.user.name) || 'Unknown User';
         var actions = '';
 
-        if (!isReply) {
-            actions += '<button type="button" class="btn btn-link btn-sm p-0 js-reply-comment">Reply</button>';
-        }
+        actions += '<button type="button" class="btn btn-link btn-sm p-0 js-reply-comment">Reply</button>';
 
         if (comment.can_edit) {
             actions += '<button type="button" class="btn btn-link btn-sm p-0 js-edit-comment">Edit</button>';

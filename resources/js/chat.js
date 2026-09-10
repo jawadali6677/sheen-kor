@@ -14,7 +14,7 @@ export function registerChat(Alpine) {
 
         init() {
             window.activeConversationId = this.conversationId;
-            this.scrollToBottom();
+            this.queueScrollToBottom();
             this.subscribeToEcho();
             this.pollTimer = window.setInterval(() => {
                 this.fetchNewMessages();
@@ -197,7 +197,14 @@ export function registerChat(Alpine) {
             }
 
             this.messages.push(message);
-            this.$nextTick(() => this.scrollToBottom());
+            this.queueScrollToBottom();
+        },
+
+        queueScrollToBottom() {
+            this.$nextTick(() => {
+                this.scrollToBottom();
+                window.requestAnimationFrame(() => this.scrollToBottom());
+            });
         },
 
         scrollToBottom() {

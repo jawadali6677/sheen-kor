@@ -246,7 +246,7 @@ class PostEngagementTest extends TestCase
         ]);
     }
 
-    public function test_user_can_reply_to_a_top_level_comment_only(): void
+    public function test_user_can_reply_to_a_child_comment_on_the_same_branch(): void
     {
         $user = User::factory()->create();
         $post = $this->publishedPost();
@@ -268,10 +268,11 @@ class PostEngagementTest extends TestCase
 
         $this->actingAs($user)
             ->postJson(route('posts.comments.store', $post), [
-                'content' => 'Nested reply is not allowed.',
+                'content' => 'Reply to the child stays on this branch.',
                 'parent_id' => $reply->json('comment.id'),
             ])
-            ->assertUnprocessable();
+            ->assertCreated()
+            ->assertJsonPath('comment.parent_id', $parent->id);
 
         $otherPost = $this->publishedPost();
 

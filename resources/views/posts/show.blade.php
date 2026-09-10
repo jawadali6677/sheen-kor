@@ -40,7 +40,7 @@
                             <button type="submit" class="btn-secondary text-red-700">Delete Story</button>
                         </form>
                     @endcan
-                    <a href="{{ route('posts.index') }}" class="btn-secondary">Back to Stories</a>
+                    <a href="{{ route('posts.index') }}" class="btn-secondary" onclick="skBackToStories(event)">Back to Stories</a>
                 </div>
             </div>
         </article>

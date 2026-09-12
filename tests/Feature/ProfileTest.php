@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Alert;
+use App\Models\Post;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -164,5 +166,109 @@ class ProfileTest extends TestCase
         $this->actingAs($viewer)
             ->get(route('users.show', $profile))
             ->assertNotFound();
+    }
+
+    public function test_fixes_tab_lists_claimed_in_progress_and_fixed_alerts(): void
+    {
+        $profile = User::factory()->create();
+        $reporter = User::factory()->create();
+        $takenAt = now()->subDays(3);
+        $fixedAt = now()->subDay();
+
+        Alert::factory()->create([
+            'user_id' => $profile->id,
+            'title' => 'Created Only Dump',
+            'location_name' => 'Created Only Street',
+            'status' => 'open',
+        ]);
+        Alert::factory()->create([
+            'user_id' => $reporter->id,
+            'action_user_id' => $profile->id,
+            'title' => 'River Cleanup In Progress',
+            'location_name' => 'North river bank',
+            'status' => 'in_progress',
+            'action_taken_at' => $takenAt,
+        ]);
+        Alert::factory()->create([
+            'user_id' => $reporter->id,
+            'action_user_id' => $profile->id,
+            'title' => 'Park Restored',
+            'location_name' => 'Central park path',
+            'status' => 'fixed',
+            'action_taken_at' => $takenAt,
+            'fixed_at' => $fixedAt,
+        ]);
+
+        $this->actingAs($profile)
+            ->get(route('users.show', ['user' => $profile, 'tab' => 'fixes']))
+            ->assertOk()
+            ->assertSee('River Cleanup In Progress')
+            ->assertSee('In progress')
+            ->assertSee('North river bank')
+            ->assertSee($takenAt->format('M d, Y'))
+            ->assertSee('Park Restored')
+            ->assertSee('Resolved')
+            ->assertSee('Central park path')
+            ->assertSee($fixedAt->format('M d, Y'))
+            ->assertDontSee('Created Only Dump')
+            ->assertDontSee('Created Only Street');
+    }
+
+    public function test_posts_and_alerts_tabs_do_not_include_claimed_only_alerts(): void
+    {
+        $profile = User::factory()->create();
+        $reporter = User::factory()->create();
+
+        Post::factory()->create([
+            'user_id' => $profile->id,
+            'title' => 'Neighborhood Tree Walk',
+            'status' => 'published',
+        ]);
+        Alert::factory()->create([
+            'user_id' => $profile->id,
+            'title' => 'Created Only Dump',
+            'status' => 'open',
+        ]);
+        Alert::factory()->create([
+            'user_id' => $reporter->id,
+            'action_user_id' => $profile->id,
+            'title' => 'Claimed Only Cleanup',
+            'status' => 'in_progress',
+            'action_taken_at' => now(),
+        ]);
+        Alert::factory()->create([
+            'user_id' => $reporter->id,
+            'action_user_id' => $profile->id,
+            'title' => 'Claimed Only Restore',
+            'status' => 'fixed',
+            'action_taken_at' => now()->subDay(),
+            'fixed_at' => now(),
+        ]);
+
+        $this->actingAs($profile)
+            ->get(route('users.show', ['user' => $profile, 'tab' => 'stories']))
+            ->assertOk()
+            ->assertSee('Neighborhood Tree Walk')
+            ->assertDontSee('Claimed Only Cleanup')
+            ->assertDontSee('Claimed Only Restore')
+            ->assertDontSee('Created Only Dump');
+
+        $this->actingAs($profile)
+            ->get(route('users.show', ['user' => $profile, 'tab' => 'alerts']))
+            ->assertOk()
+            ->assertSee('Created Only Dump')
+            ->assertDontSee('Claimed Only Cleanup')
+            ->assertDontSee('Claimed Only Restore')
+            ->assertDontSee('Neighborhood Tree Walk');
+
+        $this->actingAs($profile)
+            ->get(route('users.show', ['user' => $profile, 'tab' => 'fixes']))
+            ->assertOk()
+            ->assertViewHas('profile', function (User $user): bool {
+                return $user->fixes_count === 1;
+            })
+            ->assertSee('Claimed Only Cleanup')
+            ->assertSee('Claimed Only Restore')
+            ->assertDontSee('Created Only Dump');
     }
 }

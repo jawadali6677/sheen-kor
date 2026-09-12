@@ -63,6 +63,7 @@
         <div class="profile-tabs">
             <a href="{{ route('users.show', ['user' => $profile, 'tab' => 'stories']) }}" class="{{ $tab === 'stories' ? 'active' : '' }}">Posts</a>
             <a href="{{ route('users.show', ['user' => $profile, 'tab' => 'alerts']) }}" class="{{ $tab === 'alerts' ? 'active' : '' }}">Alerts</a>
+            <a href="{{ route('users.show', ['user' => $profile, 'tab' => 'fixes']) }}" class="{{ $tab === 'fixes' ? 'active' : '' }}">Fixes</a>
             <a href="{{ route('users.show', ['user' => $profile, 'tab' => 'activity']) }}" class="{{ $tab === 'activity' ? 'active' : '' }}">Activity</a>
         </div>
 
@@ -88,6 +89,28 @@
                     </a>
                 @empty
                     <p class="col-span-3 py-10 text-center text-gray-500">No alerts yet.</p>
+                @endforelse
+            </div>
+        @elseif($tab === 'fixes')
+            <div class="space-y-3">
+                @forelse($claimedAlerts as $alert)
+                    @php
+                        $actionDate = $alert->isFixed() ? $alert->fixed_at : $alert->action_taken_at;
+                    @endphp
+                    <a href="{{ route('alerts.show', $alert) }}" class="sk-card flex flex-col gap-2 p-4 hover:bg-forest-50/40">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <h2 class="text-base font-semibold text-forest-900">{{ $alert->title }}</h2>
+                            <x-status-badge :alert="$alert" />
+                        </div>
+                        <p class="text-sm text-gray-500">
+                            {{ $alert->location_name }}
+                            @if($actionDate)
+                                · {{ $actionDate->format('M d, Y') }}
+                            @endif
+                        </p>
+                    </a>
+                @empty
+                    <p class="py-10 text-center text-gray-500">No fixes yet.</p>
                 @endforelse
             </div>
         @else

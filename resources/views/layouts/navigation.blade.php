@@ -56,6 +56,9 @@
                         <x-dropdown-link :href="route('users.show', auth()->user())">{{ __('My profile') }}</x-dropdown-link>
                         <x-dropdown-link :href="route('profile.edit')">{{ __('Edit profile') }}</x-dropdown-link>
                         <x-dropdown-link :href="route('leaderboard.index')">{{ __('Scores') }}</x-dropdown-link>
+                        @can('posts.moderate')
+                            <x-dropdown-link :href="route('admin.posts.index', ['status' => 'pending'])">{{ __('Review stories') }}</x-dropdown-link>
+                        @endcan
                         @can('analytics.view')
                             <x-dropdown-link :href="route('analytics.index')">{{ __('Analytics') }}</x-dropdown-link>
                         @endcan
@@ -105,6 +108,9 @@
                 <x-responsive-nav-link :href="route('tips.index')">{{ __('Tips') }}</x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('messages.index')">{{ __('Chat') }} <span x-show="$store.notifications.chatUnread > 0" x-cloak x-text="'(' + $store.notifications.chatUnread + ')'">@if($unreadChats > 0) ({{ $unreadChats }}) @endif</span></x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('users.show', auth()->user())">{{ __('My profile') }}</x-responsive-nav-link>
+                @can('posts.moderate')
+                    <x-responsive-nav-link :href="route('admin.posts.index', ['status' => 'pending'])">{{ __('Review stories') }}</x-responsive-nav-link>
+                @endcan
                 <div class="px-3 py-2">
                     @include('layouts.partials.notification-bell')
                 </div>

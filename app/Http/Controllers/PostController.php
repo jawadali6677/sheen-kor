@@ -6,11 +6,13 @@ use App\Actions\AwardScore;
 use App\Actions\ModerateContent;
 use App\Actions\RevokeScore;
 use App\Enums\ModerationDecision;
+use App\Enums\Permission;
 use App\Enums\ScoreReason;
 use App\Models\Category;
 use App\Models\Post;
 use App\Models\PostImage;
 use App\Models\User;
+use App\Notifications\PostNeedsReview;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -717,6 +719,8 @@ class PostController extends Controller
                 'status' => 'pending',
                 'published_at' => null,
             ]);
+
+            $this->notifyReviewersIfPending($post);
         } catch (Throwable $exception) {
             report($exception);
 
@@ -724,6 +728,36 @@ class PostController extends Controller
                 'status' => 'pending',
                 'published_at' => null,
             ]);
+
+            $this->notifyReviewersIfPending($post);
+        }
+    }
+
+    private function notifyReviewersIfPending(Post $post): void
+    {
+        $post->refresh()->loadMissing('user');
+
+        if ($post->status !== 'pending') {
+            return;
+        }
+
+        $reviewers = User::query()->withPermission(Permission::ModeratePosts)->get();
+
+        foreach ($reviewers as $reviewer) {
+            $alreadyNotified = $reviewer->unreadNotifications()
+                ->where('type', PostNeedsReview::class)
+                ->where('data->post_id', $post->id)
+                ->exists();
+
+            if ($alreadyNotified) {
+                continue;
+            }
+
+            try {
+                $reviewer->notifyInbox(new PostNeedsReview($post));
+            } catch (Throwable $exception) {
+                report($exception);
+            }
         }
     }
 

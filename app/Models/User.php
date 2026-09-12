@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\Permission;
 use App\Events\UserNotificationBroadcasted;
 use App\Models\Role as AccessRole;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -216,6 +217,23 @@ class User extends Authenticatable
     public function extraPermissionRecords(): HasMany
     {
         return $this->hasMany(UserPermission::class);
+    }
+
+    /**
+     * @param  Builder<User>  $query
+     */
+    public function scopeWithPermission(Builder $query, Permission $permission): void
+    {
+        $query->where('status', true)
+            ->where(function (Builder $query) use ($permission): void {
+                $query->where('role', AccessRole::ADMIN)
+                    ->orWhereHas('assignedRole.permissionRecords', function (Builder $query) use ($permission): void {
+                        $query->where('permission', $permission->value);
+                    })
+                    ->orWhereHas('extraPermissionRecords', function (Builder $query) use ($permission): void {
+                        $query->where('permission', $permission->value);
+                    });
+            });
     }
 
     public function roleLabel(): string

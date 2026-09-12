@@ -33,4 +33,9 @@ class PostPolicy
     {
         return $this->update($user, $post);
     }
+
+    public function moderate(User $user): bool
+    {
+        return $user->hasPermission(Permission::ModeratePosts);
+    }
 }

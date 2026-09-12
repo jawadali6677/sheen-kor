@@ -328,6 +328,266 @@ export function registerSheenUi(Alpine) {
         },
     }));
 
+    Alpine.data('adminPostsQueue', () => ({
+        loading: false,
+        acting: false,
+        debounceTimer: null,
+        onPopState: null,
+        init() {
+            this.onPopState = () => this.load(window.location.href, false);
+            window.addEventListener('popstate', this.onPopState);
+            this.$el.addEventListener('click', (event) => this.onClick(event));
+            this.$el.addEventListener('submit', (event) => this.onSubmit(event));
+            this.$el.querySelector('[data-admin-posts-search] input[name="q"]')
+                ?.addEventListener('input', (event) => this.onSearchInput(event));
+        },
+        destroy() {
+            if (this.onPopState) {
+                window.removeEventListener('popstate', this.onPopState);
+            }
+
+            if (this.debounceTimer) {
+                window.clearTimeout(this.debounceTimer);
+            }
+        },
+        csrf() {
+            return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        },
+        searchForm() {
+            return this.$el.querySelector('[data-admin-posts-search]');
+        },
+        onSearchInput() {
+            if (this.debounceTimer) {
+                window.clearTimeout(this.debounceTimer);
+            }
+
+            this.debounceTimer = window.setTimeout(() => {
+                this.loadFromSearch();
+            }, 300);
+        },
+        onClick(event) {
+            const filterLink = event.target.closest('[data-admin-posts-filter]');
+
+            if (filterLink instanceof HTMLAnchorElement && this.$el.contains(filterLink)) {
+                event.preventDefault();
+                this.load(this.urlWithSearch(filterLink.href), true);
+                return;
+            }
+
+            const paginationLink = event.target.closest('[data-admin-posts-pagination] a');
+
+            if (paginationLink instanceof HTMLAnchorElement && this.$el.contains(paginationLink)) {
+                event.preventDefault();
+                this.load(paginationLink.href, true);
+            }
+        },
+        onSubmit(event) {
+            const form = event.target;
+
+            if (! (form instanceof HTMLFormElement) || ! this.$el.contains(form)) {
+                return;
+            }
+
+            if (form.hasAttribute('data-admin-posts-search')) {
+                event.preventDefault();
+                this.loadFromSearch();
+                return;
+            }
+
+            if (! form.hasAttribute('data-admin-posts-action')) {
+                return;
+            }
+
+            event.preventDefault();
+            this.submitAction(form);
+        },
+        urlWithSearch(href) {
+            const url = new URL(href, window.location.origin);
+            const query = this.searchForm()?.elements.namedItem('q');
+            const search = query instanceof HTMLInputElement ? query.value.trim() : '';
+
+            if (search !== '') {
+                url.searchParams.set('q', search);
+            } else {
+                url.searchParams.delete('q');
+            }
+
+            url.searchParams.delete('page');
+
+            return url.toString();
+        },
+        loadFromSearch() {
+            const form = this.searchForm();
+
+            if (! (form instanceof HTMLFormElement)) {
+                return;
+            }
+
+            const url = new URL(form.action, window.location.origin);
+            const status = form.elements.namedItem('status');
+            const query = form.elements.namedItem('q');
+
+            if (status instanceof HTMLInputElement && status.value) {
+                url.searchParams.set('status', status.value);
+            }
+
+            const search = query instanceof HTMLInputElement ? query.value.trim() : '';
+
+            if (search !== '') {
+                url.searchParams.set('q', search);
+            }
+
+            this.load(url.toString(), true);
+        },
+        async load(href, push) {
+            if (this.loading) {
+                return;
+            }
+
+            this.loading = true;
+
+            try {
+                const url = new URL(href, window.location.origin);
+                url.searchParams.set('partial', '1');
+
+                const response = await fetch(url.toString(), {
+                    headers: {
+                        Accept: 'text/html',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-Infinite-Scroll': '1',
+                    },
+                });
+
+                if (! response.ok) {
+                    return;
+                }
+
+                this.$refs.results.innerHTML = (await response.text()).trim();
+
+                if (window.Alpine) {
+                    window.Alpine.initTree(this.$refs.results);
+                }
+
+                this.syncChrome();
+
+                if (push) {
+                    url.searchParams.delete('partial');
+                    window.history.pushState({}, '', url.pathname + url.search);
+                }
+            } finally {
+                this.loading = false;
+            }
+        },
+        syncChrome() {
+            const meta = this.$refs.results.querySelector('[data-admin-posts-meta]');
+
+            if (! (meta instanceof HTMLElement)) {
+                return;
+            }
+
+            const status = meta.getAttribute('data-status') || 'pending';
+            const search = meta.getAttribute('data-search') || '';
+            let counts = {};
+
+            try {
+                counts = JSON.parse(meta.getAttribute('data-counts') || '{}');
+            } catch (error) {
+                counts = {};
+            }
+
+            const statusInput = this.searchForm()?.elements.namedItem('status');
+
+            if (statusInput instanceof HTMLInputElement) {
+                statusInput.value = status;
+            }
+
+            const searchInput = this.searchForm()?.elements.namedItem('q');
+
+            if (searchInput instanceof HTMLInputElement && document.activeElement !== searchInput) {
+                searchInput.value = search;
+            }
+
+            this.$el.querySelectorAll('[data-admin-posts-filter]').forEach((link) => {
+                const active = link.getAttribute('data-admin-posts-filter') === status;
+                const isTab = link.closest('[data-admin-posts-tabs]');
+
+                if (isTab) {
+                    link.className = active
+                        ? 'rounded-full px-3 py-1 bg-forest-800 text-white'
+                        : 'rounded-full px-3 py-1 bg-white text-gray-700 ring-1 ring-gray-200';
+                } else {
+                    link.classList.toggle('ring-2', active);
+                    link.classList.toggle('ring-amber-400', active && status === 'pending');
+                    link.classList.toggle('ring-forest-400', active && status === 'published');
+                    link.classList.toggle('ring-red-300', active && status === 'rejected');
+                    link.classList.toggle('ring-gray-400', active && status === 'all');
+                }
+            });
+
+            Object.entries(counts).forEach(([key, value]) => {
+                const node = this.$el.querySelector(`[data-count="${key}"]`);
+
+                if (node) {
+                    node.textContent = Number(value).toLocaleString();
+                }
+            });
+        },
+        async submitAction(form) {
+            if (this.acting) {
+                return;
+            }
+
+            this.acting = true;
+            const button = form.querySelector('button[type="submit"]');
+            const original = button instanceof HTMLButtonElement ? button.textContent : '';
+
+            if (button instanceof HTMLButtonElement) {
+                button.disabled = true;
+                button.textContent = 'Working…';
+            }
+
+            try {
+                const response = await fetch(form.action, {
+                    method: (form.getAttribute('method') || 'POST').toUpperCase(),
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': this.csrf(),
+                    },
+                    body: new FormData(form),
+                });
+
+                const payload = await response.json().catch(() => ({}));
+
+                if (! response.ok || payload.success === false) {
+                    this.showNotice(payload.message || 'Something went wrong.', true);
+                    return;
+                }
+
+                this.showNotice(payload.message || 'Saved.');
+                delete form.dataset.confirmAccepted;
+                await this.load(window.location.href, false);
+            } finally {
+                this.acting = false;
+
+                if (button instanceof HTMLButtonElement) {
+                    button.disabled = false;
+                    button.textContent = original;
+                }
+            }
+        },
+        showNotice(message, isError) {
+            const store = window.Alpine?.store('notifications');
+
+            if (store?.showToast) {
+                store.showToast({
+                    title: isError ? 'Could not update' : 'Updated',
+                    body: message,
+                });
+            }
+        },
+    }));
+
     document.addEventListener('submit', async (event) => {
         const form = event.target;
 

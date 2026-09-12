@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\PostController as AdminPostController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\AlertController;
@@ -145,6 +146,15 @@ Route::get('authors/{user}', [ProfileController::class, 'show'])->name('authors.
 Route::get('/dashboard', DashboardController::class)
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
+
+Route::middleware(['auth', 'permission:posts.moderate'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('posts', [AdminPostController::class, 'index'])->name('posts.index');
+    Route::get('posts/{post}', [AdminPostController::class, 'show'])->name('posts.show');
+    Route::post('posts/{post}/publish', [AdminPostController::class, 'publish'])->name('posts.publish');
+    Route::post('posts/{post}/pending', [AdminPostController::class, 'pending'])->name('posts.pending');
+    Route::post('posts/{post}/reject', [AdminPostController::class, 'reject'])->name('posts.reject');
+    Route::delete('posts/{post}', [AdminPostController::class, 'destroy'])->name('posts.destroy');
+});
 
 Route::middleware(['auth', 'permission:users.manage'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('users', [AdminUserController::class, 'index'])->name('users.index');

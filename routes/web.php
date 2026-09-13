@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\MarketListingController as AdminMarketListingController;
 use App\Http\Controllers\Admin\PostController as AdminPostController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
@@ -13,6 +14,7 @@ use App\Http\Controllers\ExploreController;
 use App\Http\Controllers\FollowController;
 use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\LikeController;
+use App\Http\Controllers\MarketListingController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PostController;
@@ -49,6 +51,7 @@ Route::get('/tips', function () {
 
 Route::get('/posts', [PostController::class, 'index'])->name('posts.index');
 Route::get('/alerts', [AlertController::class, 'index'])->name('alerts.index');
+Route::get('/market', [MarketListingController::class, 'index'])->name('market.index');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -81,6 +84,22 @@ Route::middleware('auth')->group(function () {
     Route::put('/alerts/{alert}', [AlertController::class, 'update'])->name('alerts.update');
     Route::patch('/alerts/{alert}', [AlertController::class, 'update']);
     Route::delete('/alerts/{alert}', [AlertController::class, 'destroy'])->name('alerts.destroy');
+
+    Route::get('/market/create', [MarketListingController::class, 'create'])->name('market.create');
+    Route::post('/market', [MarketListingController::class, 'store'])->name('market.store');
+    Route::get('/market/mine', [MarketListingController::class, 'mine'])->name('market.mine');
+    Route::get('/market/{listing}/edit', [MarketListingController::class, 'edit'])->name('market.edit');
+    Route::put('/market/{listing}', [MarketListingController::class, 'update'])->name('market.update');
+    Route::patch('/market/{listing}', [MarketListingController::class, 'update']);
+    Route::delete('/market/{listing}', [MarketListingController::class, 'destroy'])->name('market.destroy');
+    Route::post('/market/{listing}/contact', [MarketListingController::class, 'contact'])->name('market.contact');
+    Route::post('/market/{listing}/sold', [MarketListingController::class, 'markSold'])->name('market.sold');
+    Route::post('/market/{listing}/exchanged', [MarketListingController::class, 'markExchanged'])->name('market.exchanged');
+    Route::post('/market/{listing}/donated', [MarketListingController::class, 'markDonated'])->name('market.donated');
+    Route::post('/market/{listing}/close', [MarketListingController::class, 'close'])->name('market.close');
+    Route::post('/market/{listing}/report', [MarketListingController::class, 'report'])
+        ->middleware('throttle:60,1')
+        ->name('market.report');
 
     Route::post('posts/{post}/likes', [LikeController::class, 'storePost'])
         ->name('posts.likes.store');
@@ -139,6 +158,7 @@ Route::middleware('auth')->group(function () {
 
 Route::get('/posts/{post}', [PostController::class, 'show'])->name('posts.show');
 Route::get('/alerts/{alert}', [AlertController::class, 'show'])->name('alerts.show');
+Route::get('/market/{listing}', [MarketListingController::class, 'show'])->name('market.show');
 Route::get('categories/{category:slug}', [PostController::class, 'byCategory'])->name('categories.show');
 Route::get('/users/{user}', [ProfileController::class, 'show'])->name('users.show');
 Route::get('authors/{user}', [ProfileController::class, 'show'])->name('authors.show');
@@ -154,6 +174,16 @@ Route::middleware(['auth', 'permission:posts.moderate'])->prefix('admin')->name(
     Route::post('posts/{post}/pending', [AdminPostController::class, 'pending'])->name('posts.pending');
     Route::post('posts/{post}/reject', [AdminPostController::class, 'reject'])->name('posts.reject');
     Route::delete('posts/{post}', [AdminPostController::class, 'destroy'])->name('posts.destroy');
+});
+
+Route::middleware(['auth', 'permission:market.moderate'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('market', [AdminMarketListingController::class, 'index'])->name('market.index');
+    Route::get('market/{listing}', [AdminMarketListingController::class, 'show'])->name('market.show');
+    Route::post('market/{listing}/publish', [AdminMarketListingController::class, 'publish'])->name('market.publish');
+    Route::post('market/{listing}/pending', [AdminMarketListingController::class, 'pending'])->name('market.pending');
+    Route::post('market/{listing}/reject', [AdminMarketListingController::class, 'reject'])->name('market.reject');
+    Route::post('market/{listing}/reports/review', [AdminMarketListingController::class, 'reviewReports'])->name('market.reports.review');
+    Route::delete('market/{listing}', [AdminMarketListingController::class, 'destroy'])->name('market.destroy');
 });
 
 Route::middleware(['auth', 'permission:users.manage'])->prefix('admin')->name('admin.')->group(function () {

@@ -328,17 +328,18 @@ export function registerSheenUi(Alpine) {
         },
     }));
 
-    Alpine.data('adminPostsQueue', () => ({
+    const adminModerationQueue = (prefix) => ({
         loading: false,
         acting: false,
         debounceTimer: null,
         onPopState: null,
+        prefix,
         init() {
             this.onPopState = () => this.load(window.location.href, false);
             window.addEventListener('popstate', this.onPopState);
             this.$el.addEventListener('click', (event) => this.onClick(event));
             this.$el.addEventListener('submit', (event) => this.onSubmit(event));
-            this.$el.querySelector('[data-admin-posts-search] input[name="q"]')
+            this.$el.querySelector(`[data-${this.prefix}-search] input[name="q"]`)
                 ?.addEventListener('input', (event) => this.onSearchInput(event));
         },
         destroy() {
@@ -354,7 +355,7 @@ export function registerSheenUi(Alpine) {
             return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
         },
         searchForm() {
-            return this.$el.querySelector('[data-admin-posts-search]');
+            return this.$el.querySelector(`[data-${this.prefix}-search]`);
         },
         onSearchInput() {
             if (this.debounceTimer) {
@@ -366,7 +367,7 @@ export function registerSheenUi(Alpine) {
             }, 300);
         },
         onClick(event) {
-            const filterLink = event.target.closest('[data-admin-posts-filter]');
+            const filterLink = event.target.closest(`[data-${this.prefix}-filter]`);
 
             if (filterLink instanceof HTMLAnchorElement && this.$el.contains(filterLink)) {
                 event.preventDefault();
@@ -374,7 +375,7 @@ export function registerSheenUi(Alpine) {
                 return;
             }
 
-            const paginationLink = event.target.closest('[data-admin-posts-pagination] a');
+            const paginationLink = event.target.closest(`[data-${this.prefix}-pagination] a`);
 
             if (paginationLink instanceof HTMLAnchorElement && this.$el.contains(paginationLink)) {
                 event.preventDefault();
@@ -388,13 +389,13 @@ export function registerSheenUi(Alpine) {
                 return;
             }
 
-            if (form.hasAttribute('data-admin-posts-search')) {
+            if (form.hasAttribute(`data-${this.prefix}-search`)) {
                 event.preventDefault();
                 this.loadFromSearch();
                 return;
             }
 
-            if (! form.hasAttribute('data-admin-posts-action')) {
+            if (! form.hasAttribute(`data-${this.prefix}-action`)) {
                 return;
             }
 
@@ -479,7 +480,7 @@ export function registerSheenUi(Alpine) {
             }
         },
         syncChrome() {
-            const meta = this.$refs.results.querySelector('[data-admin-posts-meta]');
+            const meta = this.$refs.results.querySelector(`[data-${this.prefix}-meta]`);
 
             if (! (meta instanceof HTMLElement)) {
                 return;
@@ -507,9 +508,9 @@ export function registerSheenUi(Alpine) {
                 searchInput.value = search;
             }
 
-            this.$el.querySelectorAll('[data-admin-posts-filter]').forEach((link) => {
-                const active = link.getAttribute('data-admin-posts-filter') === status;
-                const isTab = link.closest('[data-admin-posts-tabs]');
+            this.$el.querySelectorAll(`[data-${this.prefix}-filter]`).forEach((link) => {
+                const active = link.getAttribute(`data-${this.prefix}-filter`) === status;
+                const isTab = link.closest(`[data-${this.prefix}-tabs]`);
 
                 if (isTab) {
                     link.className = active
@@ -520,6 +521,7 @@ export function registerSheenUi(Alpine) {
                     link.classList.toggle('ring-amber-400', active && status === 'pending');
                     link.classList.toggle('ring-forest-400', active && status === 'published');
                     link.classList.toggle('ring-red-300', active && status === 'rejected');
+                    link.classList.toggle('ring-violet-400', active && status === 'reported');
                     link.classList.toggle('ring-gray-400', active && status === 'all');
                 }
             });
@@ -586,7 +588,10 @@ export function registerSheenUi(Alpine) {
                 });
             }
         },
-    }));
+    });
+
+    Alpine.data('adminPostsQueue', () => adminModerationQueue('admin-posts'));
+    Alpine.data('adminMarketQueue', () => adminModerationQueue('admin-market'));
 
     document.addEventListener('submit', async (event) => {
         const form = event.target;

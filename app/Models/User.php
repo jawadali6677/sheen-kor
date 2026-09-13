@@ -74,6 +74,11 @@ class User extends Authenticatable
         return $this->hasMany(Alert::class, 'action_user_id');
     }
 
+    public function marketListings(): HasMany
+    {
+        return $this->hasMany(MarketListing::class);
+    }
+
     public function comments(): HasMany
     {
         return $this->hasMany(Comment::class);

@@ -14,6 +14,7 @@
                 <div x-show="open" x-cloak @click.outside="open = false" class="absolute bottom-16 w-44 rounded-2xl border border-gray-100 bg-white p-2 shadow-card">
                     <a href="{{ route('posts.create') }}" class="block rounded-xl px-3 py-2 text-sm text-forest-900 hover:bg-sand-50">Create post</a>
                     <a href="{{ route('alerts.create') }}" class="block rounded-xl px-3 py-2 text-sm text-forest-900 hover:bg-sand-50">Create alert</a>
+                    <a href="{{ route('market.create') }}" class="block rounded-xl px-3 py-2 text-sm text-forest-900 hover:bg-sand-50">Create listing</a>
                 </div>
             </div>
             <a href="{{ route('alerts.index') }}" class="flex flex-col items-center gap-1 py-2 {{ request()->routeIs('alerts.*') ? 'text-forest-800' : '' }}">

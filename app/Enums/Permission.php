@@ -14,6 +14,8 @@ enum Permission: string
     case ManageUsers = 'users.manage';
     case ManageRoles = 'roles.manage';
     case ViewAnalytics = 'analytics.view';
+    case CreateMarketListings = 'market.create';
+    case ModerateMarketListings = 'market.moderate';
 
     public function label(): string
     {
@@ -28,6 +30,8 @@ enum Permission: string
             self::ManageUsers => 'Manage users and assign roles',
             self::ManageRoles => 'Create roles and set their permissions',
             self::ViewAnalytics => 'View analytics',
+            self::CreateMarketListings => 'Create market listings',
+            self::ModerateMarketListings => 'Review market listings',
         };
     }
 }

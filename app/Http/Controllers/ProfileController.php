@@ -31,7 +31,7 @@ class ProfileController extends Controller
 
         $tab = request()->string('tab')->toString();
 
-        if (! in_array($tab, ['stories', 'alerts', 'fixes', 'activity'], true)) {
+        if (! in_array($tab, ['stories', 'alerts', 'fixes', 'market', 'activity'], true)) {
             $tab = 'stories';
         }
 
@@ -55,6 +55,13 @@ class ProfileController extends Controller
             ->limit(18)
             ->get();
 
+        $marketListings = $user->marketListings()
+            ->where('status', 'published')
+            ->latest('published_at')
+            ->latest('id')
+            ->limit(18)
+            ->get();
+
         $scoreEvents = $user->scoreEvents()
             ->latest()
             ->limit(8)
@@ -68,6 +75,7 @@ class ProfileController extends Controller
             'stories' => $stories,
             'alerts' => $alerts,
             'claimedAlerts' => $claimedAlerts,
+            'marketListings' => $marketListings,
             'scoreEvents' => $scoreEvents,
             'isFollowing' => $viewer !== null && $viewer->id !== $user->id && $viewer->isFollowing($user),
             'isFollowedBy' => $viewer !== null && $viewer->id !== $user->id && $user->isFollowing($viewer),

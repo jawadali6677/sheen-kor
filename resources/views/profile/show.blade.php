@@ -64,6 +64,7 @@
             <a href="{{ route('users.show', ['user' => $profile, 'tab' => 'stories']) }}" class="{{ $tab === 'stories' ? 'active' : '' }}">Posts</a>
             <a href="{{ route('users.show', ['user' => $profile, 'tab' => 'alerts']) }}" class="{{ $tab === 'alerts' ? 'active' : '' }}">Alerts</a>
             <a href="{{ route('users.show', ['user' => $profile, 'tab' => 'fixes']) }}" class="{{ $tab === 'fixes' ? 'active' : '' }}">Fixes</a>
+            <a href="{{ route('users.show', ['user' => $profile, 'tab' => 'market']) }}" class="{{ $tab === 'market' ? 'active' : '' }}">Market</a>
             <a href="{{ route('users.show', ['user' => $profile, 'tab' => 'activity']) }}" class="{{ $tab === 'activity' ? 'active' : '' }}">Activity</a>
         </div>
 
@@ -111,6 +112,20 @@
                     </a>
                 @empty
                     <p class="py-10 text-center text-gray-500">No fixes yet.</p>
+                @endforelse
+            </div>
+        @elseif($tab === 'market')
+            <div class="profile-grid">
+                @forelse($marketListings as $listing)
+                    <a href="{{ route('market.show', $listing) }}">
+                        @if($listing->featured_image)
+                            <img src="{{ asset('storage/'.$listing->featured_image) }}" alt="{{ $listing->title }}">
+                        @else
+                            <div class="profile-grid-empty">{{ $listing->title }}</div>
+                        @endif
+                    </a>
+                @empty
+                    <p class="col-span-3 py-10 text-center text-gray-500">No market listings yet.</p>
                 @endforelse
             </div>
         @else

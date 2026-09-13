@@ -28,6 +28,7 @@
                 <x-nav-link :href="route('posts.index')" :active="request()->routeIs('posts.index', 'posts.show')">{{ __('Home') }}</x-nav-link>
                 <x-nav-link :href="route('explore.index')" :active="request()->routeIs('explore.*')">{{ __('Explore') }}</x-nav-link>
                 <x-nav-link :href="route('alerts.index')" :active="request()->routeIs('alerts.*')">{{ __('Alerts') }}</x-nav-link>
+                <x-nav-link :href="route('market.index')" :active="request()->routeIs('market.*')">{{ __('Market') }}</x-nav-link>
                 <!-- <x-nav-link :href="route('tips.index')" :active="request()->routeIs('tips.*') || (request()->routeIs('categories.show') && request()->route('category')?->slug === 'tips')">{{ __('Tips') }}</x-nav-link> -->
             </div>
 
@@ -54,10 +55,14 @@
                     </x-slot>
                     <x-slot name="content">
                         <x-dropdown-link :href="route('users.show', auth()->user())">{{ __('My profile') }}</x-dropdown-link>
+                        <x-dropdown-link :href="route('market.mine')">{{ __('My Market') }}</x-dropdown-link>
                         <x-dropdown-link :href="route('profile.edit')">{{ __('Edit profile') }}</x-dropdown-link>
                         <x-dropdown-link :href="route('leaderboard.index')">{{ __('Scores') }}</x-dropdown-link>
                         @can('posts.moderate')
                             <x-dropdown-link :href="route('admin.posts.index', ['status' => 'pending'])">{{ __('Review stories') }}</x-dropdown-link>
+                        @endcan
+                        @can('market.moderate')
+                            <x-dropdown-link :href="route('admin.market.index', ['status' => 'pending'])">{{ __('Review market') }}</x-dropdown-link>
                         @endcan
                         @can('analytics.view')
                             <x-dropdown-link :href="route('analytics.index')">{{ __('Analytics') }}</x-dropdown-link>
@@ -84,6 +89,7 @@
                 <x-nav-link :href="route('posts.index')" :active="request()->routeIs('posts.*', 'categories.*')">{{ __('Blog') }}</x-nav-link>
                 <x-nav-link :href="route('tips.index')" :active="request()->routeIs('tips.*')">{{ __('Tips') }}</x-nav-link>
                 <x-nav-link :href="route('alerts.index')" :active="request()->routeIs('alerts.*')">{{ __('Alerts') }}</x-nav-link>
+                <x-nav-link :href="route('market.index')" :active="request()->routeIs('market.*')">{{ __('Market') }}</x-nav-link>
             </div>
             <div class="hidden items-center gap-2 sm:flex">
                 <a href="{{ route('login') }}" class="btn-secondary">{{ __('Login') }}</a>
@@ -105,11 +111,16 @@
                 <x-responsive-nav-link :href="route('posts.index')" :active="request()->routeIs('posts.*')">{{ __('Home') }}</x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('explore.index')">{{ __('Explore') }}</x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('alerts.index')">{{ __('Alerts') }}</x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('market.index')">{{ __('Market') }}</x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('tips.index')">{{ __('Tips') }}</x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('messages.index')">{{ __('Chat') }} <span x-show="$store.notifications.chatUnread > 0" x-cloak x-text="'(' + $store.notifications.chatUnread + ')'">@if($unreadChats > 0) ({{ $unreadChats }}) @endif</span></x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('users.show', auth()->user())">{{ __('My profile') }}</x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('market.mine')">{{ __('My Market') }}</x-responsive-nav-link>
                 @can('posts.moderate')
                     <x-responsive-nav-link :href="route('admin.posts.index', ['status' => 'pending'])">{{ __('Review stories') }}</x-responsive-nav-link>
+                @endcan
+                @can('market.moderate')
+                    <x-responsive-nav-link :href="route('admin.market.index', ['status' => 'pending'])">{{ __('Review market') }}</x-responsive-nav-link>
                 @endcan
                 <div class="px-3 py-2">
                     @include('layouts.partials.notification-bell')
@@ -124,6 +135,7 @@
                 <x-responsive-nav-link :href="route('posts.index')">{{ __('Blog') }}</x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('tips.index')">{{ __('Tips') }}</x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('alerts.index')">{{ __('Alerts') }}</x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('market.index')">{{ __('Market') }}</x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('login')">{{ __('Login') }}</x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('register')">{{ __('Sign Up') }}</x-responsive-nav-link>
             @endauth

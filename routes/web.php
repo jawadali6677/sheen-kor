@@ -156,12 +156,12 @@ Route::middleware('auth')->group(function () {
         ->name('messages.destroy');
 });
 
-Route::get('/posts/{post}', [PostController::class, 'show'])->name('posts.show');
-Route::get('/alerts/{alert}', [AlertController::class, 'show'])->name('alerts.show');
-Route::get('/market/{listing}', [MarketListingController::class, 'show'])->name('market.show');
+Route::get('/posts/{post:slug}', [PostController::class, 'show'])->name('posts.show');
+Route::get('/alerts/{alert:slug}', [AlertController::class, 'show'])->name('alerts.show');
+Route::get('/market/{listing:slug}', [MarketListingController::class, 'show'])->name('market.show');
 Route::get('categories/{category:slug}', [PostController::class, 'byCategory'])->name('categories.show');
-Route::get('/users/{user}', [ProfileController::class, 'show'])->name('users.show');
-Route::get('authors/{user}', [ProfileController::class, 'show'])->name('authors.show');
+Route::get('/users/{user:username}', [ProfileController::class, 'show'])->name('users.show');
+Route::get('authors/{user:username}', [ProfileController::class, 'show'])->name('authors.show');
 
 Route::get('/dashboard', DashboardController::class)
     ->middleware(['auth', 'verified'])
@@ -169,26 +169,26 @@ Route::get('/dashboard', DashboardController::class)
 
 Route::middleware(['auth', 'permission:posts.moderate'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('posts', [AdminPostController::class, 'index'])->name('posts.index');
-    Route::get('posts/{post}', [AdminPostController::class, 'show'])->name('posts.show');
-    Route::post('posts/{post}/publish', [AdminPostController::class, 'publish'])->name('posts.publish');
-    Route::post('posts/{post}/pending', [AdminPostController::class, 'pending'])->name('posts.pending');
-    Route::post('posts/{post}/reject', [AdminPostController::class, 'reject'])->name('posts.reject');
-    Route::delete('posts/{post}', [AdminPostController::class, 'destroy'])->name('posts.destroy');
+    Route::get('posts/{post:id}', [AdminPostController::class, 'show'])->name('posts.show');
+    Route::post('posts/{post:id}/publish', [AdminPostController::class, 'publish'])->name('posts.publish');
+    Route::post('posts/{post:id}/pending', [AdminPostController::class, 'pending'])->name('posts.pending');
+    Route::post('posts/{post:id}/reject', [AdminPostController::class, 'reject'])->name('posts.reject');
+    Route::delete('posts/{post:id}', [AdminPostController::class, 'destroy'])->name('posts.destroy');
 });
 
 Route::middleware(['auth', 'permission:market.moderate'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('market', [AdminMarketListingController::class, 'index'])->name('market.index');
-    Route::get('market/{listing}', [AdminMarketListingController::class, 'show'])->name('market.show');
-    Route::post('market/{listing}/publish', [AdminMarketListingController::class, 'publish'])->name('market.publish');
-    Route::post('market/{listing}/pending', [AdminMarketListingController::class, 'pending'])->name('market.pending');
-    Route::post('market/{listing}/reject', [AdminMarketListingController::class, 'reject'])->name('market.reject');
-    Route::post('market/{listing}/reports/review', [AdminMarketListingController::class, 'reviewReports'])->name('market.reports.review');
-    Route::delete('market/{listing}', [AdminMarketListingController::class, 'destroy'])->name('market.destroy');
+    Route::get('market/{listing:id}', [AdminMarketListingController::class, 'show'])->name('market.show');
+    Route::post('market/{listing:id}/publish', [AdminMarketListingController::class, 'publish'])->name('market.publish');
+    Route::post('market/{listing:id}/pending', [AdminMarketListingController::class, 'pending'])->name('market.pending');
+    Route::post('market/{listing:id}/reject', [AdminMarketListingController::class, 'reject'])->name('market.reject');
+    Route::post('market/{listing:id}/reports/review', [AdminMarketListingController::class, 'reviewReports'])->name('market.reports.review');
+    Route::delete('market/{listing:id}', [AdminMarketListingController::class, 'destroy'])->name('market.destroy');
 });
 
 Route::middleware(['auth', 'permission:users.manage'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('users', [AdminUserController::class, 'index'])->name('users.index');
-    Route::patch('users/{user}', [AdminUserController::class, 'update'])->name('users.update');
+    Route::patch('users/{user:id}', [AdminUserController::class, 'update'])->name('users.update');
 });
 
 Route::middleware(['auth', 'permission:roles.manage'])->prefix('admin')->name('admin.')->group(function () {

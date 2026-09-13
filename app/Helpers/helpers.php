@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use Illuminate\Support\Str;
 
 if (! function_exists('generateUniqueSlug')) {
@@ -23,6 +24,48 @@ if (! function_exists('generateUniqueSlug')) {
         }
 
         return $slug;
+    }
+}
+
+if (! function_exists('generateUniqueUsername')) {
+
+    function generateUniqueUsername(string $name, ?int $ignoreId = null): string
+    {
+        $base = Str::of($name)
+            ->ascii()
+            ->lower()
+            ->replaceMatches('/[^a-z0-9._]+/', '.')
+            ->replaceMatches('/\.+/', '.')
+            ->trim('.')
+            ->toString();
+
+        if (strlen($base) < 3) {
+            $base = 'user';
+        }
+
+        $base = rtrim(substr($base, 0, 30), '._');
+
+        if (strlen($base) < 3) {
+            $base = 'user';
+        }
+
+        $username = $base;
+        $counter = 1;
+
+        while (
+            User::query()
+                ->where('username', $username)
+                ->when($ignoreId, function ($query) use ($ignoreId) {
+                    $query->where('id', '!=', $ignoreId);
+                })
+                ->exists()
+        ) {
+            $suffix = '.'.$counter;
+            $username = rtrim(substr($base, 0, 30 - strlen($suffix)), '._').$suffix;
+            $counter++;
+        }
+
+        return $username;
     }
 }
 

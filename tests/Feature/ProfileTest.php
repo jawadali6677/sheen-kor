@@ -137,6 +137,70 @@ class ProfileTest extends TestCase
         Storage::disk('public')->assertExists($user->profile_image);
     }
 
+    public function test_clearing_username_keeps_the_existing_public_profile_url(): void
+    {
+        $user = User::factory()->create([
+            'username' => 'river.keeper',
+        ]);
+
+        $this->actingAs($user)
+            ->patch('/profile', [
+                'name' => $user->name,
+                'email' => $user->email,
+                'username' => '',
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect('/profile');
+
+        $user->refresh();
+
+        $this->assertSame('river.keeper', $user->username);
+        $this->get(route('users.show', $user))
+            ->assertOk()
+            ->assertSee('@river.keeper');
+    }
+
+    public function test_public_profile_urls_use_username_not_numeric_ids(): void
+    {
+        $profile = User::factory()->create([
+            'username' => 'public.person',
+            'name' => 'Public Person',
+        ]);
+
+        $this->assertSame(url('/users/public.person'), route('users.show', $profile));
+        $this->assertSame(url('/authors/public.person'), route('authors.show', $profile));
+        $this->assertSame(url('/users/'.$profile->id.'/follow'), route('users.follow.store', $profile));
+        $this->assertSame(url('/admin/users/'.$profile->id), route('admin.users.update', $profile));
+
+        $this->get(route('users.show', $profile))
+            ->assertOk()
+            ->assertSee('Public Person');
+        $this->get('/users/'.$profile->id)->assertNotFound();
+        $this->get('/authors/'.$profile->id)->assertNotFound();
+    }
+
+    public function test_existing_users_without_a_username_get_one_when_loaded(): void
+    {
+        $user = User::factory()->create([
+            'name' => 'Legacy Member',
+            'username' => 'legacy.member',
+        ]);
+
+        User::query()->whereKey($user->id)->update(['username' => null]);
+
+        $user = User::query()->findOrFail($user->id);
+        $user->ensureHasUsername();
+        $user->save();
+
+        $this->assertNotEmpty($user->username);
+        $this->actingAs($user)
+            ->get(route('posts.index'))
+            ->assertOk();
+        $this->get(route('users.show', $user))
+            ->assertOk()
+            ->assertSee('Legacy Member');
+    }
+
     public function test_other_users_can_view_a_public_profile_without_seeing_email(): void
     {
         $profile = User::factory()->create([

@@ -165,14 +165,17 @@ class AlertTest extends TestCase
             ->delete(route('alerts.destroy', $alert))
             ->assertForbidden();
 
-        $this->actingAs($owner)
+        $response = $this->actingAs($owner)
             ->put(route('alerts.update', $alert), [
                 'title' => 'Updated alert title here',
                 'description' => $alert->description,
                 'location_name' => $alert->location_name,
                 'severity' => 'low',
-            ])
-            ->assertRedirect(route('alerts.show', $alert));
+            ]);
+
+        $alert->refresh();
+
+        $response->assertRedirect(route('alerts.show', $alert));
 
         $this->assertSame('Updated alert title here', $alert->fresh()->title);
         $this->assertSame('open', $alert->fresh()->status);

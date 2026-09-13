@@ -59,6 +59,33 @@ class User extends Authenticatable
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::creating(function (User $user): void {
+            $user->ensureHasUsername();
+        });
+
+        static::saving(function (User $user): void {
+            $user->ensureHasUsername();
+        });
+    }
+
+    public function ensureHasUsername(): string
+    {
+        $current = $this->attributes['username'] ?? null;
+
+        if (filled($current)) {
+            return $current;
+        }
+
+        $this->attributes['username'] = generateUniqueUsername(
+            (string) (($this->attributes['name'] ?? null) ?: 'user'),
+            $this->id,
+        );
+
+        return $this->attributes['username'];
+    }
+
     public function posts(): HasMany
     {
         return $this->hasMany(Post::class);

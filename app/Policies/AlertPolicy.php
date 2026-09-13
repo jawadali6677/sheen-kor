@@ -15,7 +15,16 @@ class AlertPolicy
 
     public function view(?User $user, Alert $alert): bool
     {
-        return true;
+        if ($alert->isPubliclyVisible()) {
+            return true;
+        }
+
+        if ($user === null) {
+            return false;
+        }
+
+        return $alert->user_id === $user->id
+            || $user->hasPermission(Permission::ModerateAlerts);
     }
 
     public function create(User $user): bool

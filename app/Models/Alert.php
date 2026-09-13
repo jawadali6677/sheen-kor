@@ -80,6 +80,11 @@ class Alert extends Model
         return $this->reportImages;
     }
 
+    public function isPubliclyVisible(): bool
+    {
+        return in_array($this->status, ['open', 'in_progress', 'fixed'], true);
+    }
+
     public function isOpen(): bool
     {
         return $this->status === 'open';

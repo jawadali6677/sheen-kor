@@ -1,7 +1,19 @@
 <?php
 
+use App\Actions\PlaceFeedAds;
+use App\Enums\AdPlacement;
+use App\Models\Advertisement;
+use App\Models\MonetizationSetting;
 use App\Models\User;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
+
+if (! function_exists('stripe_checkout_is_configured')) {
+    function stripe_checkout_is_configured(): bool
+    {
+        return filled(config('cashier.key')) && filled(config('cashier.secret'));
+    }
+}
 
 if (! function_exists('generateUniqueSlug')) {
 
@@ -71,32 +83,59 @@ if (! function_exists('generateUniqueUsername')) {
 
 if (! function_exists('demo_ads')) {
     /**
-     * Placeholder advertising inventory for UI only.
+     * Enabled first-party ads as card arrays. Prefer feed_ads_for() / sidebarCards() for placement rules.
      *
-     * @return list<array{id: string, advertiser: string, title: string, description: string, cta: string, image: string, url: string}>
+     * @return list<array<string, mixed>>
      */
     function demo_ads(): array
     {
-        return [
-            [
-                'id' => 'demo-bottles',
-                'advertiser' => 'GreenPath Supply',
-                'title' => 'Refill bottles for every trail',
-                'description' => 'Durable bottles made for daily use. A small swap that keeps plastic out of parks.',
-                'cta' => 'Learn more',
-                'image' => 'https://images.unsplash.com/photo-1523362628745-0c100150b504?auto=format&fit=crop&w=800&q=80',
-                'url' => '#',
-            ],
-            [
-                'id' => 'demo-trees',
-                'advertiser' => 'Canopy Collective',
-                'title' => 'Plant a tree with your next walk',
-                'description' => 'Local planting days across the city. Bring gloves, leave with a greener street.',
-                'cta' => 'See events',
-                'image' => 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=800&q=80',
-                'url' => '#',
-            ],
-        ];
+        return Advertisement::query()
+            ->enabled()
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get()
+            ->map(fn (Advertisement $advertisement): array => $advertisement->toCard(AdPlacement::FeedPosts->value))
+            ->all();
+    }
+}
+
+if (! function_exists('feed_ads_for')) {
+    /**
+     * @param  LengthAwarePaginator  $paginator
+     * @return array<int, array<string, mixed>>
+     */
+    function feed_ads_for($paginator, string $surface): array
+    {
+        $placement = AdPlacement::tryFrom($surface);
+
+        if ($placement === null) {
+            return [];
+        }
+
+        return app(PlaceFeedAds::class)->handle($paginator, $placement);
+    }
+}
+
+if (! function_exists('monetization_setting')) {
+    function monetization_setting(string $key, mixed $default = null): mixed
+    {
+        $value = MonetizationSetting::query()
+            ->where('key', $key)
+            ->value('value');
+
+        if ($value === null) {
+            return $default;
+        }
+
+        if (is_bool($default)) {
+            return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+        }
+
+        if (is_int($default)) {
+            return (int) $value;
+        }
+
+        return $value;
     }
 }
 

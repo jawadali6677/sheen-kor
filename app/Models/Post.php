@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Enums\PostBoostStatus;
 use App\Events\PostEngagementUpdated;
 use App\Models\Concerns\HasEngagement;
 use App\Models\Concerns\PresentsMedia;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 use Throwable;
 
@@ -57,6 +60,42 @@ class Post extends Model
     public function tips()
     {
         return $this->hasMany(Tip::class);
+    }
+
+    public function boosts(): HasMany
+    {
+        return $this->hasMany(PostBoost::class);
+    }
+
+    /**
+     * @param  Builder<Post>  $query
+     */
+    public function scopeBoosted(Builder $query): void
+    {
+        $query->whereHas('boosts', function (Builder $query): void {
+            $query->currentlyActive();
+        });
+    }
+
+    public function hasActiveBoost(): bool
+    {
+        if (array_key_exists('is_boosted', $this->attributes)) {
+            return (bool) $this->attributes['is_boosted'];
+        }
+
+        if ($this->relationLoaded('boosts')) {
+            return $this->boosts->contains(
+                fn (PostBoost $boost): bool => $boost->isCurrentlyActive(),
+            );
+        }
+
+        return $this->boosts()->currentlyActive()->exists();
+    }
+
+    public function hasOpenBoost(): bool
+    {
+        return $this->hasActiveBoost()
+            || $this->boosts()->where('status', PostBoostStatus::Pending)->exists();
     }
 
     public function broadcastEngagementCounts(?int $likesCount = null, ?int $commentsCount = null): void

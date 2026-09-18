@@ -40,5 +40,8 @@
         <env name="NIGHTWATCH_ENABLED" value="false"/>
         <env name="SIGHTENGINE_API_USER" value=""/>
         <env name="SIGHTENGINE_API_SECRET" value=""/>
+        <env name="STRIPE_KEY" value=""/>
+        <env name="STRIPE_SECRET" value=""/>
+        <env name="STRIPE_WEBHOOK_SECRET" value=""/>
     </php>
 </phpunit>

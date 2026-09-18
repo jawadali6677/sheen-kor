@@ -274,10 +274,21 @@ class PostController extends Controller
         */
 
         $post->load([
-            'user',
+            'user' => function ($query): void {
+                $query->withExists([
+                    'greenTickVerifications as has_active_green_tick' => function ($query): void {
+                        $query->currentlyActive();
+                    },
+                ]);
+            },
             'category',
             'images',
-        ]);
+        ])
+            ->loadExists([
+                'boosts as is_boosted' => function ($query): void {
+                    $query->currentlyActive();
+                },
+            ]);
 
         $post->loadCount([
             'likes',
@@ -316,7 +327,13 @@ class PostController extends Controller
     {
         $posts = Post::query()
             ->with([
-                'user',
+                'user' => function ($query): void {
+                    $query->withExists([
+                        'greenTickVerifications as has_active_green_tick' => function ($query): void {
+                            $query->currentlyActive();
+                        },
+                    ]);
+                },
                 'category',
                 'images',
             ])
@@ -329,6 +346,9 @@ class PostController extends Controller
             ->withExists([
                 'likes as liked_by_user' => function ($query) {
                     $query->where('user_id', auth()->id());
+                },
+                'boosts as is_boosted' => function ($query): void {
+                    $query->currentlyActive();
                 },
             ])
             ->when($category, function ($query) use ($category) {

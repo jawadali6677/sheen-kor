@@ -5,7 +5,7 @@
         ->orderBy('id')
         ->limit(5)
         ->get();
-    $ads = demo_ads();
+    $ads = app(\App\Actions\PlaceFeedAds::class)->sidebarCards();
 @endphp
 
 <aside class="hidden w-72 shrink-0 xl:block">

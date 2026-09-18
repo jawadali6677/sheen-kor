@@ -99,6 +99,12 @@ class MarketListingPolicy
         return $user->hasPermission(Permission::ModerateMarketListings);
     }
 
+    public function promote(User $user, MarketListing $listing): bool
+    {
+        return $listing->user_id === $user->id
+            && $listing->status === MarketListingStatus::Published;
+    }
+
     private function ownerCanComplete(User $user, MarketListing $listing): bool
     {
         return $listing->user_id === $user->id

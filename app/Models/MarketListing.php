@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\ListingPromotionPlacement;
+use App\Enums\ListingPromotionStatus;
 use App\Enums\MarketListingCondition;
 use App\Enums\MarketListingStatus;
 use App\Enums\MarketListingType;
@@ -9,6 +11,7 @@ use App\Models\Concerns\PresentsMedia;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 
 class MarketListing extends Model
@@ -75,6 +78,11 @@ class MarketListing extends Model
         return $this->hasMany(MarketListingReport::class);
     }
 
+    public function promotions(): HasMany
+    {
+        return $this->hasMany(ListingPromotion::class);
+    }
+
     protected function galleryMedia(): Collection
     {
         return $this->images;
@@ -86,5 +94,54 @@ class MarketListing extends Model
     public function scopePublished(Builder $query): void
     {
         $query->where('status', MarketListingStatus::Published);
+    }
+
+    public function currentPromotion(): ?ListingPromotion
+    {
+        if ($this->relationLoaded('promotions')) {
+            return $this->promotions->first(
+                fn (ListingPromotion $promotion): bool => $promotion->isCurrentlyActive(),
+            );
+        }
+
+        return $this->promotions()->currentlyActive()->latest('id')->first();
+    }
+
+    public function promotionBadge(): ?string
+    {
+        return $this->currentPromotion()?->placement?->badge();
+    }
+
+    public function hasActivePromotion(): bool
+    {
+        return $this->currentPromotion() !== null;
+    }
+
+    public function hasOpenPromotion(): bool
+    {
+        return $this->promotions()->currentlyActive()->exists()
+            || $this->promotions()->where('status', ListingPromotionStatus::Pending)->exists();
+    }
+
+    /**
+     * @param  Builder<MarketListing>  $query
+     */
+    public function scopeWithCatalogPromotion(Builder $query, ?int $categoryId): void
+    {
+        $query->with(['promotions' => function ($promotions): void {
+            $promotions->currentlyActive();
+        }])
+            ->withExists(['promotions as is_promoted_here' => function ($promotions) use ($categoryId): void {
+                $promotions->currentlyActive();
+
+                if ($categoryId) {
+                    return;
+                }
+
+                $promotions->whereIn('placement', [
+                    ListingPromotionPlacement::FeaturedHome->value,
+                    ListingPromotionPlacement::BoostRank->value,
+                ]);
+            }]);
     }
 }

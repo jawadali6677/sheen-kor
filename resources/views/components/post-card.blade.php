@@ -14,7 +14,10 @@
         @endif
         <div class="min-w-0">
             @if($post->user)
-                <a href="{{ route('users.show', $post->user) }}" class="font-semibold text-forest-900 hover:underline">{{ $post->user->name }}</a>
+                <a href="{{ route('users.show', $post->user) }}" class="inline-flex items-center gap-1 font-semibold text-forest-900 hover:underline">
+                    <span>{{ $post->user->name }}</span>
+                    <x-green-tick :user="$post->user" />
+                </a>
             @else
                 <span class="font-semibold text-forest-900">Unknown User</span>
             @endif
@@ -35,6 +38,9 @@
     <div class="space-y-2 px-4 py-3">
         <h3 class="text-base font-semibold text-forest-900 {{ $hasMedia ? '' : 'text-xl' }}">
             <a href="{{ route('posts.show', $post) }}" class="hover:underline">{{ $post->title }}</a>
+            @if($post->hasActiveBoost())
+                <span class="ms-2 inline-flex align-middle rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-amber-800">Boosted</span>
+            @endif
         </h3>
         @if($post->excerpt)
             <p class="text-sm leading-6 text-gray-600">{{ \Illuminate\Support\Str::limit($post->excerpt, $hasMedia ? 140 : 220) }}</p>

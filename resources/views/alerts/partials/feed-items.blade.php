@@ -1,7 +1,10 @@
+@php
+    $feedAds = feed_ads_for($alerts, 'feed_alerts');
+@endphp
 @forelse($alerts as $index => $alert)
     <x-alert-card :alert="$alert" />
-    @if((($alerts->firstItem() ?? 1) + $index) % 5 === 0)
-        <x-in-feed-ad :ad="demo_ads()[($index) % count(demo_ads())]" />
+    @if(isset($feedAds[$index]))
+        <x-in-feed-ad :ad="$feedAds[$index]" />
     @endif
 @empty
     @unless(request()->boolean('partial') || request()->hasHeader('X-Infinite-Scroll'))

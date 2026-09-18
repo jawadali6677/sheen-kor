@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\FindOrCreateDirectConversation;
 use App\Actions\ModerateContent;
+use App\Enums\ListingPromotionStatus;
 use App\Enums\MarketListingCondition;
 use App\Enums\MarketListingReportReason;
 use App\Enums\MarketListingStatus;
@@ -65,6 +66,7 @@ class MarketListingController extends Controller
         $listings = MarketListing::query()
             ->published()
             ->with(['user', 'category'])
+            ->withCatalogPromotion($categoryId)
             ->when($search !== '', function ($query) use ($search) {
                 $like = '%'.addcslashes($search, '%_\\').'%';
 
@@ -89,6 +91,7 @@ class MarketListingController extends Controller
             ->when($nearLat !== null && $nearLng !== null, function ($query) use ($nearLat, $nearLng, $radiusKm) {
                 $this->constrainNearby($query, $nearLat, $nearLng, $radiusKm);
             })
+            ->orderByDesc('is_promoted_here')
             ->latest('published_at')
             ->latest('id')
             ->paginate(12)
@@ -215,7 +218,7 @@ class MarketListingController extends Controller
             abort(404);
         }
 
-        $listing->load(['user', 'category', 'images']);
+        $listing->load(['user', 'category', 'images', 'promotions']);
 
         $viewerHasReported = auth()->check()
             && $listing->reports()->where('user_id', auth()->id())->exists();
@@ -401,6 +404,27 @@ class MarketListingController extends Controller
             'status' => $status,
             'closed_at' => now(),
         ]);
+
+        $openPromotions = $listing->promotions()
+            ->whereIn('status', [
+                ListingPromotionStatus::Pending->value,
+                ListingPromotionStatus::Active->value,
+            ])
+            ->with('order')
+            ->get();
+
+        foreach ($openPromotions as $promotion) {
+            $promotion->order?->cancelIfPending();
+        }
+
+        $listing->promotions()
+            ->whereIn('status', [
+                ListingPromotionStatus::Pending->value,
+                ListingPromotionStatus::Active->value,
+            ])
+            ->update([
+                'status' => ListingPromotionStatus::Cancelled->value,
+            ]);
 
         return back()->with('success', $message);
     }

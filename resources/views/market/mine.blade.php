@@ -55,6 +55,9 @@
                                 @can('update', $listing)
                                     <a href="{{ route('market.edit', $listing) }}" class="btn-secondary px-3 py-1.5 text-sm whitespace-nowrap">Edit</a>
                                 @endcan
+                                @can('promote', $listing)
+                                    <a href="{{ route('market.promote.create', $listing) }}" class="btn-secondary px-3 py-1.5 text-sm whitespace-nowrap">Promote</a>
+                                @endcan
                                 @can('markSold', $listing)
                                     <form method="POST" action="{{ route('market.sold', $listing) }}">
                                         @csrf

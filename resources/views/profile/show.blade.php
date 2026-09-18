@@ -10,7 +10,10 @@
                 <div class="profile-avatar-row">
                     <x-user-avatar :user="$profile" size="lg" :lightbox="true" />
                     <div class="min-w-0 flex-1 pb-2">
-                        <h1 class="truncate text-2xl font-bold text-forest-900">{{ $profile->name }}</h1>
+                        <h1 class="flex items-center gap-2 truncate text-2xl font-bold text-forest-900">
+                            <span class="truncate">{{ $profile->name }}</span>
+                            <x-green-tick :user="$profile" />
+                        </h1>
                         @if($profile->username)
                             <p class="text-gray-500">{{ '@'.$profile->username }}</p>
                         @endif

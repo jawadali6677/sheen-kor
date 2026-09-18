@@ -14,7 +14,10 @@
         @endif
         <div class="min-w-0 flex-1">
             @if($alert->user)
-                <a href="{{ route('users.show', $alert->user) }}" class="font-semibold text-forest-900 hover:underline">{{ $alert->user->name }}</a>
+                <a href="{{ route('users.show', $alert->user) }}" class="inline-flex items-center gap-1 font-semibold text-forest-900 hover:underline">
+                    <span>{{ $alert->user->name }}</span>
+                    <x-green-tick :user="$alert->user" />
+                </a>
             @else
                 <span class="font-semibold text-forest-900">Unknown User</span>
             @endif

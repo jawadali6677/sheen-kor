@@ -50,6 +50,86 @@ export function registerSheenUi(Alpine) {
         window.history.back();
     };
 
+    Alpine.data('contentVideoAds', (config) => ({
+        open: false,
+        advertisement: null,
+        requestInFlight: false,
+        init() {
+            this.$el.querySelectorAll('video').forEach((video) => {
+                video.addEventListener('ended', () => this.onEnded(video));
+            });
+        },
+        csrf() {
+            return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        },
+        async onEnded(video) {
+            if (this.open || this.requestInFlight) {
+                return;
+            }
+
+            const duration = Number.isFinite(video.duration) ? Math.round(video.duration) : 0;
+
+            this.requestInFlight = true;
+
+            try {
+                const response = await fetch(config.eligibilityUrl, {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': this.csrf(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        source_type: config.sourceType,
+                        source_id: config.sourceId,
+                        duration_seconds: duration,
+                    }),
+                });
+
+                const payload = await response.json().catch(() => ({}));
+
+                if (! response.ok || ! payload.allowed || ! payload.advertisement) {
+                    return;
+                }
+
+                this.advertisement = payload.advertisement;
+                this.open = true;
+                this.recordImpression(payload.advertisement);
+            } finally {
+                this.requestInFlight = false;
+            }
+        },
+        async recordImpression(advertisement) {
+            if (! advertisement?.impression_url) {
+                return;
+            }
+
+            try {
+                await fetch(advertisement.impression_url, {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': this.csrf(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        placement: advertisement.placement || 'video_interstitial',
+                    }),
+                });
+            } catch (error) {
+                // Impression tracking is best-effort.
+            }
+        },
+        dismiss() {
+            this.open = false;
+            this.advertisement = null;
+        },
+    }));
+
     Alpine.data('mediaCarousel', (count) => ({
         index: 0,
         count,
@@ -66,6 +146,41 @@ export function registerSheenUi(Alpine) {
             }
 
             this.index = (this.index - 1 + this.count) % this.count;
+        },
+    }));
+
+    Alpine.data('adCard', (config) => ({
+        hidden: false,
+        recorded: false,
+        init() {
+            this.recordImpression();
+        },
+        async recordImpression() {
+            if (this.recorded || ! config.impressionUrl) {
+                return;
+            }
+
+            this.recorded = true;
+
+            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+            try {
+                await fetch(config.impressionUrl, {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': token,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        placement: config.placement || 'feed_posts',
+                    }),
+                });
+            } catch (error) {
+                this.recorded = false;
+            }
         },
     }));
 

@@ -15,6 +15,9 @@
                 <div class="flex flex-wrap items-center gap-2">
                     <p class="text-sm font-semibold text-forest-700">{{ $listing->listing_type->label() }}</p>
                     <x-market-status-badge :listing="$listing" />
+                    @if($listing->promotionBadge())
+                        <span class="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-800">{{ $listing->promotionBadge() }}</span>
+                    @endif
                 </div>
                 <h1 class="mt-2 text-3xl font-bold text-forest-900 md:text-4xl">{{ $listing->title }}</h1>
                 <p class="mt-4 text-lg font-semibold text-forest-900">{{ $listing->listing_type->catalogOfferLabel($listing->price) }}</p>
@@ -96,6 +99,9 @@
                     @endcan
                     @can('update', $listing)
                         <a href="{{ route('market.edit', $listing) }}" class="btn-primary">Edit listing</a>
+                    @endcan
+                    @can('promote', $listing)
+                        <a href="{{ route('market.promote.create', $listing) }}" class="btn-secondary">Promote listing</a>
                     @endcan
                     @can('markSold', $listing)
                         <form method="POST" action="{{ route('market.sold', $listing) }}">

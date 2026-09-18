@@ -1,7 +1,10 @@
+@php
+    $feedAds = feed_ads_for($posts, 'feed_posts');
+@endphp
 @forelse($posts as $index => $post)
     <x-post-card :post="$post" />
-    @if((($posts->firstItem() ?? 1) + $index) % 5 === 0)
-        <x-in-feed-ad :ad="demo_ads()[($index) % count(demo_ads())]" />
+    @if(isset($feedAds[$index]))
+        <x-in-feed-ad :ad="$feedAds[$index]" />
     @endif
 @empty
     @unless(request()->boolean('partial') || request()->hasHeader('X-Infinite-Scroll'))

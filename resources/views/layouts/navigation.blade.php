@@ -73,6 +73,9 @@
                         @can('roles.manage')
                             <x-dropdown-link :href="route('admin.roles.index')">{{ __('Roles') }}</x-dropdown-link>
                         @endcan
+                        @can('monetization.manage')
+                            <x-dropdown-link :href="route('admin.monetization.index')">{{ __('Monetization') }}</x-dropdown-link>
+                        @endcan
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
                             <x-dropdown-link :href="route('logout')" onclick="event.preventDefault(); this.closest('form').submit();">
@@ -121,6 +124,9 @@
                 @endcan
                 @can('market.moderate')
                     <x-responsive-nav-link :href="route('admin.market.index', ['status' => 'pending'])">{{ __('Review market') }}</x-responsive-nav-link>
+                @endcan
+                @can('monetization.manage')
+                    <x-responsive-nav-link :href="route('admin.monetization.index')">{{ __('Monetization') }}</x-responsive-nav-link>
                 @endcan
                 <div class="px-3 py-2">
                     @include('layouts.partials.notification-bell')

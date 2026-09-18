@@ -4,7 +4,13 @@
 
         @if($alert->hasMedia())
             <div class="overflow-hidden rounded-3xl">
-                <x-media-carousel :slides="$alert->mediaSlides()" />
+                @if($alert->hasVideo() && monetization_setting('video_ads_enabled', false))
+                    <x-video-interstitial-host source-type="alert" :source-id="$alert->id">
+                        <x-media-carousel :slides="$alert->mediaSlides()" />
+                    </x-video-interstitial-host>
+                @else
+                    <x-media-carousel :slides="$alert->mediaSlides()" />
+                @endif
             </div>
         @endif
 

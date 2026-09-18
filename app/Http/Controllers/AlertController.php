@@ -26,7 +26,17 @@ class AlertController extends Controller
         $search = trim((string) $request->input('q', ''));
 
         $alerts = Alert::query()
-            ->with(['user', 'actionUser', 'reportImages'])
+            ->with([
+                'user' => function ($query): void {
+                    $query->withExists([
+                        'greenTickVerifications as has_active_green_tick' => function ($query): void {
+                            $query->currentlyActive();
+                        },
+                    ]);
+                },
+                'actionUser',
+                'reportImages',
+            ])
             ->withCount([
                 'likes',
                 'comments' => function ($query) {

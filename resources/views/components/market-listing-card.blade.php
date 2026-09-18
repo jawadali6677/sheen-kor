@@ -19,6 +19,11 @@
             <span class="inline-flex items-center rounded-full bg-forest-50 px-2.5 py-1 text-xs font-semibold text-forest-800 ring-1 ring-inset ring-forest-200">
                 {{ $listing->listing_type->label() }}
             </span>
+            @if($listing->promotionBadge())
+                <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-amber-800">
+                    {{ $listing->promotionBadge() }}
+                </span>
+            @endif
             <span class="text-sm font-semibold text-forest-900">
                 {{ $listing->listing_type->catalogOfferLabel($listing->price) }}
             </span>

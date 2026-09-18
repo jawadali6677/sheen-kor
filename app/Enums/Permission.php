@@ -16,6 +16,7 @@ enum Permission: string
     case ViewAnalytics = 'analytics.view';
     case CreateMarketListings = 'market.create';
     case ModerateMarketListings = 'market.moderate';
+    case ManageMonetization = 'monetization.manage';
 
     public function label(): string
     {
@@ -32,6 +33,7 @@ enum Permission: string
             self::ViewAnalytics => 'View analytics',
             self::CreateMarketListings => 'Create market listings',
             self::ModerateMarketListings => 'Review market listings',
+            self::ManageMonetization => 'Manage monetization settings and packages',
         };
     }
 }

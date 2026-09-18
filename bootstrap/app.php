@@ -21,6 +21,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => EnsureUserHasPermission::class,
         ]);
 
+        $middleware->preventRequestForgery(except: [
+            'stripe/*',
+        ]);
+
         $middleware->web(append: [
             EnsureUserIsActive::class,
         ]);

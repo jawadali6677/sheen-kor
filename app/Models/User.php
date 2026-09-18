@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\Permission;
+use App\Enums\UserVerificationStatus;
 use App\Events\UserNotificationBroadcasted;
 use App\Models\Role as AccessRole;
 use Illuminate\Database\Eloquent\Builder;
@@ -15,11 +16,12 @@ use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Str;
+use Laravel\Cashier\Billable;
 use Throwable;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use Billable, HasFactory, Notifiable;
 
     protected $fillable = [
         'name',
@@ -104,6 +106,11 @@ class User extends Authenticatable
     public function marketListings(): HasMany
     {
         return $this->hasMany(MarketListing::class);
+    }
+
+    public function listingPromotions(): HasMany
+    {
+        return $this->hasMany(ListingPromotion::class);
     }
 
     public function comments(): HasMany
@@ -239,6 +246,21 @@ class User extends Authenticatable
     public function scoreEvents(): HasMany
     {
         return $this->hasMany(ScoreEvent::class);
+    }
+
+    public function greenTickVerifications(): HasMany
+    {
+        return $this->hasMany(UserVerification::class);
+    }
+
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    public function rewardedAdSessions(): HasMany
+    {
+        return $this->hasMany(RewardedAdSession::class);
     }
 
     public function assignedRole(): BelongsTo
@@ -380,5 +402,83 @@ class User extends Authenticatable
         }
 
         return (int) round(($filled / count($fields)) * 100);
+    }
+
+    public function hasActiveGreenTick(): bool
+    {
+        if (array_key_exists('has_active_green_tick', $this->attributes)) {
+            return (bool) $this->attributes['has_active_green_tick'];
+        }
+
+        if ($this->relationLoaded('greenTickVerifications')) {
+            return $this->greenTickVerifications->contains(
+                fn (UserVerification $verification): bool => $verification->isCurrentlyActive(),
+            );
+        }
+
+        return $this->greenTickVerifications()->currentlyActive()->exists();
+    }
+
+    public function currentGreenTickVerification(): ?UserVerification
+    {
+        if ($this->relationLoaded('greenTickVerifications')) {
+            return $this->greenTickVerifications
+                ->sortByDesc('id')
+                ->first(fn (UserVerification $verification): bool => in_array($verification->displayStatus(), [
+                    UserVerificationStatus::PendingPayment,
+                    UserVerificationStatus::PendingReview,
+                    UserVerificationStatus::Active,
+                ], true))
+                ?? $this->greenTickVerifications->sortByDesc('id')->first();
+        }
+
+        return $this->greenTickVerifications()
+            ->latest('id')
+            ->first();
+    }
+
+    public function hasOpenGreenTickRequest(): bool
+    {
+        return $this->hasActiveGreenTick()
+            || $this->greenTickVerifications()
+                ->whereIn('status', [
+                    UserVerificationStatus::PendingPayment,
+                    UserVerificationStatus::PendingReview,
+                ])
+                ->exists();
+    }
+
+    /**
+     * @return array{
+     *     eligible: bool,
+     *     followers: int,
+     *     min_followers: int,
+     *     published_posts: int,
+     *     min_published_posts: int,
+     *     qualified_views: int,
+     *     min_qualified_views: int
+     * }
+     */
+    public function greenTickEligibility(): array
+    {
+        $minFollowers = monetization_setting('eligibility_min_followers', 0);
+        $minPosts = monetization_setting('eligibility_min_published_posts', 0);
+        $minViews = monetization_setting('eligibility_min_qualified_views_30d', 0);
+
+        $followers = $this->followers()->count();
+        $publishedPosts = $this->posts()->where('status', 'published')->count();
+        $qualifiedViews = 0;
+
+        return [
+            'eligible' => $followers >= $minFollowers
+                && $publishedPosts >= $minPosts
+                && $qualifiedViews >= $minViews,
+            'followers' => $followers,
+            'min_followers' => $minFollowers,
+            'published_posts' => $publishedPosts,
+            'min_published_posts' => $minPosts,
+            'qualified_views' => $qualifiedViews,
+            'min_qualified_views' => $minViews,
+        ];
     }
 }

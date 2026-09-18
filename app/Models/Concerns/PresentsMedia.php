@@ -44,4 +44,11 @@ trait PresentsMedia
 
         return $slides;
     }
+
+    public function hasVideo(): bool
+    {
+        return collect($this->mediaSlides())->contains(
+            fn (array $slide): bool => $slide['type'] === 'video',
+        );
+    }
 }

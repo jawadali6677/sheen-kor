@@ -4,13 +4,22 @@
 
         <article class="sk-card overflow-hidden">
             @if($post->hasMedia())
-                <x-media-carousel :slides="$post->mediaSlides()" />
+                @if($post->hasVideo() && monetization_setting('video_ads_enabled', false))
+                    <x-video-interstitial-host source-type="post" :source-id="$post->id">
+                        <x-media-carousel :slides="$post->mediaSlides()" />
+                    </x-video-interstitial-host>
+                @else
+                    <x-media-carousel :slides="$post->mediaSlides()" />
+                @endif
             @endif
             <div class="p-6 md:p-10 {{ $post->hasMedia() ? '' : 'md:px-16' }}">
                 @if($post->category)
                     <a href="{{ route('categories.show', $post->category) }}" class="text-sm font-semibold text-forest-700 hover:underline">{{ $post->category->name }}</a>
                 @endif
                 <h1 class="mt-2 text-3xl font-bold text-forest-900 md:text-4xl">{{ $post->title }}</h1>
+                @if($post->hasActiveBoost())
+                    <p class="mt-2 inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-800">Boosted</p>
+                @endif
                 <div class="mt-4 flex flex-wrap items-center gap-3 text-sm text-gray-500">
                     @if($post->user)
                         <a href="{{ route('users.show', $post->user) }}" class="inline-flex items-center gap-2 font-semibold text-forest-800">
@@ -39,6 +48,9 @@
                             @method('DELETE')
                             <button type="submit" class="btn-secondary text-red-700">Delete Story</button>
                         </form>
+                    @endcan
+                    @can('boost', $post)
+                        <a href="{{ route('posts.boost.create', $post) }}" class="btn-secondary">Boost Post</a>
                     @endcan
                     <a href="{{ route('posts.index') }}" class="btn-secondary" onclick="skBackToStories(event)">Back to Stories</a>
                 </div>

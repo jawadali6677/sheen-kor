@@ -38,4 +38,10 @@ class PostPolicy
     {
         return $user->hasPermission(Permission::ModeratePosts);
     }
+
+    public function boost(User $user, Post $post): bool
+    {
+        return $post->user_id === $user->id
+            && $post->status === 'published';
+    }
 }

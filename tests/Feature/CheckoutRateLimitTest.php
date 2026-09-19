@@ -10,7 +10,9 @@ use App\Models\MonetizationPackage;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\User;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Artisan;
 use Tests\Support\FakeStripeCheckoutGateway;
 use Tests\TestCase;
@@ -92,7 +94,7 @@ class CheckoutRateLimitTest extends TestCase
 
     public function test_checkout_throttle_is_keyed_per_user(): void
     {
-        $this->fakeStripe();
+        $gateway = $this->fakeStripe();
         [$firstUser, $firstOrder] = $this->pendingStripeOrder();
         [$secondUser, $secondOrder] = $this->pendingStripeOrder();
 
@@ -103,10 +105,13 @@ class CheckoutRateLimitTest extends TestCase
                 ->assertRedirect('https://checkout.stripe.test/cs_test_123');
         }
 
+        $gateway->nextSessionId = 'cs_test_other_user';
+        $gateway->nextUrl = 'https://checkout.stripe.test/cs_test_other_user';
+
         $this->actingAs($secondUser)
             ->from(route('orders.show', $secondOrder))
             ->post(route('orders.pay', $secondOrder))
-            ->assertRedirect('https://checkout.stripe.test/cs_test_123');
+            ->assertRedirect('https://checkout.stripe.test/cs_test_other_user');
     }
 
     public function test_clearing_the_cache_unblocks_checkout_after_the_limit(): void
@@ -132,6 +137,7 @@ class CheckoutRateLimitTest extends TestCase
     public function test_local_checkout_throttle_flash_explains_how_to_clear_the_cache(): void
     {
         $this->app['env'] = 'local';
+        $this->withoutMiddleware(PreventRequestForgery::class);
         $this->fakeStripe();
         [$user, $order] = $this->pendingStripeOrder();
 
@@ -202,7 +208,7 @@ class CheckoutRateLimitTest extends TestCase
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, MonetizationPackage>
+     * @return Collection<int, MonetizationPackage>
      */
     private function enablePromotionPackages()
     {

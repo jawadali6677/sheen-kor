@@ -120,7 +120,11 @@ class ListingPromotion extends Model
             return null;
         }
 
-        return 'This promotion is reserved and waiting for Stripe to confirm payment. It is not paid, and the listing is not featured until payment succeeds or an admin marks the order paid.';
+        if ($this->order?->shouldChargeWithStripe()) {
+            return 'This promotion is reserved. Pay with Stripe to finish checkout. Pending payment is not paid, and the listing is not featured until Stripe confirms payment.';
+        }
+
+        return 'This promotion is reserved and is not paid. An admin can mark the order paid for testing until Stripe Checkout is connected.';
     }
 
     public function activateFromSnapshot(?User $activator = null): void

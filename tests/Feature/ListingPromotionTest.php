@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Contracts\StripeCheckoutGateway;
 use App\Enums\ListingPromotionPlacement;
 use App\Enums\ListingPromotionSource;
 use App\Enums\ListingPromotionStatus;
@@ -19,6 +20,7 @@ use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
+use Tests\Support\FakeStripeCheckoutGateway;
 use Tests\TestCase;
 
 class ListingPromotionTest extends TestCase
@@ -52,9 +54,10 @@ class ListingPromotionTest extends TestCase
             ->get(route('market.promote.create', $listing))
             ->assertOk()
             ->assertSee('Status: Pending payment')
-            ->assertSee('reserved and waiting for Stripe to confirm payment')
-            ->assertSee('It is not paid')
+            ->assertSee('An admin can mark the order paid for testing until Stripe Checkout is connected')
             ->assertSee('Cancel pending promotion')
+            ->assertDontSee('Continue payment')
+            ->assertDontSee('Pay with Stripe')
             ->assertDontSee('Promoted until');
 
         $this->actingAs($user)
@@ -564,6 +567,65 @@ class ListingPromotionTest extends TestCase
         $this->assertFalse($listing->fresh()->hasActivePromotion());
     }
 
+    public function test_pending_promote_page_shows_continue_payment_when_stripe_is_connected(): void
+    {
+        $this->fakeStripe();
+        $user = User::factory()->create();
+        $listing = MarketListing::factory()->create([
+            'user_id' => $user->id,
+            'title' => 'new one',
+        ]);
+        $package = $this->enablePromotionPackages()->firstWhere('slug', 'listing_featured_7d');
+        $package->forceFill(['price' => '1.50'])->save();
+
+        $this->actingAs($user)
+            ->post(route('market.promote.store', $listing), ['package_id' => $package->id])
+            ->assertRedirect('https://checkout.stripe.test/cs_test_123');
+
+        $order = Order::query()->firstOrFail();
+
+        $this->actingAs($user)
+            ->get(route('market.promote.create', $listing))
+            ->assertOk()
+            ->assertSee('new one')
+            ->assertSee('Status: Pending payment')
+            ->assertSee('Pay with Stripe to finish checkout')
+            ->assertSee('Continue payment')
+            ->assertSee(route('orders.pay', $order), false)
+            ->assertSee('View order')
+            ->assertSee(route('orders.show', $order), false)
+            ->assertSee('Cancel pending promotion')
+            ->assertSeeInOrder([
+                'Continue payment',
+                'View order',
+                'Cancel pending promotion',
+            ])
+            ->assertDontSee('An admin marks it paid for testing until a payment provider is connected')
+            ->assertDontSee('until a payment provider is connected')
+            ->assertDontSee('Promoted until');
+
+        $this->actingAs($user)
+            ->from(route('market.promote.create', $listing))
+            ->post(route('orders.pay', $order))
+            ->assertRedirect('https://checkout.stripe.test/cs_test_123');
+    }
+
+    public function test_package_selection_does_not_say_only_an_admin_can_mark_paid_when_stripe_is_connected(): void
+    {
+        $this->fakeStripe();
+        $user = User::factory()->create();
+        $listing = MarketListing::factory()->create(['user_id' => $user->id]);
+        $this->enablePromotionPackages();
+
+        $this->actingAs($user)
+            ->get(route('market.promote.create', $listing))
+            ->assertOk()
+            ->assertSee('opens Stripe Checkout')
+            ->assertSee('Confirm pending promotion')
+            ->assertDontSee('An admin marks it paid for testing until Stripe Checkout is connected')
+            ->assertDontSee('until a payment provider is connected');
+    }
+
     /**
      * @return Collection<int, MonetizationPackage>
      */
@@ -576,5 +638,19 @@ class ListingPromotionTest extends TestCase
         return MonetizationPackage::query()
             ->where('type', MonetizationPackageType::ListingPromotion)
             ->get();
+    }
+
+    private function fakeStripe(): FakeStripeCheckoutGateway
+    {
+        config([
+            'cashier.key' => 'pk_test_123',
+            'cashier.secret' => 'sk_test_123',
+            'cashier.webhook.secret' => 'whsec_test_123',
+        ]);
+
+        $gateway = new FakeStripeCheckoutGateway;
+        $this->app->instance(StripeCheckoutGateway::class, $gateway);
+
+        return $gateway;
     }
 }

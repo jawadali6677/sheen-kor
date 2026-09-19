@@ -26,6 +26,7 @@ class ListingPromotionController extends Controller
             'listing' => $listing,
             'packages' => $this->enabledPromotionPackages(),
             'openPromotion' => $listing->promotions()
+                ->with('order')
                 ->where(function ($query): void {
                     $query->currentlyActive()
                         ->orWhere('status', ListingPromotionStatus::Pending);

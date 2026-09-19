@@ -58,9 +58,14 @@ class GreenTickController extends Controller
 
         $verification->order?->cancelIfPending();
 
-        $verification->forceFill([
-            'status' => UserVerificationStatus::Cancelled,
-        ])->save();
+        if (in_array($verification->fresh()?->status, [
+            UserVerificationStatus::PendingPayment,
+            UserVerificationStatus::PendingReview,
+        ], true)) {
+            $verification->forceFill([
+                'status' => UserVerificationStatus::Cancelled,
+            ])->save();
+        }
 
         return back()->with('success', 'Your Green Tick request was cancelled.');
     }

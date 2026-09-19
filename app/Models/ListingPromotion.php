@@ -101,6 +101,28 @@ class ListingPromotion extends Model
         return $this->status;
     }
 
+    public function ownerStatusHeadline(): string
+    {
+        if ($this->isCurrentlyActive()) {
+            $until = $this->ends_at?->toFormattedDateString();
+
+            return $until !== null
+                ? 'Promoted until '.$until
+                : 'Promoted';
+        }
+
+        return $this->displayStatus()->label();
+    }
+
+    public function ownerStatusExplanation(): ?string
+    {
+        if ($this->status !== ListingPromotionStatus::Pending) {
+            return null;
+        }
+
+        return 'This promotion is reserved and waiting for Stripe to confirm payment. It is not paid, and the listing is not featured until payment succeeds or an admin marks the order paid.';
+    }
+
     public function activateFromSnapshot(?User $activator = null): void
     {
         $startsAt = now();

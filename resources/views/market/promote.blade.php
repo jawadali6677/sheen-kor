@@ -5,15 +5,15 @@
         <article class="sk-card p-6">
             <p class="text-sm text-gray-500">Promote listing</p>
             <h1 class="mt-1 text-2xl font-bold text-forest-900">{{ $listing->title }}</h1>
-            <p class="mt-2 text-sm text-gray-600">Choose a package. Confirming creates a pending order. An admin marks it paid for testing until a payment provider is connected. The listing is not featured until then.</p>
+            <p class="mt-2 text-sm text-gray-600">Choose a package. Confirming reserves a pending promotion and opens Stripe Checkout. The listing is not featured until Stripe confirms payment or an admin marks the order paid.</p>
         </article>
 
         @if($openPromotion)
             <section class="sk-card p-6 text-sm">
-                <p class="font-medium text-gray-900">Status: {{ $openPromotion->displayStatus()->label() }}</p>
+                <p class="font-medium text-gray-900">Status: {{ $openPromotion->ownerStatusHeadline() }}</p>
                 <p class="mt-1 text-gray-600">{{ $openPromotion->package_name }} · {{ $openPromotion->placement->label() }} · {{ $openPromotion->price }} {{ $openPromotion->currency }} · {{ $openPromotion->duration_days }} days</p>
-                @if($openPromotion->isCurrentlyActive())
-                    <p class="mt-1 text-gray-600">Active until {{ $openPromotion->ends_at?->toFormattedDateString() }}.</p>
+                @if($openPromotion->ownerStatusExplanation())
+                    <p class="mt-2 text-gray-600">{{ $openPromotion->ownerStatusExplanation() }}</p>
                 @endif
                 @if($openPromotion->status->value === 'pending')
                     <form method="POST" action="{{ route('market.promote.destroy', $openPromotion) }}" class="mt-4">

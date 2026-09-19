@@ -12,6 +12,7 @@ use App\Models\MonetizationPackage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -70,15 +71,29 @@ class ListingPromotionController extends Controller
         abort_unless($request->user()?->id === $promotion->user_id, 403);
         abort_unless($promotion->status === ListingPromotionStatus::Pending, 403);
 
-        $promotion->order?->cancelIfPending();
+        $listing = $promotion->listing;
 
-        $promotion->forceFill([
-            'status' => ListingPromotionStatus::Cancelled,
-        ])->save();
+        DB::transaction(function () use ($promotion): void {
+            $promotion->order?->cancelIfPending();
+
+            $locked = ListingPromotion::query()->whereKey($promotion->id)->lockForUpdate()->first();
+
+            if ($locked?->status === ListingPromotionStatus::Pending) {
+                $locked->forceFill([
+                    'status' => ListingPromotionStatus::Cancelled,
+                ])->save();
+            }
+        });
+
+        if ($listing === null) {
+            return redirect()
+                ->route('market.mine')
+                ->with('success', 'The pending promotion was cancelled.');
+        }
 
         return redirect()
-            ->route('market.show', $promotion->listing)
-            ->with('success', 'The promotion request was cancelled.');
+            ->route('market.show', $listing)
+            ->with('success', 'The pending promotion was cancelled.');
     }
 
     /**

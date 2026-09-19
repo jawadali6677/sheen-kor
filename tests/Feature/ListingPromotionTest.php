@@ -7,11 +7,15 @@ use App\Enums\ListingPromotionSource;
 use App\Enums\ListingPromotionStatus;
 use App\Enums\MarketListingStatus;
 use App\Enums\MonetizationPackageType;
+use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
 use App\Models\ListingPromotion;
 use App\Models\MarketCategory;
 use App\Models\MarketListing;
 use App\Models\MonetizationPackage;
 use App\Models\MonetizationSetting;
+use App\Models\Order;
+use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
@@ -33,6 +37,37 @@ class ListingPromotionTest extends TestCase
             ->assertSee('Featured Listing - 7 Days')
             ->assertSee('Top of Category - 7 Days')
             ->assertSee('Confirm pending promotion');
+    }
+
+    public function test_pending_promotion_page_explains_the_reservation_is_not_paid(): void
+    {
+        $user = User::factory()->create();
+        $listing = MarketListing::factory()->create(['user_id' => $user->id]);
+        $package = $this->enablePromotionPackages()->firstWhere('slug', 'listing_featured_7d');
+
+        $this->actingAs($user)
+            ->post(route('market.promote.store', $listing), ['package_id' => $package->id]);
+
+        $this->actingAs($user)
+            ->get(route('market.promote.create', $listing))
+            ->assertOk()
+            ->assertSee('Status: Pending payment')
+            ->assertSee('reserved and waiting for Stripe to confirm payment')
+            ->assertSee('It is not paid')
+            ->assertSee('Cancel pending promotion')
+            ->assertDontSee('Promoted until');
+
+        $this->actingAs($user)
+            ->get(route('market.show', $listing))
+            ->assertOk()
+            ->assertSee('Pending payment')
+            ->assertDontSee('Promoted until');
+
+        $this->actingAs($user)
+            ->get(route('market.mine'))
+            ->assertOk()
+            ->assertSee('Pending payment')
+            ->assertDontSee('Promoted until');
     }
 
     public function test_disabled_packages_cannot_be_selected(): void
@@ -214,6 +249,58 @@ class ListingPromotionTest extends TestCase
             ->assertRedirect(route('market.show', $listing));
 
         $this->assertSame(ListingPromotionStatus::Cancelled, $promotion->fresh()->status);
+    }
+
+    public function test_cancelling_a_pending_promotion_cancels_the_order_and_payments(): void
+    {
+        $user = User::factory()->create();
+        $listing = MarketListing::factory()->create(['user_id' => $user->id]);
+        $package = $this->enablePromotionPackages()->firstWhere('slug', 'listing_featured_7d');
+        $package->forceFill(['price' => '6.50'])->save();
+
+        $this->actingAs($user)
+            ->post(route('market.promote.store', $listing), ['package_id' => $package->id]);
+
+        $order = Order::query()->firstOrFail();
+        $promotion = ListingPromotion::query()->firstOrFail();
+
+        $this->assertSame(PaymentStatus::Pending, $order->payments()->first()->status);
+
+        $this->actingAs($user)
+            ->delete(route('market.promote.destroy', $promotion))
+            ->assertRedirect(route('market.show', $listing));
+
+        $this->assertSame(ListingPromotionStatus::Cancelled, $promotion->fresh()->status);
+        $this->assertSame(OrderStatus::Cancelled, $order->fresh()->status);
+        $this->assertSame(PaymentStatus::Cancelled, $order->payments()->first()->status);
+        $this->assertSame(0, Payment::query()->where('status', PaymentStatus::Pending)->count());
+    }
+
+    public function test_deleting_a_listing_cancels_related_pending_payments(): void
+    {
+        $user = User::factory()->create();
+        $listing = MarketListing::factory()->create(['user_id' => $user->id]);
+        $package = $this->enablePromotionPackages()->firstWhere('slug', 'listing_featured_7d');
+        $package->forceFill(['price' => '6.50'])->save();
+
+        $this->actingAs($user)
+            ->post(route('market.promote.store', $listing), ['package_id' => $package->id]);
+
+        $order = Order::query()->firstOrFail();
+
+        $this->actingAs($user)
+            ->delete(route('market.destroy', $listing))
+            ->assertRedirect(route('market.index'));
+
+        $this->assertSame(OrderStatus::Cancelled, $order->fresh()->status);
+        $this->assertSame(PaymentStatus::Cancelled, $order->payments()->first()->status);
+        $this->assertSame(0, Payment::query()->where('status', PaymentStatus::Pending)->count());
+        $this->assertSame(0, ListingPromotion::query()->count());
+
+        $this->actingAs($user)
+            ->get(route('orders.show', $order))
+            ->assertOk()
+            ->assertSee('Cancelled');
     }
 
     public function test_members_cannot_cancel_another_users_pending_promotion(): void

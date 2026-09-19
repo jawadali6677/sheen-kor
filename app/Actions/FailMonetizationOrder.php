@@ -18,7 +18,11 @@ class FailMonetizationOrder
     public function handle(Order $order, array $paymentPayload = []): Order
     {
         return DB::transaction(function () use ($order, $paymentPayload): Order {
-            $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
+            $locked = Order::query()->whereKey($order->id)->lockForUpdate()->first();
+
+            if ($locked === null) {
+                return $order;
+            }
 
             if ($locked->status === OrderStatus::Paid) {
                 return $locked;

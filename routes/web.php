@@ -80,13 +80,13 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::post('/green-tick', [GreenTickController::class, 'store'])
-        ->middleware('throttle:10,1')
+        ->middleware('throttle:checkout')
         ->name('green-tick.store');
     Route::delete('/green-tick/{verification}', [GreenTickController::class, 'destroy'])
         ->name('green-tick.destroy');
     Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
     Route::post('/orders/{order}/pay', [OrderController::class, 'pay'])
-        ->middleware('throttle:10,1')
+        ->middleware('throttle:checkout')
         ->name('orders.pay');
     Route::delete('/orders/{order}', [OrderController::class, 'destroy'])->name('orders.destroy');
     Route::post('/rewarded-ads', [RewardedAdController::class, 'store'])
@@ -120,7 +120,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/posts/{post}', [PostController::class, 'destroy'])->name('posts.destroy');
     Route::get('/posts/{post:slug}/boost', [PostBoostController::class, 'create'])->name('posts.boost.create');
     Route::post('/posts/{post:slug}/boost', [PostBoostController::class, 'store'])
-        ->middleware('throttle:10,1')
+        ->middleware('throttle:checkout')
         ->name('posts.boost.store');
     Route::delete('/post-boosts/{boost}', [PostBoostController::class, 'destroy'])->name('posts.boost.destroy');
 
@@ -136,7 +136,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/market/mine', [MarketListingController::class, 'mine'])->name('market.mine');
     Route::get('/market/{listing}/promote', [ListingPromotionController::class, 'create'])->name('market.promote.create');
     Route::post('/market/{listing}/promote', [ListingPromotionController::class, 'store'])
-        ->middleware('throttle:10,1')
+        ->middleware('throttle:checkout')
         ->name('market.promote.store');
     Route::delete('/listing-promotions/{promotion}', [ListingPromotionController::class, 'destroy'])->name('market.promote.destroy');
     Route::get('/market/{listing}/edit', [MarketListingController::class, 'edit'])->name('market.edit');

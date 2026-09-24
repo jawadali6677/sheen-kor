@@ -10,6 +10,7 @@ use App\Enums\PaymentStatus;
 use App\Models\MarketListing;
 use App\Models\MonetizationPackage;
 use App\Models\Order;
+use App\Models\Payment;
 use App\Models\Post;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -159,7 +160,97 @@ class StripeCheckoutTest extends TestCase
 
         $this->actingAs($user)
             ->post(route('orders.pay', $order))
+            ->assertRedirect('https://checkout.stripe.test/cs_test_124');
+
+        $this->assertSame(1, $order->payments()->count());
+        $this->assertSame('cs_test_124', $order->payments()->first()->provider_reference);
+    }
+
+    public function test_retrying_pay_on_a_pending_order_reuses_the_checkout_payment(): void
+    {
+        $gateway = $this->fakeStripe();
+        $user = User::factory()->create();
+        $post = Post::factory()->create(['user_id' => $user->id]);
+        $package = $this->enableBoostPackages()->firstWhere('slug', 'post_boost_1d');
+        $package->forceFill(['price' => '4.50'])->save();
+
+        $this->actingAs($user)
+            ->post(route('posts.boost.store', $post), ['package_id' => $package->id])
             ->assertRedirect('https://checkout.stripe.test/cs_test_123');
+
+        $order = Order::query()->firstOrFail();
+        $payment = $order->payments()->first();
+
+        $this->actingAs($user)
+            ->post(route('orders.pay', $order))
+            ->assertRedirect('https://checkout.stripe.test/cs_test_124');
+
+        $this->assertDatabaseCount('payments', 1);
+        $this->assertSame($payment->id, $order->payments()->first()->id);
+        $this->assertSame(Payment::checkoutIdempotencyKey($order->id), $order->payments()->first()->idempotency_key);
+        $this->assertSame('cs_test_124', $order->payments()->first()->provider_reference);
+        $this->assertSame(PaymentStatus::Pending, $order->payments()->first()->status);
+        $this->assertSame(['cs_test_123'], $gateway->expiredSessions);
+        $this->assertCount(2, $gateway->charges);
+    }
+
+    public function test_retrying_pay_after_a_failed_checkout_creates_a_new_payment_key(): void
+    {
+        $gateway = $this->fakeStripe();
+        $user = User::factory()->create();
+        $post = Post::factory()->create(['user_id' => $user->id]);
+        $package = $this->enableBoostPackages()->firstWhere('slug', 'post_boost_1d');
+        $package->forceFill(['price' => '4.50'])->save();
+
+        $this->actingAs($user)
+            ->post(route('posts.boost.store', $post), ['package_id' => $package->id]);
+
+        $order = Order::query()->firstOrFail();
+        $failed = $order->payments()->first();
+        $failed->forceFill([
+            'status' => PaymentStatus::Failed,
+            'payload' => [
+                'checkout_session_id' => 'cs_test_123',
+                'stripe_event_ids' => ['evt_expired_old'],
+            ],
+        ])->save();
+
+        $this->actingAs($user)
+            ->post(route('orders.pay', $order))
+            ->assertRedirect('https://checkout.stripe.test/cs_test_124');
+
+        $this->assertDatabaseCount('payments', 2);
+        $this->assertSame(PaymentStatus::Failed, $failed->fresh()->status);
+        $this->assertSame(Payment::checkoutIdempotencyKey($order->id), $failed->fresh()->idempotency_key);
+
+        $retry = $order->payments()->latest('id')->first();
+        $this->assertSame(Payment::checkoutIdempotencyKey($order->id, 2), $retry->idempotency_key);
+        $this->assertSame('cs_test_124', $retry->provider_reference);
+        $this->assertSame(PaymentStatus::Pending, $retry->status);
+        $this->assertSame(OrderStatus::Pending, $order->fresh()->status);
+        $this->assertCount(2, $gateway->charges);
+    }
+
+    public function test_paid_orders_cannot_start_checkout_again(): void
+    {
+        $gateway = $this->fakeStripe();
+        $user = User::factory()->create();
+        $post = Post::factory()->create(['user_id' => $user->id]);
+        $package = $this->enableBoostPackages()->firstWhere('slug', 'post_boost_1d');
+        $package->forceFill(['price' => '4.50'])->save();
+
+        $this->actingAs($user)
+            ->post(route('posts.boost.store', $post), ['package_id' => $package->id]);
+
+        $order = Order::query()->firstOrFail();
+        $order->forceFill(['status' => OrderStatus::Paid])->save();
+
+        $this->actingAs($user)
+            ->post(route('orders.pay', $order))
+            ->assertForbidden();
+
+        $this->assertCount(1, $gateway->charges);
+        $this->assertSame('cs_test_123', $order->payments()->first()->provider_reference);
     }
 
     public function test_zero_amount_and_missing_stripe_keys_stay_on_the_manual_pending_flow(): void

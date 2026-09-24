@@ -46,4 +46,28 @@ class Payment extends Model
     {
         return $this->belongsTo(Order::class);
     }
+
+    public static function checkoutIdempotencyKey(int $orderId, int $attempt = 1): string
+    {
+        if ($attempt <= 1) {
+            return 'order:'.$orderId.':checkout';
+        }
+
+        return 'order:'.$orderId.':checkout:'.$attempt;
+    }
+
+    public function stripeCheckoutSessionId(): ?string
+    {
+        $sessionId = $this->provider_reference;
+
+        if (is_string($sessionId) && str_starts_with($sessionId, 'cs_')) {
+            return $sessionId;
+        }
+
+        $payloadSession = $this->payload['checkout_session_id'] ?? null;
+
+        return is_string($payloadSession) && str_starts_with($payloadSession, 'cs_')
+            ? $payloadSession
+            : null;
+    }
 }

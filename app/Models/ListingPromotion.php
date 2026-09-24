@@ -110,6 +110,32 @@ class ListingPromotion extends Model
         return $this->placement->activeUntilLead().' until '.$this->ends_at->toFormattedDateString();
     }
 
+    public function ownerStatusHeadline(): string
+    {
+        if ($this->isCurrentlyActive()) {
+            $until = $this->ends_at?->toFormattedDateString();
+
+            return $until !== null
+                ? 'Promoted until '.$until
+                : 'Promoted';
+        }
+
+        return $this->displayStatus()->label();
+    }
+
+    public function ownerStatusExplanation(): ?string
+    {
+        if ($this->status !== ListingPromotionStatus::Pending) {
+            return null;
+        }
+
+        if ($this->order?->shouldChargeWithStripe()) {
+            return 'This promotion is reserved. Pay with Stripe to finish checkout. Pending payment is not paid, and the listing is not featured until Stripe confirms payment.';
+        }
+
+        return 'This promotion is reserved and is not paid. An admin can mark the order paid for testing until Stripe Checkout is connected.';
+    }
+
     public function activateFromSnapshot(?User $activator = null): void
     {
         $startsAt = now();

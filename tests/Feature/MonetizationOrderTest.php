@@ -13,6 +13,7 @@ use App\Models\MarketListing;
 use App\Models\MonetizationPackage;
 use App\Models\MonetizationSetting;
 use App\Models\Order;
+use App\Models\Payment;
 use App\Models\Post;
 use App\Models\PostBoost;
 use App\Models\User;
@@ -118,6 +119,7 @@ class MonetizationOrderTest extends TestCase
 
         $this->assertTrue($listing->fresh()->hasActivePromotion());
         $this->assertSame(ListingPromotionStatus::Active, ListingPromotion::query()->first()->status);
+        $this->assertSame(OrderStatus::Paid, $order->fresh()->status);
     }
 
     public function test_unpaid_green_tick_stays_out_of_the_review_queue(): void
@@ -195,6 +197,29 @@ class MonetizationOrderTest extends TestCase
         $this->assertSame(OrderStatus::Cancelled, $order->fresh()->status);
         $this->assertSame(PostBoostStatus::Cancelled, PostBoost::query()->first()->status);
         $this->assertSame(PaymentStatus::Cancelled, $order->payments()->first()->status);
+    }
+
+    public function test_deleting_an_order_deletes_related_payments(): void
+    {
+        $user = User::factory()->create();
+        $listing = MarketListing::factory()->create(['user_id' => $user->id]);
+        $package = $this->enablePromotionPackages()->firstWhere('slug', 'listing_featured_7d');
+        $package->forceFill(['price' => '6.50'])->save();
+
+        $this->actingAs($user)
+            ->post(route('market.promote.store', $listing), ['package_id' => $package->id]);
+
+        $order = Order::query()->firstOrFail();
+        $payment = $order->payments()->firstOrFail();
+
+        $this->assertSame(PaymentStatus::Pending, $payment->status);
+
+        $order->delete();
+
+        $this->assertDatabaseMissing('orders', ['id' => $order->id]);
+        $this->assertDatabaseMissing('payments', ['id' => $payment->id]);
+        $this->assertSame(0, Payment::query()->count());
+        $this->assertSame(ListingPromotionStatus::Cancelled, ListingPromotion::query()->first()->status);
     }
 
     public function test_unpaid_admin_grants_still_create_no_order(): void

@@ -3,11 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Actions\MarkOrderPaid;
-use App\Enums\ListingPromotionStatus;
 use App\Enums\OrderStatus;
 use App\Enums\Permission;
-use App\Enums\PostBoostStatus;
-use App\Enums\UserVerificationStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use Illuminate\Http\RedirectResponse;
@@ -108,26 +105,7 @@ class OrderController extends Controller
         $this->authorizeManage();
         abort_unless($order->status === OrderStatus::Pending, 403);
 
-        $order->load(['verification', 'boost', 'listingPromotion']);
         $order->cancelIfPending();
-
-        if ($order->verification?->status === UserVerificationStatus::PendingPayment) {
-            $order->verification->forceFill([
-                'status' => UserVerificationStatus::Cancelled,
-            ])->save();
-        }
-
-        if ($order->boost?->status === PostBoostStatus::Pending) {
-            $order->boost->forceFill([
-                'status' => PostBoostStatus::Cancelled,
-            ])->save();
-        }
-
-        if ($order->listingPromotion?->status === ListingPromotionStatus::Pending) {
-            $order->listingPromotion->forceFill([
-                'status' => ListingPromotionStatus::Cancelled,
-            ])->save();
-        }
 
         return redirect()
             ->route('admin.monetization.orders.index')

@@ -42,6 +42,11 @@
                                 <div class="flex flex-wrap items-center gap-2">
                                     <a href="{{ route('market.show', $listing) }}" class="font-semibold text-forest-900 hover:underline">{{ $listing->title }}</a>
                                     <x-market-status-badge :listing="$listing" />
+                                    @if($listing->ownerPromotion()?->status === \App\Enums\ListingPromotionStatus::Pending)
+                                        <span class="inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 ring-1 ring-inset ring-gray-200">Pending payment</span>
+                                    @elseif($listing->ownerPromotionHeadline())
+                                        <span class="inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-inset ring-amber-200">{{ $listing->ownerPromotionHeadline() }}</span>
+                                    @endif
                                 </div>
                                 @if($activeUntil = $listing->currentPromotion()?->activeUntilPhrase())
                                     <p class="mt-1 text-sm font-medium text-amber-800">{{ $activeUntil }}</p>

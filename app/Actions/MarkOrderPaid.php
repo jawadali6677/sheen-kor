@@ -22,7 +22,11 @@ class MarkOrderPaid
     public function handle(Order $order, ?User $admin = null, array $paymentPayload = []): Order
     {
         return DB::transaction(function () use ($order, $admin, $paymentPayload): Order {
-            $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
+            $locked = Order::query()->whereKey($order->id)->lockForUpdate()->first();
+
+            if ($locked === null) {
+                return $order;
+            }
 
             if ($locked->status === OrderStatus::Paid) {
                 return $locked;

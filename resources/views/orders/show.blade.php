@@ -24,9 +24,9 @@
             @elseif($order->status->value === 'pending' && ($checkoutReturn ?? null) === 'session_not_linked')
                 <p class="mt-1 text-sm text-gray-600">That Checkout session is not linked to this order, so this payment was not applied here.</p>
             @elseif($order->status->value === 'pending' && request('checkout') === 'cancelled')
-                <p class="mt-1 text-sm text-gray-600">Checkout was cancelled. You can try paying again, or cancel this pending order.</p>
+                <p class="mt-1 text-sm text-gray-600">Checkout was cancelled. No payment was taken. This order is still pending, so you can try paying again or cancel the reservation.</p>
             @elseif($order->status->value === 'pending' && $order->shouldChargeWithStripe())
-                <p class="mt-1 text-sm text-gray-600">Pay with Stripe to activate this purchase. The benefit stays pending until payment succeeds.</p>
+                <p class="mt-1 text-sm text-gray-600">Pay with Stripe to activate this purchase. Pending means reserved and waiting for payment — it is not paid yet.</p>
             @elseif($order->status->value === 'pending')
                 <p class="mt-1 text-sm text-gray-600">Payment is marked paid by an admin until a payment provider is connected. The purchased benefit stays pending until that happens.</p>
             @endif

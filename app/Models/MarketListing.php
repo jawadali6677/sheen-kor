@@ -7,6 +7,7 @@ use App\Enums\ListingPromotionStatus;
 use App\Enums\MarketListingCondition;
 use App\Enums\MarketListingStatus;
 use App\Enums\MarketListingType;
+use App\Enums\OrderStatus;
 use App\Models\Concerns\PresentsMedia;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -59,6 +60,19 @@ class MarketListing extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::deleting(function (MarketListing $listing): void {
+            Order::query()
+                ->where('market_listing_id', $listing->id)
+                ->where('status', OrderStatus::Pending)
+                ->get()
+                ->each(function (Order $order): void {
+                    $order->cancelIfPending();
+                });
+        });
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -87,6 +101,11 @@ class MarketListing extends Model
     public function latestPromotion(): HasOne
     {
         return $this->hasOne(ListingPromotion::class)->latestOfMany();
+    }
+
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
     }
 
     public function currentOrLatestPromotion(): ?ListingPromotion
@@ -132,6 +151,31 @@ class MarketListing extends Model
     {
         return $this->promotions()->currentlyActive()->exists()
             || $this->promotions()->where('status', ListingPromotionStatus::Pending)->exists();
+    }
+
+    public function ownerPromotion(): ?ListingPromotion
+    {
+        if ($this->relationLoaded('promotions')) {
+            return $this->promotions
+                ->sortByDesc('id')
+                ->first(function (ListingPromotion $promotion): bool {
+                    return $promotion->isCurrentlyActive()
+                        || $promotion->status === ListingPromotionStatus::Pending;
+                });
+        }
+
+        return $this->promotions()
+            ->where(function (Builder $query): void {
+                $query->currentlyActive()
+                    ->orWhere('status', ListingPromotionStatus::Pending);
+            })
+            ->latest('id')
+            ->first();
+    }
+
+    public function ownerPromotionHeadline(): ?string
+    {
+        return $this->ownerPromotion()?->ownerStatusHeadline();
     }
 
     /**

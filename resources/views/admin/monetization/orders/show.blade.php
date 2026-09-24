@@ -29,6 +29,9 @@
                 @if($order->promotionPlacementLabel())
                     <p class="mt-1 text-sm text-gray-600">Placement: {{ $order->promotionPlacementLabel() }}</p>
                 @endif
+                @if($order->boost)
+                    <p class="mt-1 text-sm text-gray-600">Post: {{ $order->boost->post?->title ?? 'Deleted post' }}</p>
+                @endif
                 @if($order->resultDetail())
                     <p class="mt-1 text-sm text-gray-600">{{ $order->resultDetail() }}</p>
                 @endif

@@ -84,6 +84,7 @@ Route::middleware('auth')->group(function () {
         ->name('green-tick.store');
     Route::delete('/green-tick/{verification}', [GreenTickController::class, 'destroy'])
         ->name('green-tick.destroy');
+    Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
     Route::post('/orders/{order}/pay', [OrderController::class, 'pay'])
         ->middleware('throttle:checkout')

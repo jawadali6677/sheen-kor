@@ -26,7 +26,15 @@ class OrderController extends Controller
         $search = trim((string) $request->input('q', ''));
 
         $orders = Order::query()
-            ->with(['user', 'package'])
+            ->with([
+                'user',
+                'package',
+                'listing',
+                'post',
+                'verification',
+                'boost.post',
+                'listingPromotion.listing',
+            ])
             ->when($status !== 'all', fn ($query) => $query->where('status', $status))
             ->when($search !== '', function ($query) use ($search): void {
                 $query->where(function ($query) use ($search): void {
@@ -68,6 +76,8 @@ class OrderController extends Controller
             'user',
             'package',
             'payments',
+            'listing',
+            'post',
             'verification',
             'boost.post',
             'listingPromotion.listing',

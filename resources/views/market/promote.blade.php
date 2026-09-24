@@ -5,14 +5,16 @@
         <article class="sk-card p-6">
             <p class="text-sm text-gray-500">Promote listing</p>
             <h1 class="mt-1 text-2xl font-bold text-forest-900">{{ $listing->title }}</h1>
-            @if($openPromotion?->status->value === 'pending' && $openPromotion->order?->shouldChargeWithStripe())
-                <p class="mt-2 text-sm text-gray-600">This promotion is reserved until you pay with Stripe. Pending payment is not paid, and the listing is not featured yet.</p>
-            @elseif($openPromotion?->status->value === 'pending')
-                <p class="mt-2 text-sm text-gray-600">This promotion is reserved and is not paid. An admin can mark the order paid for testing until Stripe Checkout is connected. The listing is not featured yet.</p>
+            @if($openPromotion?->isCurrentlyActive())
+                <p class="mt-2 text-sm text-gray-600">This listing is already promoted.</p>
+            @elseif($openPromotion?->status->value === 'pending' && $openPromotion->order?->shouldChargeWithStripe())
+                <p class="mt-2 text-sm text-gray-600">Finish payment to start this promotion. This promotion is reserved until you pay with Stripe. Pending payment is not paid, and the listing is not featured yet.</p>
+            @elseif($openPromotion)
+                <p class="mt-2 text-sm text-gray-600">Finish payment to start this promotion. This promotion is reserved and is not paid. An admin can mark the order paid for testing until Stripe Checkout is connected. The listing is not featured yet.</p>
             @elseif(stripe_checkout_is_configured())
                 <p class="mt-2 text-sm text-gray-600">Choose a package. Confirming reserves a pending promotion and opens Stripe Checkout. The listing is not featured until Stripe confirms payment.</p>
             @else
-                <p class="mt-2 text-sm text-gray-600">Choose a package. Confirming reserves a pending promotion. An admin marks it paid for testing until Stripe Checkout is connected. The listing is not featured until then.</p>
+                <p class="mt-2 text-sm text-gray-600">Choose how long to promote this listing, then continue to payment. The promotion starts after payment succeeds.</p>
             @endif
         </article>
 
@@ -20,6 +22,9 @@
             <section class="sk-card p-6 text-sm">
                 <p class="font-medium text-gray-900">Status: {{ $openPromotion->ownerStatusHeadline() }}</p>
                 <p class="mt-1 text-gray-600">{{ $openPromotion->package_name }} · {{ $openPromotion->placement->label() }} · {{ $openPromotion->price }} {{ $openPromotion->currency }} · {{ $openPromotion->duration_days }} days</p>
+                @if($openPromotion->isCurrentlyActive() && $openPromotion->activeUntilPhrase())
+                    <p class="mt-1 font-medium text-amber-800">{{ $openPromotion->activeUntilPhrase() }}.</p>
+                @endif
                 @if($openPromotion->ownerStatusExplanation())
                     <p class="mt-2 text-gray-600">{{ $openPromotion->ownerStatusExplanation() }}</p>
                 @endif
@@ -32,6 +37,7 @@
                             </form>
                         @endif
                         @if($openPromotion->order)
+                            <a href="{{ route('orders.show', $openPromotion->order) }}" class="btn-primary">Continue to payment</a>
                             <a href="{{ route('orders.show', $openPromotion->order) }}" class="btn-secondary">View order</a>
                         @endif
                         <form method="POST" action="{{ route('market.promote.destroy', $openPromotion) }}">
@@ -57,7 +63,11 @@
                     </label>
                 @endforeach
                 <div class="flex flex-wrap gap-3">
-                    <button type="submit" class="btn-primary">Confirm pending promotion</button>
+                    @if(stripe_checkout_is_configured())
+                        <button type="submit" class="btn-primary">Confirm pending promotion</button>
+                    @else
+                        <button type="submit" class="btn-primary">Continue to payment</button>
+                    @endif
                     <a href="{{ route('market.show', $listing) }}" class="btn-secondary">Cancel</a>
                 </div>
             </form>

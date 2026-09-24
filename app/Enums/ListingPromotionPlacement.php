@@ -25,4 +25,13 @@ enum ListingPromotionPlacement: string
             self::TopOfCategory => 'Top of category',
         };
     }
+
+    public function activeUntilLead(): string
+    {
+        return match ($this) {
+            self::FeaturedHome => 'Featured',
+            self::TopOfCategory => 'Top of Category',
+            self::BoostRank => 'Promoted',
+        };
+    }
 }

@@ -18,12 +18,15 @@
                     @if($listing->promotionBadge())
                         <span class="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-800">{{ $listing->promotionBadge() }}</span>
                     @endif
+                    @if($activeUntil = $listing->currentPromotion()?->activeUntilPhrase())
+                        <span class="text-sm font-medium text-amber-800">{{ $activeUntil }}</span>
+                    @endif
                     @can('update', $listing)
                         @if($listing->ownerPromotion()?->status === \App\Enums\ListingPromotionStatus::Pending)
                             <span class="inline-flex rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-gray-700">Pending payment</span>
                         @elseif($listing->ownerPromotionHeadline() && ! $listing->promotionBadge())
                             <span class="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-800">{{ $listing->ownerPromotionHeadline() }}</span>
-                        @elseif($listing->currentPromotion()?->ends_at)
+                        @elseif($listing->currentPromotion()?->ends_at && ! $listing->currentPromotion()?->activeUntilPhrase())
                             <span class="text-xs font-medium text-amber-800">Promoted until {{ $listing->currentPromotion()->ends_at->toFormattedDateString() }}</span>
                         @endif
                     @endcan

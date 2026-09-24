@@ -23,8 +23,10 @@ class FakeStripeCheckoutGateway implements StripeCheckoutGateway
      */
     public array $expiredSessions = [];
 
+    public int $retrieveCount = 0;
+
     /**
-     * @var array<string, object{id: string, url: ?string, payment_status: string, metadata: array<string, mixed>, client_reference_id: ?string, payment_intent: ?string}>
+     * @var array<string, array<string, mixed>>
      */
     public array $sessions = [];
 
@@ -51,30 +53,34 @@ class FakeStripeCheckoutGateway implements StripeCheckoutGateway
         $this->nextSessionId = 'cs_test_'.(123 + count($this->charges));
         $this->nextUrl = 'https://checkout.stripe.test/'.$this->nextSessionId;
 
-        $session = (object) [
+        $metadata = is_array($sessionOptions['metadata'] ?? null) ? $sessionOptions['metadata'] : [];
+        $orderId = $metadata['order_id'] ?? null;
+        $clientReferenceId = $sessionOptions['client_reference_id'] ?? null;
+
+        $this->sessions[$sessionId] = [
             'id' => $sessionId,
-            'url' => $url,
             'payment_status' => 'unpaid',
-            'metadata' => is_array($sessionOptions['metadata'] ?? null) ? $sessionOptions['metadata'] : [],
-            'client_reference_id' => is_string($sessionOptions['client_reference_id'] ?? null)
-                ? $sessionOptions['client_reference_id']
-                : null,
+            'order_id' => is_scalar($orderId) && (string) $orderId !== '' ? (string) $orderId : null,
+            'client_reference_id' => is_scalar($clientReferenceId) && (string) $clientReferenceId !== '' ? (string) $clientReferenceId : null,
             'payment_intent' => null,
         ];
 
-        $this->sessions[$session->id] = $session;
+        return (object) [
+            'id' => $sessionId,
+            'url' => $url,
+        ];
+    }
 
-        return $session;
+    public function retrieveCheckoutSession(string $sessionId): ?array
+    {
+        $this->retrieveCount++;
+
+        return $this->sessions[$sessionId] ?? null;
     }
 
     public function expireSession(string $sessionId): void
     {
         $this->expiredSessions[] = $sessionId;
-    }
-
-    public function retrieveCheckoutSession(string $sessionId): ?object
-    {
-        return $this->sessions[$sessionId] ?? null;
     }
 
     public function markSessionPaid(string $sessionId, string $status = 'paid'): void
@@ -83,6 +89,6 @@ class FakeStripeCheckoutGateway implements StripeCheckoutGateway
             return;
         }
 
-        $this->sessions[$sessionId]->payment_status = $status;
+        $this->sessions[$sessionId]['payment_status'] = $status;
     }
 }

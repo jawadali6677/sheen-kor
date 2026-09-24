@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Collection;
 
 class MarketListing extends Model
@@ -97,9 +98,19 @@ class MarketListing extends Model
         return $this->hasMany(ListingPromotion::class);
     }
 
+    public function latestPromotion(): HasOne
+    {
+        return $this->hasOne(ListingPromotion::class)->latestOfMany();
+    }
+
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
+    }
+
+    public function currentOrLatestPromotion(): ?ListingPromotion
+    {
+        return $this->currentPromotion() ?? $this->latestPromotion;
     }
 
     protected function galleryMedia(): Collection

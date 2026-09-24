@@ -283,6 +283,9 @@ class PostController extends Controller
             },
             'category',
             'images',
+            'boosts' => function ($query): void {
+                $query->currentlyActive();
+            },
         ])
             ->loadExists([
                 'boosts as is_boosted' => function ($query): void {

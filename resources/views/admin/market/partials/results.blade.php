@@ -17,6 +17,7 @@
                     <th class="px-4 py-3">Category</th>
                     <th class="px-4 py-3">Price</th>
                     <th class="px-4 py-3">Status</th>
+                    <th class="px-4 py-3">Promotion</th>
                     <th class="px-4 py-3">Reports</th>
                     <th class="px-4 py-3">Created</th>
                     <th class="px-4 py-3">Actions</th>
@@ -35,6 +36,9 @@
                         <td class="px-4 py-3">{{ $listing->category?->name ?? '—' }}</td>
                         <td class="px-4 py-3 whitespace-nowrap">{{ $listing->listing_type->catalogOfferLabel($listing->price) }}</td>
                         <td class="px-4 py-3 whitespace-nowrap">{{ $listing->status->label() }}</td>
+                        <td class="px-4 py-3">
+                            @include('admin.market.partials.promotion-status', ['listing' => $listing])
+                        </td>
                         <td class="px-4 py-3">{{ $listing->pending_reports_count }}</td>
                         <td class="px-4 py-3 whitespace-nowrap text-gray-500">{{ $listing->created_at?->format('M d, Y') }}</td>
                         <td class="px-4 py-3">
@@ -43,7 +47,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="10" class="px-4 py-10 text-center text-gray-500">No listings match this filter.</td>
+                        <td colspan="11" class="px-4 py-10 text-center text-gray-500">No listings match this filter.</td>
                     </tr>
                 @endforelse
             </tbody>
@@ -57,6 +61,9 @@
                 <p class="mt-1 font-medium text-forest-900">{{ $listing->title }}</p>
                 <p class="mt-1 text-sm text-gray-500">{{ \Illuminate\Support\Str::limit(strip_tags((string) $listing->description), 90) }}</p>
                 <p class="mt-2 text-xs text-gray-600">{{ $listing->listing_type->label() }} · {{ $listing->status->label() }} · {{ $listing->pending_reports_count }} reports</p>
+                <div class="mt-2 text-xs">
+                    @include('admin.market.partials.promotion-status', ['listing' => $listing])
+                </div>
                 <div class="mt-3">
                     @include('admin.market.partials.row-actions', ['listing' => $listing])
                 </div>

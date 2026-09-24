@@ -101,6 +101,15 @@ class ListingPromotion extends Model
         return $this->status;
     }
 
+    public function activeUntilPhrase(): ?string
+    {
+        if (! $this->isCurrentlyActive() || $this->ends_at === null) {
+            return null;
+        }
+
+        return $this->placement->activeUntilLead().' until '.$this->ends_at->toFormattedDateString();
+    }
+
     public function ownerStatusHeadline(): string
     {
         if ($this->isCurrentlyActive()) {

@@ -48,6 +48,9 @@
                                         <span class="inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-inset ring-amber-200">{{ $listing->ownerPromotionHeadline() }}</span>
                                     @endif
                                 </div>
+                                @if($activeUntil = $listing->currentPromotion()?->activeUntilPhrase())
+                                    <p class="mt-1 text-sm font-medium text-amber-800">{{ $activeUntil }}</p>
+                                @endif
                                 <p class="mt-1 text-sm text-gray-500">
                                     {{ $listing->listing_type->label() }}
                                     @if($listing->category)

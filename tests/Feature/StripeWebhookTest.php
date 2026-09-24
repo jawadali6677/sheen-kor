@@ -20,7 +20,10 @@ use App\Models\PostBoost;
 use App\Models\User;
 use App\Models\UserVerification;
 use App\Notifications\GreenTickNeedsReview;
+use ArrayObject;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Log\Events\MessageLogged;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Tests\Support\FakeStripeCheckoutGateway;
 use Tests\TestCase;
@@ -32,6 +35,7 @@ class StripeWebhookTest extends TestCase
     public function test_a_signed_checkout_completed_webhook_marks_the_order_paid_and_activates_a_boost(): void
     {
         [$order, $post] = $this->pendingBoostOrder();
+        $logged = $this->captureLogs();
 
         $this->postStripeWebhook($this->completedPayload($order, 'evt_boost_1'))
             ->assertOk();
@@ -40,6 +44,7 @@ class StripeWebhookTest extends TestCase
         $this->assertSame(PaymentStatus::Paid, $order->payments()->first()->status);
         $this->assertTrue($post->fresh()->hasActiveBoost());
         $this->assertSame(1, PostBoost::query()->currentlyActive()->count());
+        $this->assertLoggedReason($logged, 'Stripe webhook fulfilled', 'fulfilled', $order->id);
     }
 
     public function test_a_signed_checkout_completed_webhook_activates_a_listing_promotion(): void
@@ -208,6 +213,8 @@ class StripeWebhookTest extends TestCase
     {
         [$order, $post] = $this->pendingBoostOrder();
 
+        $logged = $this->captureLogs();
+
         $this->postStripeWebhook([
             'id' => 'evt_pi_1',
             'type' => 'payment_intent.succeeded',
@@ -222,6 +229,77 @@ class StripeWebhookTest extends TestCase
 
         $this->assertSame(OrderStatus::Pending, $order->fresh()->status);
         $this->assertFalse($post->fresh()->hasActiveBoost());
+        $this->assertLoggedReason($logged, 'Stripe webhook skipped', 'event_not_handled', null);
+    }
+
+    public function test_checkout_completed_with_an_integer_order_id_marks_the_order_paid(): void
+    {
+        [$order, $post] = $this->pendingBoostOrder();
+        $payload = $this->completedPayload($order, 'evt_int_order');
+        $payload['data']['object']['metadata'] = ['order_id' => $order->id];
+        $payload['data']['object']['client_reference_id'] = $order->id;
+
+        $this->postStripeWebhook($payload)->assertOk();
+
+        $this->assertSame(OrderStatus::Paid, $order->fresh()->status);
+        $this->assertTrue($post->fresh()->hasActiveBoost());
+    }
+
+    public function test_checkout_completed_without_metadata_uses_the_stored_session_id(): void
+    {
+        [$order, $post] = $this->pendingBoostOrder();
+        $payload = $this->completedPayload($order, 'evt_session_only');
+        unset($payload['data']['object']['metadata'], $payload['data']['object']['client_reference_id']);
+
+        $this->postStripeWebhook($payload)->assertOk();
+
+        $this->assertSame(OrderStatus::Paid, $order->fresh()->status);
+        $this->assertTrue($post->fresh()->hasActiveBoost());
+    }
+
+    public function test_checkout_completed_falls_back_to_the_stored_session_when_the_metadata_order_is_missing(): void
+    {
+        [$order, $post] = $this->pendingBoostOrder();
+        $payload = $this->completedPayload($order, 'evt_missing_order');
+        $payload['data']['object']['metadata'] = ['order_id' => 999999999];
+        $payload['data']['object']['client_reference_id'] = '999999999';
+
+        $this->postStripeWebhook($payload)->assertOk();
+
+        $this->assertSame(OrderStatus::Paid, $order->fresh()->status);
+        $this->assertTrue($post->fresh()->hasActiveBoost());
+    }
+
+    public function test_checkout_completed_does_not_mark_either_order_when_metadata_and_session_disagree(): void
+    {
+        [$order, $post] = $this->pendingBoostOrder();
+        [$otherOrder, $otherPost] = $this->pendingBoostOrder();
+        $payload = $this->completedPayload($order, 'evt_cross_order');
+        $payload['data']['object']['metadata'] = ['order_id' => (string) $otherOrder->id];
+        $payload['data']['object']['client_reference_id'] = (string) $otherOrder->id;
+        $logged = $this->captureLogs();
+
+        $this->postStripeWebhook($payload)->assertOk();
+
+        $this->assertSame(OrderStatus::Pending, $order->fresh()->status);
+        $this->assertSame(OrderStatus::Pending, $otherOrder->fresh()->status);
+        $this->assertFalse($post->fresh()->hasActiveBoost());
+        $this->assertFalse($otherPost->fresh()->hasActiveBoost());
+        $this->assertLoggedReason($logged, 'Stripe webhook skipped', 'session_order_mismatch', null);
+    }
+
+    public function test_checkout_completed_with_unpaid_status_stays_pending(): void
+    {
+        [$order, $post] = $this->pendingBoostOrder();
+        $payload = $this->completedPayload($order, 'evt_unpaid');
+        $payload['data']['object']['payment_status'] = 'unpaid';
+        $logged = $this->captureLogs();
+
+        $this->postStripeWebhook($payload)->assertOk();
+
+        $this->assertSame(OrderStatus::Pending, $order->fresh()->status);
+        $this->assertFalse($post->fresh()->hasActiveBoost());
+        $this->assertLoggedReason($logged, 'Stripe webhook skipped', 'payment_not_confirmed', $order->id);
     }
 
     public function test_refund_webhooks_do_not_revoke_active_entitlements(): void
@@ -272,7 +350,7 @@ class StripeWebhookTest extends TestCase
         $this->actingAs($user)
             ->post(route('posts.boost.store', $post), ['package_id' => $package->id]);
 
-        $order = Order::query()->firstOrFail();
+        $order = Order::query()->latest('id')->firstOrFail();
         $order->payments()->first()->forceFill([
             'provider' => PaymentProvider::Stripe,
             'provider_reference' => 'cs_test_order_'.$order->id,
@@ -367,6 +445,38 @@ class StripeWebhookTest extends TestCase
         return MonetizationPackage::query()
             ->where('type', MonetizationPackageType::GreenTick)
             ->get();
+    }
+
+    /**
+     * @return ArrayObject<int, MessageLogged>
+     */
+    private function captureLogs(): ArrayObject
+    {
+        $logged = new ArrayObject;
+
+        Log::listen(function (MessageLogged $event) use ($logged): void {
+            $logged->append($event);
+        });
+
+        return $logged;
+    }
+
+    /**
+     * @param  iterable<int, MessageLogged>  $logged
+     */
+    private function assertLoggedReason(iterable $logged, string $message, string $reason, ?int $orderId): void
+    {
+        $found = false;
+
+        foreach ($logged as $event) {
+            if ($event->message === $message
+                && ($event->context['reason'] ?? null) === $reason
+                && ($event->context['order_id'] ?? null) === $orderId) {
+                $found = true;
+            }
+        }
+
+        $this->assertTrue($found, $message.' with reason '.$reason.' was not logged.');
     }
 
     private function makeEligible(): void

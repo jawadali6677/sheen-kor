@@ -92,6 +92,17 @@ class Post extends Model
         return $this->boosts()->currentlyActive()->exists();
     }
 
+    public function currentBoost(): ?PostBoost
+    {
+        if ($this->relationLoaded('boosts')) {
+            return $this->boosts->first(
+                fn (PostBoost $boost): bool => $boost->isCurrentlyActive(),
+            );
+        }
+
+        return $this->boosts()->currentlyActive()->latest('id')->first();
+    }
+
     public function hasOpenBoost(): bool
     {
         return $this->hasActiveBoost()

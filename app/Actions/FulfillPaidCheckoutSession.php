@@ -29,7 +29,7 @@ class FulfillPaidCheckoutSession
             return $order;
         }
 
-        $paymentStatus = is_string($session->payment_status ?? null) ? $session->payment_status : '';
+        $paymentStatus = is_string($session['payment_status'] ?? null) ? $session['payment_status'] : '';
 
         if (! in_array($paymentStatus, ['paid', 'no_payment_required'], true)) {
             return $order;
@@ -40,21 +40,18 @@ class FulfillPaidCheckoutSession
         }
 
         return $this->markOrderPaid->handle($order, paymentPayload: array_filter([
-            'checkout_session_id' => $session->id ?? $sessionId,
+            'checkout_session_id' => is_string($session['id'] ?? null) ? $session['id'] : $sessionId,
             'fulfilled_from' => 'success_url',
-            'payment_intent' => is_string($session->payment_intent ?? null) ? $session->payment_intent : null,
+            'payment_intent' => is_string($session['payment_intent'] ?? null) ? $session['payment_intent'] : null,
         ]));
     }
 
-    private function sessionBelongsToOrder(Order $order, object $session, string $sessionId): bool
+    /**
+     * @param  array<string, mixed>  $session
+     */
+    private function sessionBelongsToOrder(Order $order, array $session, string $sessionId): bool
     {
-        $metadata = [];
-
-        if (is_array($session->metadata ?? null)) {
-            $metadata = $session->metadata;
-        }
-
-        $orderId = $metadata['order_id'] ?? $session->client_reference_id ?? null;
+        $orderId = $session['order_id'] ?? $session['client_reference_id'] ?? null;
 
         if (filled($orderId) && (string) $orderId === (string) $order->id) {
             return true;

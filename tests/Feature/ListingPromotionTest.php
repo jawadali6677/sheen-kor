@@ -38,7 +38,7 @@ class ListingPromotionTest extends TestCase
             ->assertOk()
             ->assertSee('Featured Listing - 7 Days')
             ->assertSee('Top of Category - 7 Days')
-            ->assertSee('Confirm pending promotion');
+            ->assertSee('Continue to payment');
     }
 
     public function test_pending_promotion_page_explains_the_reservation_is_not_paid(): void

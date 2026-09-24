@@ -24,42 +24,40 @@ class CashierStripeCheckoutGateway implements StripeCheckoutGateway
         }
     }
 
+    public function retrieveCheckoutSession(string $sessionId): ?array
+    {
+        try {
+            $session = Cashier::stripe()->checkout->sessions->retrieve($sessionId);
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return null;
+        }
+
+        $paymentIntent = $session['payment_intent'] ?? null;
+
+        if (is_object($paymentIntent)) {
+            $paymentIntent = $paymentIntent->id ?? null;
+        }
+
+        $orderId = $session['metadata']['order_id'] ?? null;
+        $clientReferenceId = $session['client_reference_id'] ?? null;
+
+        return [
+            'id' => (string) ($session['id'] ?? ''),
+            'payment_status' => (string) ($session['payment_status'] ?? ''),
+            'order_id' => is_scalar($orderId) && (string) $orderId !== '' ? (string) $orderId : null,
+            'client_reference_id' => is_scalar($clientReferenceId) && (string) $clientReferenceId !== '' ? (string) $clientReferenceId : null,
+            'payment_intent' => is_string($paymentIntent) && $paymentIntent !== '' ? $paymentIntent : null,
+        ];
+    }
+
     public function expireSession(string $sessionId): void
     {
         try {
             Cashier::stripe()->checkout->sessions->expire($sessionId);
         } catch (Throwable $exception) {
             report($exception);
-        }
-    }
-
-    public function retrieveCheckoutSession(string $sessionId): ?object
-    {
-        try {
-            $session = Cashier::stripe()->checkout->sessions->retrieve($sessionId);
-            $metadata = $session->metadata ?? [];
-
-            if (is_object($metadata) && method_exists($metadata, 'toArray')) {
-                $metadata = $metadata->toArray();
-            }
-
-            $paymentIntent = $session->payment_intent ?? null;
-
-            if (is_object($paymentIntent)) {
-                $paymentIntent = $paymentIntent->id ?? null;
-            }
-
-            return (object) [
-                'id' => $session->id,
-                'payment_status' => $session->payment_status,
-                'metadata' => is_array($metadata) ? $metadata : (array) $metadata,
-                'client_reference_id' => $session->client_reference_id,
-                'payment_intent' => is_string($paymentIntent) ? $paymentIntent : null,
-            ];
-        } catch (Throwable $exception) {
-            report($exception);
-
-            return null;
         }
     }
 }

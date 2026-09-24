@@ -25,6 +25,7 @@ class PostBoostController extends Controller
             'post' => $post,
             'packages' => $this->enabledBoostPackages(),
             'openBoost' => $post->boosts()
+                ->with('order')
                 ->where(function ($query): void {
                     $query->currentlyActive()
                         ->orWhere('status', PostBoostStatus::Pending);

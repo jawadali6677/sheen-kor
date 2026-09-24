@@ -37,6 +37,13 @@
                 <p class="mt-2 text-sm text-gray-500">{{ $listing->category?->name }} · {{ $listing->condition->label() }}</p>
                 <p class="mt-2 text-sm text-gray-500">{{ $listing->location_name }}</p>
 
+                <div class="mt-4 text-sm">
+                    <p class="font-semibold text-gray-800">Promotion</p>
+                    <div class="mt-1">
+                        @include('admin.market.partials.promotion-status', ['listing' => $listing])
+                    </div>
+                </div>
+
                 <div class="mt-4 whitespace-pre-line text-gray-800">{{ $listing->description }}</div>
 
                 @if($listing->exchange_details)

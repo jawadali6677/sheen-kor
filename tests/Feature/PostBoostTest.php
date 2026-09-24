@@ -2,16 +2,19 @@
 
 namespace Tests\Feature;
 
+use App\Contracts\StripeCheckoutGateway;
 use App\Enums\MonetizationPackageType;
 use App\Enums\PostBoostSource;
 use App\Enums\PostBoostStatus;
 use App\Models\MonetizationPackage;
 use App\Models\MonetizationSetting;
+use App\Models\Order;
 use App\Models\Post;
 use App\Models\PostBoost;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
+use Tests\Support\FakeStripeCheckoutGateway;
 use Tests\TestCase;
 
 class PostBoostTest extends TestCase
@@ -29,7 +32,9 @@ class PostBoostTest extends TestCase
             ->assertOk()
             ->assertSee('Post Boost - 1 Day')
             ->assertSee('Post Boost - 7 Days')
-            ->assertSee('Continue to payment');
+            ->assertSee('Boost this post for 1 day · Post Boost - 1 Day · 0.00 USD')
+            ->assertSee('Boost this post for 7 days · Post Boost - 7 Days · 0.00 USD')
+            ->assertSee('continue to payment');
     }
 
     public function test_disabled_packages_cannot_be_selected(): void
@@ -338,6 +343,36 @@ class PostBoostTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_pending_boost_page_posts_continue_payment_when_stripe_is_connected(): void
+    {
+        $this->fakeStripe();
+        $user = User::factory()->create();
+        $post = Post::factory()->create([
+            'user_id' => $user->id,
+            'title' => 'Stripe boost story',
+        ]);
+        $package = $this->enableBoostPackages()->firstWhere('slug', 'post_boost_1d');
+        $package->forceFill(['price' => '4.50'])->save();
+
+        $this->actingAs($user)
+            ->post(route('posts.boost.store', $post), ['package_id' => $package->id])
+            ->assertRedirect('https://checkout.stripe.test/cs_test_123');
+
+        $order = Order::query()->firstOrFail();
+
+        $this->actingAs($user)
+            ->get(route('posts.boost.create', $post))
+            ->assertOk()
+            ->assertSee('Continue payment')
+            ->assertSee(route('orders.pay', $order), false)
+            ->assertSee('View order')
+            ->assertDontSee('Continue to payment');
+
+        $this->actingAs($user)
+            ->post(route('orders.pay', $order))
+            ->assertRedirect('https://checkout.stripe.test/cs_test_124');
+    }
+
     public function test_published_posts_show_a_boosted_label_when_active(): void
     {
         $user = User::factory()->create();
@@ -374,5 +409,19 @@ class PostBoostTest extends TestCase
         return MonetizationPackage::query()
             ->where('type', MonetizationPackageType::PostBoost)
             ->get();
+    }
+
+    private function fakeStripe(): FakeStripeCheckoutGateway
+    {
+        config([
+            'cashier.key' => 'pk_test_123',
+            'cashier.secret' => 'sk_test_123',
+            'cashier.webhook.secret' => 'whsec_test_123',
+        ]);
+
+        $gateway = new FakeStripeCheckoutGateway;
+        $this->app->instance(StripeCheckoutGateway::class, $gateway);
+
+        return $gateway;
     }
 }

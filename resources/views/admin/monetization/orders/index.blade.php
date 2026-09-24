@@ -34,7 +34,7 @@
             </div>
 
             <div class="flex flex-wrap gap-2 text-sm">
-                @foreach(['pending' => 'Pending', 'paid' => 'Paid', 'cancelled' => 'Cancelled', 'all' => 'All'] as $value => $label)
+                @foreach(['pending' => 'Pending', 'paid' => 'Paid', 'failed' => 'Failed', 'cancelled' => 'Cancelled', 'all' => 'All'] as $value => $label)
                     <a href="{{ route('admin.monetization.orders.index', ['status' => $value, 'q' => $search ?: null]) }}" class="rounded-full px-3 py-1 {{ $status === $value ? 'bg-forest-800 text-white' : 'bg-white text-gray-700 ring-1 ring-gray-200' }}">{{ $label }}</a>
                 @endforeach
             </div>
@@ -81,6 +81,11 @@
                                     @endif
                                     @if($order->resultDetail())
                                         <p class="text-gray-500">{{ $order->resultDetail() }}</p>
+                                    @endif
+                                    @if($order->benefitStartsAt() || $order->benefitEndsAt())
+                                        <p class="text-gray-500">{{ $order->benefitStartsAt()?->toFormattedDateString() ?? 'Not started' }} – {{ $order->benefitEndsAt()?->toFormattedDateString() ?? 'No end date' }}</p>
+                                    @elseif($duration = $order->durationLabel())
+                                        <p class="text-gray-500">{{ $duration }}</p>
                                     @endif
                                 </td>
                                 <td class="px-4 py-3 text-right">

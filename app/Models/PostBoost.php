@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\OrderStatus;
 use App\Enums\PostBoostSource;
 use App\Enums\PostBoostStatus;
 use Database\Factories\PostBoostFactory;
@@ -105,6 +106,32 @@ class PostBoost extends Model
         }
 
         return 'Boosted until '.$this->ends_at->toFormattedDateString();
+    }
+
+    public function memberStatusLabel(): string
+    {
+        if ($this->isCurrentlyActive()) {
+            return 'Active';
+        }
+
+        if ($this->displayStatus() === PostBoostStatus::Pending) {
+            return $this->orderIsPaid() ? 'Pending' : 'Pending payment';
+        }
+
+        return $this->displayStatus()->label();
+    }
+
+    private function orderIsPaid(): bool
+    {
+        if ($this->relationLoaded('order')) {
+            return $this->order?->status === OrderStatus::Paid;
+        }
+
+        if ($this->order_id === null) {
+            return false;
+        }
+
+        return $this->order()->where('status', OrderStatus::Paid->value)->exists();
     }
 
     public function activateFromSnapshot(?User $activator = null): void

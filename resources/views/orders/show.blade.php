@@ -4,17 +4,60 @@
 
         <article class="sk-card p-6">
             <p class="text-sm text-gray-500">Order #{{ $order->id }}</p>
-            <h1 class="mt-1 text-2xl font-bold text-forest-900">{{ $order->snapshot['name'] ?? $order->package?->name }}</h1>
-            <p class="mt-2 text-sm text-gray-600">
-                {{ $order->purchaseTypeLabel() }}
-                · {{ $order->purchasedItemName() }}
-                · {{ $order->status->label() }}
-                · {{ $order->amount }} {{ $order->currency }}
-            </p>
+            <h1 class="mt-1 text-2xl font-bold text-forest-900">{{ $order->purchasedPackageName() }}</h1>
+            @if($order->status->value === 'paid')
+                <p class="mt-3 text-sm font-semibold text-forest-800">Payment received.</p>
+            @endif
             <p class="mt-3 text-base font-medium text-forest-900">{{ $order->resultHeadline() }}</p>
             @if($order->resultDetail())
                 <p class="mt-1 text-sm text-gray-700">{{ $order->resultDetail() }}.</p>
             @endif
+            <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                <div>
+                    <dt class="text-gray-500">Purchase</dt>
+                    <dd class="font-medium text-gray-900">{{ $order->purchaseTypeLabel() }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Item</dt>
+                    <dd class="font-medium text-gray-900">{{ $order->purchasedItemName() }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Amount</dt>
+                    <dd class="font-medium text-gray-900">{{ $order->amount }} {{ $order->currency }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Payment</dt>
+                    <dd class="font-medium text-gray-900">{{ $order->status->label() }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Benefit</dt>
+                    <dd class="font-medium text-gray-900">{{ $order->benefitStatusLabel() }}</dd>
+                </div>
+                @if($order->promotionPlacementLabel())
+                    <div>
+                        <dt class="text-gray-500">Promotion</dt>
+                        <dd class="font-medium text-gray-900">{{ $order->promotionPlacementLabel() }}</dd>
+                    </div>
+                @endif
+                @if($duration = $order->durationLabel())
+                    <div>
+                        <dt class="text-gray-500">Duration</dt>
+                        <dd class="font-medium text-gray-900">{{ $duration }}</dd>
+                    </div>
+                @endif
+                @if($order->benefitStartsAt())
+                    <div>
+                        <dt class="text-gray-500">Starts</dt>
+                        <dd class="font-medium text-gray-900">{{ $order->benefitStartsAt()->toFormattedDateString() }}</dd>
+                    </div>
+                @endif
+                @if($order->benefitEndsAt())
+                    <div>
+                        <dt class="text-gray-500">Ends</dt>
+                        <dd class="font-medium text-gray-900">{{ $order->benefitEndsAt()->toFormattedDateString() }}</dd>
+                    </div>
+                @endif
+            </dl>
             @if($order->status->value === 'pending' && ($checkoutReturn ?? null) === 'awaiting_webhook')
                 <p class="mt-1 text-sm text-gray-600">Stripe has not confirmed this payment yet. If checkout already succeeded, the order is marked paid when the webhook arrives. You do not need to pay again.</p>
             @elseif($order->status->value === 'pending' && ($checkoutReturn ?? null) === 'unpaid')
@@ -39,6 +82,7 @@
                 @endif
                 @if($order->isListingPromotion())
                     <a href="{{ route('market.mine') }}" class="btn-secondary">My Listings</a>
+                    <a href="{{ route('market.index') }}" class="btn-secondary">Back to Market</a>
                 @endif
                 <a href="{{ route('orders.index') }}" class="btn-secondary">My Orders</a>
             </div>

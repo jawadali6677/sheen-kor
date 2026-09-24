@@ -23,7 +23,7 @@
                     @endif
                     @can('update', $listing)
                         @if($listing->ownerPromotion()?->status === \App\Enums\ListingPromotionStatus::Pending)
-                            <span class="inline-flex rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-gray-700">Pending payment</span>
+                            <span class="inline-flex rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-gray-700">{{ $listing->ownerPromotion()->memberStatusLabel() }}</span>
                         @elseif($listing->ownerPromotionHeadline() && ! $listing->promotionBadge())
                             <span class="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-800">{{ $listing->ownerPromotionHeadline() }}</span>
                         @elseif($listing->currentPromotion()?->ends_at && ! $listing->currentPromotion()?->activeUntilPhrase())

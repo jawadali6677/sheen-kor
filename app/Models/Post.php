@@ -103,6 +103,31 @@ class Post extends Model
         return $this->boosts()->currentlyActive()->latest('id')->first();
     }
 
+    public function ownerBoost(): ?PostBoost
+    {
+        if ($this->relationLoaded('boosts')) {
+            $loaded = $this->boosts
+                ->sortByDesc('id')
+                ->first(function (PostBoost $boost): bool {
+                    return $boost->isCurrentlyActive()
+                        || $boost->status === PostBoostStatus::Pending;
+                });
+
+            if ($loaded !== null) {
+                return $loaded;
+            }
+        }
+
+        return $this->boosts()
+            ->with('order')
+            ->where(function (Builder $query): void {
+                $query->currentlyActive()
+                    ->orWhere('status', PostBoostStatus::Pending);
+            })
+            ->latest('id')
+            ->first();
+    }
+
     public function hasOpenBoost(): bool
     {
         return $this->hasActiveBoost()

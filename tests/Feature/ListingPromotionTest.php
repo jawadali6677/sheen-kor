@@ -607,7 +607,7 @@ class ListingPromotionTest extends TestCase
         $this->actingAs($user)
             ->from(route('market.promote.create', $listing))
             ->post(route('orders.pay', $order))
-            ->assertRedirect('https://checkout.stripe.test/cs_test_123');
+            ->assertRedirect('https://checkout.stripe.test/cs_test_124');
     }
 
     public function test_package_selection_does_not_say_only_an_admin_can_mark_paid_when_stripe_is_connected(): void
@@ -621,7 +621,10 @@ class ListingPromotionTest extends TestCase
             ->get(route('market.promote.create', $listing))
             ->assertOk()
             ->assertSee('opens Stripe Checkout')
-            ->assertSee('Confirm pending promotion')
+            ->assertSee('Promote for 7 days · Featured Listing - 7 Days · 0.00 USD')
+            ->assertSee('Promote for 7 days · Top of Category - 7 Days · 0.00 USD')
+            ->assertSee('Promote for 7 days · Listing Promotion - 7 Days · 0.00 USD')
+            ->assertDontSee('Confirm pending promotion')
             ->assertDontSee('An admin marks it paid for testing until Stripe Checkout is connected')
             ->assertDontSee('until a payment provider is connected');
     }

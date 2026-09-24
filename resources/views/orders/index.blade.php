@@ -17,9 +17,10 @@
                     <article class="sk-card p-4">
                         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div class="min-w-0">
-                                <p class="text-sm text-gray-500">{{ $order->purchaseTypeLabel() }} · {{ $order->created_at?->toFormattedDateString() }}</p>
+                                <p class="text-sm text-gray-500">Order #{{ $order->id }} · {{ $order->created_at?->toFormattedDateString() }}</p>
+                                <p class="mt-1 text-sm text-gray-600">{{ $order->purchaseTypeLabel() }}</p>
                                 <a href="{{ route('orders.show', $order) }}" class="mt-1 block font-semibold text-forest-900 hover:underline">{{ $order->purchasedItemName() }}</a>
-                                <p class="mt-1 text-sm text-gray-600">{{ $order->snapshot['name'] ?? $order->package?->name }}</p>
+                                <p class="mt-1 text-sm text-gray-600">{{ $order->purchasedPackageName() }}</p>
                             </div>
                             <div class="text-sm sm:text-right">
                                 <p class="font-medium text-forest-900">{{ $order->amount }} {{ $order->currency }}</p>

@@ -7,12 +7,14 @@
             <h1 class="mt-1 text-2xl font-bold text-forest-900">{{ $listing->title }}</h1>
             @if($openPromotion?->isCurrentlyActive())
                 <p class="mt-2 text-sm text-gray-600">This listing is already promoted.</p>
+            @elseif($openPromotion?->status->value === 'pending' && $openPromotion->order?->status->value === 'paid')
+                <p class="mt-2 text-sm text-gray-600">Payment is complete. This promotion is pending until the listing is published.</p>
             @elseif($openPromotion?->status->value === 'pending' && $openPromotion->order?->shouldChargeWithStripe())
                 <p class="mt-2 text-sm text-gray-600">Finish payment to start this promotion. This promotion is reserved until you pay with Stripe. Pending payment is not paid, and the listing is not featured yet.</p>
             @elseif($openPromotion)
                 <p class="mt-2 text-sm text-gray-600">Finish payment to start this promotion. This promotion is reserved and is not paid. An admin can mark the order paid for testing until Stripe Checkout is connected. The listing is not featured yet.</p>
             @elseif(stripe_checkout_is_configured())
-                <p class="mt-2 text-sm text-gray-600">Choose a package. Confirming reserves a pending promotion and opens Stripe Checkout. The listing is not featured until Stripe confirms payment.</p>
+                <p class="mt-2 text-sm text-gray-600">Choose a package. Continuing opens Stripe Checkout. The listing is not featured until payment is confirmed.</p>
             @else
                 <p class="mt-2 text-sm text-gray-600">Choose how long to promote this listing, then continue to payment. The promotion starts after payment succeeds.</p>
             @endif
@@ -28,17 +30,16 @@
                 @if($openPromotion->ownerStatusExplanation())
                     <p class="mt-2 text-gray-600">{{ $openPromotion->ownerStatusExplanation() }}</p>
                 @endif
-                @if($openPromotion->status->value === 'pending')
+                @if($openPromotion->status->value === 'pending' && $openPromotion->order?->status->value === 'pending')
                     <div class="mt-4 flex flex-wrap items-center gap-3">
-                        @if($openPromotion->order?->shouldChargeWithStripe())
+                        @if($openPromotion->order->shouldChargeWithStripe())
                             <form method="POST" action="{{ route('orders.pay', $openPromotion->order) }}">
                                 @csrf
                                 <button type="submit" class="btn-primary">Continue payment</button>
                             </form>
-                        @endif
-                        @if($openPromotion->order)
-                            <a href="{{ route('orders.show', $openPromotion->order) }}" class="btn-primary">Continue to payment</a>
                             <a href="{{ route('orders.show', $openPromotion->order) }}" class="btn-secondary">View order</a>
+                        @else
+                            <a href="{{ route('orders.show', $openPromotion->order) }}" class="btn-primary">Continue to payment</a>
                         @endif
                         <form method="POST" action="{{ route('market.promote.destroy', $openPromotion) }}">
                             @csrf
@@ -51,11 +52,28 @@
         @elseif($packages->isEmpty())
             <p class="sk-card p-6 text-sm text-gray-600">No listing promotion packages are enabled.</p>
         @else
-            <form method="POST" action="{{ route('market.promote.store', $listing) }}" class="sk-card space-y-4 p-6">
+            <form
+                method="POST"
+                action="{{ route('market.promote.store', $listing) }}"
+                class="sk-card space-y-4 p-6"
+                @if(stripe_checkout_is_configured())
+                    x-data="{ label: $el.dataset.initialLabel }"
+                    data-initial-label="{{ $packages->first()->promoteCheckoutLabel() }}"
+                @endif
+            >
                 @csrf
                 @foreach($packages as $package)
                     <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-4">
-                        <input type="radio" name="package_id" value="{{ $package->id }}" class="mt-1" @checked($loop->first) required>
+                        <input
+                            type="radio"
+                            name="package_id"
+                            value="{{ $package->id }}"
+                            class="mt-1"
+                            data-checkout-label="{{ $package->promoteCheckoutLabel() }}"
+                            @checked($loop->first)
+                            @if(stripe_checkout_is_configured()) @change="label = $el.dataset.checkoutLabel" @endif
+                            required
+                        >
                         <span>
                             <span class="block font-medium text-gray-900">{{ $package->name }}</span>
                             <span class="mt-1 block text-sm text-gray-600">{{ $package->price }} {{ $package->currency }} · {{ $package->duration_days }} {{ $package->duration_days === 1 ? 'day' : 'days' }}</span>
@@ -64,7 +82,7 @@
                 @endforeach
                 <div class="flex flex-wrap gap-3">
                     @if(stripe_checkout_is_configured())
-                        <button type="submit" class="btn-primary">Confirm pending promotion</button>
+                        <button type="submit" class="btn-primary" x-text="label">{{ $packages->first()->promoteCheckoutLabel() }}</button>
                     @else
                         <button type="submit" class="btn-primary">Continue to payment</button>
                     @endif

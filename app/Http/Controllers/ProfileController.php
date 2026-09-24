@@ -98,10 +98,13 @@ class ProfileController extends Controller
         $rewardType = RewardType::tryFrom((string) monetization_setting('rewarded_type', RewardType::ProfileVisibilityCredit->value))
             ?? RewardType::ProfileVisibilityCredit;
 
+        $greenTickVerification = $user->currentGreenTickVerification();
+        $greenTickVerification?->loadMissing('order');
+
         return view('profile.edit', [
             'user' => $user,
             'greenTickEligibility' => $user->greenTickEligibility(),
-            'greenTickVerification' => $user->currentGreenTickVerification(),
+            'greenTickVerification' => $greenTickVerification,
             'greenTickPackages' => MonetizationPackage::query()
                 ->where('type', MonetizationPackageType::GreenTick)
                 ->where('is_enabled', true)

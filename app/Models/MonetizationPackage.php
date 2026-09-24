@@ -42,4 +42,22 @@ class MonetizationPackage extends Model
             'sort_order' => 'integer',
         ];
     }
+
+    public function promoteCheckoutLabel(): string
+    {
+        return $this->durationCheckoutLabel('Promote for');
+    }
+
+    public function boostCheckoutLabel(): string
+    {
+        return $this->durationCheckoutLabel('Boost this post for');
+    }
+
+    private function durationCheckoutLabel(string $lead): string
+    {
+        $days = (int) $this->duration_days;
+        $dayWord = $days === 1 ? 'day' : 'days';
+
+        return $lead.' '.$days.' '.$dayWord.' · '.$this->name.' · '.$this->price.' '.$this->currency;
+    }
 }

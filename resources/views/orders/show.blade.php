@@ -6,8 +6,14 @@
             <p class="text-sm text-gray-500">Order #{{ $order->id }}</p>
             <h1 class="mt-1 text-2xl font-bold text-forest-900">{{ $order->snapshot['name'] ?? $order->package?->name }}</h1>
             <p class="mt-2 text-sm text-gray-600">Status: {{ $order->status->label() }} · {{ $order->amount }} {{ $order->currency }}</p>
-            @if($order->status->value === 'pending' && request('checkout') === 'success')
-                <p class="mt-1 text-sm text-gray-600">Stripe is confirming this payment. The benefit stays pending until the payment is confirmed.</p>
+            @if($order->status->value === 'pending' && ($checkoutReturn ?? null) === 'awaiting_webhook')
+                <p class="mt-1 text-sm text-gray-600">Stripe has not confirmed this payment yet. If checkout already succeeded, the order is marked paid when the webhook arrives. You do not need to pay again.</p>
+            @elseif($order->status->value === 'pending' && ($checkoutReturn ?? null) === 'unpaid')
+                <p class="mt-1 text-sm text-gray-600">This checkout is not paid yet. You can try paying again.</p>
+            @elseif($order->status->value === 'pending' && ($checkoutReturn ?? null) === 'session_mismatch')
+                <p class="mt-1 text-sm text-gray-600">That Checkout session belongs to a different order, so this payment was not applied here.</p>
+            @elseif($order->status->value === 'pending' && ($checkoutReturn ?? null) === 'session_not_linked')
+                <p class="mt-1 text-sm text-gray-600">That Checkout session is not linked to this order, so this payment was not applied here.</p>
             @elseif($order->status->value === 'pending' && request('checkout') === 'cancelled')
                 <p class="mt-1 text-sm text-gray-600">Checkout was cancelled. You can try paying again, or cancel this pending order.</p>
             @elseif($order->status->value === 'pending' && $order->shouldChargeWithStripe())
@@ -23,7 +29,7 @@
 
         @if($order->status->value === 'pending')
             <div class="sk-card space-y-4 p-6">
-                @if($order->shouldChargeWithStripe())
+                @if($order->shouldChargeWithStripe() && ($checkoutReturn ?? null) !== 'awaiting_webhook')
                     <form method="POST" action="{{ route('orders.pay', $order) }}">
                         @csrf
                         <button type="submit" class="rounded-lg bg-forest-800 px-4 py-2 text-sm font-medium text-white">Pay with Stripe</button>

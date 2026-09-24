@@ -23,6 +23,13 @@ class FakeStripeCheckoutGateway implements StripeCheckoutGateway
      */
     public array $expiredSessions = [];
 
+    public int $retrieveCount = 0;
+
+    /**
+     * @var array<string, array<string, mixed>>
+     */
+    public array $sessions = [];
+
     /**
      * @param  array<string, mixed>  $sessionOptions
      */
@@ -44,6 +51,13 @@ class FakeStripeCheckoutGateway implements StripeCheckoutGateway
             'id' => $this->nextSessionId,
             'url' => $this->nextUrl,
         ];
+    }
+
+    public function retrieveCheckoutSession(string $sessionId): ?array
+    {
+        $this->retrieveCount++;
+
+        return $this->sessions[$sessionId] ?? null;
     }
 
     public function expireSession(string $sessionId): void

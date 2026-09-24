@@ -12,5 +12,16 @@ interface StripeCheckoutGateway
      */
     public function createOneOffCheckout(User $user, int $amountCents, string $name, array $sessionOptions): ?object;
 
+    /**
+     * @return array{
+     *     id: string,
+     *     payment_status: string,
+     *     order_id: ?string,
+     *     client_reference_id: ?string,
+     *     payment_intent: ?string
+     * }|null
+     */
+    public function retrieveCheckoutSession(string $sessionId): ?array;
+
     public function expireSession(string $sessionId): void;
 }

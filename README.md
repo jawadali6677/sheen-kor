@@ -56,3 +56,39 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## Local Stripe Checkout
+
+Paid orders are marked paid in two ways:
+
+- Stripe redirects the member to `/orders/{order}?checkout=success&session_id={CHECKOUT_SESSION_ID}`. That page retrieves the Checkout Session and, when Stripe reports `paid` or `no_payment_required` for that same order, marks the order paid.
+- `POST /stripe/webhook` (Laravel Cashier) handles `checkout.session.completed` and `checkout.session.async_payment_succeeded`. CSRF is already disabled for `stripe/*`. Signature verification uses `STRIPE_WEBHOOK_SECRET`.
+
+The return URL still marks the order paid when the webhook is delayed or never forwarded, as long as `session_id` is in the URL. The webhook alone still marks the order paid when the member never returns.
+
+`stripe listen` only forwards events when you give it this app's webhook URL. From the project root, with the app on port 8000:
+
+```bash
+stripe listen --forward-to http://127.0.0.1:8000/stripe/webhook
+```
+
+The CLI prints a signing secret (`whsec_...`) after `Ready!`. Put that exact value in `.env`:
+
+```bash
+STRIPE_WEBHOOK_SECRET=whsec_...
+php artisan config:clear
+```
+
+`STRIPE_KEY` and `STRIPE_SECRET` must be test keys from the same Stripe account the CLI is logged into. The CLI secret is not the signing secret of a webhook endpoint created in the Dashboard. Use the Dashboard secret only when that endpoint is what receives the events.
+
+If the CLI stays on `Ready!` and never prints a forwarded event, it is not receiving events for this account (Checkout ran before the listener started, or the secret keys belong to another account). Change the port in `--forward-to` if `php artisan serve` is not on 8000.
+
+To forward only the events this app handles:
+
+```bash
+stripe listen \
+  --events checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.expired,checkout.session.async_payment_failed,payment_intent.payment_failed \
+  --forward-to http://127.0.0.1:8000/stripe/webhook
+```
+
+Fulfillment and skip reasons are written to the Laravel log (`Stripe checkout return fulfilled`, `Stripe checkout return skipped`, `Stripe webhook fulfilled`, `Stripe webhook skipped`). The admin order page shows the Stripe Checkout session id stored on the payment.

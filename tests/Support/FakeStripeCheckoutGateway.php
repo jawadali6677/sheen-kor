@@ -34,15 +34,21 @@ class FakeStripeCheckoutGateway implements StripeCheckoutGateway
             return null;
         }
 
+        $sessionId = $this->nextSessionId;
+        $url = $this->nextUrl;
+
         $this->charges[] = [
             'amount_cents' => $amountCents,
             'name' => $name,
             'session_options' => $sessionOptions,
         ];
 
+        $this->nextSessionId = 'cs_test_'.(123 + count($this->charges));
+        $this->nextUrl = 'https://checkout.stripe.test/'.$this->nextSessionId;
+
         return (object) [
-            'id' => $this->nextSessionId,
-            'url' => $this->nextUrl,
+            'id' => $sessionId,
+            'url' => $url,
         ];
     }
 

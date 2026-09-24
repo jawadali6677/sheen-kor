@@ -16,6 +16,7 @@ use App\Enums\UserVerificationStatus;
 use App\Models\MarketListing;
 use App\Models\MonetizationPackage;
 use App\Models\Order;
+use App\Models\Payment;
 use App\Models\Post;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -155,7 +156,7 @@ class CreateMonetizationOrder
         $order->payments()->create([
             'provider' => $provider,
             'provider_reference' => (string) Str::uuid(),
-            'idempotency_key' => 'order:'.$order->id.':checkout',
+            'idempotency_key' => Payment::checkoutIdempotencyKey($order->id),
             'amount' => $order->amount,
             'currency' => $order->currency,
             'status' => PaymentStatus::Pending,

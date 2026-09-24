@@ -4,6 +4,7 @@ namespace App\Listeners;
 
 use App\Actions\FailMonetizationOrder;
 use App\Actions\MarkOrderPaid;
+use App\Enums\PaymentStatus;
 use App\Models\Order;
 use App\Models\Payment;
 use Laravel\Cashier\Events\WebhookReceived;
@@ -74,7 +75,58 @@ class HandleStripeWebhook
             return;
         }
 
+        if ($this->isStaleCheckoutFailure($order, $object)) {
+            return;
+        }
+
         $this->failMonetizationOrder->handle($order, $this->paymentPayload($payload, $object));
+    }
+
+    /**
+     * @param  array<string, mixed>  $object
+     */
+    private function isStaleCheckoutFailure(Order $order, array $object): bool
+    {
+        $current = $order->payments()
+            ->where('status', PaymentStatus::Pending)
+            ->latest('id')
+            ->first();
+
+        if (! $current instanceof Payment) {
+            return false;
+        }
+
+        $sessionId = ($object['object'] ?? null) === 'checkout.session'
+            ? ($object['id'] ?? null)
+            : null;
+
+        if (is_string($sessionId) && $sessionId !== '') {
+            $activeSession = $current->stripeCheckoutSessionId();
+
+            if ($activeSession !== null) {
+                return $activeSession !== $sessionId;
+            }
+        }
+
+        $paymentIntent = $object['payment_intent'] ?? (($object['object'] ?? null) === 'payment_intent' ? ($object['id'] ?? null) : null);
+
+        if (is_array($paymentIntent)) {
+            $paymentIntent = $paymentIntent['id'] ?? null;
+        }
+
+        if (! is_string($paymentIntent) || $paymentIntent === '') {
+            return false;
+        }
+
+        $currentIntent = $current->payload['payment_intent'] ?? null;
+
+        if (is_string($currentIntent) && $currentIntent !== '') {
+            return $currentIntent !== $paymentIntent;
+        }
+
+        $previousSessions = $current->payload['previous_checkout_session_ids'] ?? [];
+
+        return is_array($previousSessions) && $previousSessions !== [];
     }
 
     /**

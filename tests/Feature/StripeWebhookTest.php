@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Contracts\StripeCheckoutGateway;
 use App\Enums\ListingPromotionStatus;
 use App\Enums\MonetizationPackageType;
 use App\Enums\OrderStatus;
@@ -21,6 +22,7 @@ use App\Models\UserVerification;
 use App\Notifications\GreenTickNeedsReview;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
+use Tests\Support\FakeStripeCheckoutGateway;
 use Tests\TestCase;
 
 class StripeWebhookTest extends TestCase
@@ -151,6 +153,57 @@ class StripeWebhookTest extends TestCase
         $this->assertFalse($post->fresh()->hasActiveBoost());
     }
 
+    public function test_an_old_expired_checkout_session_does_not_fail_an_order_with_a_newer_session(): void
+    {
+        [$order, $post] = $this->pendingBoostOrder();
+        $staleSessionId = $order->payments()->first()->provider_reference;
+
+        $this->fakeStripe();
+
+        $this->actingAs($order->user)
+            ->post(route('orders.pay', $order))
+            ->assertRedirect('https://checkout.stripe.test/cs_test_123');
+
+        $this->assertSame('cs_test_123', $order->payments()->latest('id')->first()->provider_reference);
+
+        $this->postStripeWebhook([
+            'id' => 'evt_expired_stale',
+            'type' => 'checkout.session.expired',
+            'data' => [
+                'object' => [
+                    'id' => $staleSessionId,
+                    'object' => 'checkout.session',
+                    'payment_status' => 'unpaid',
+                    'client_reference_id' => (string) $order->id,
+                    'metadata' => ['order_id' => (string) $order->id],
+                ],
+            ],
+        ])->assertOk();
+
+        $this->assertSame(OrderStatus::Pending, $order->fresh()->status);
+        $this->assertSame(PaymentStatus::Pending, $order->payments()->latest('id')->first()->status);
+        $this->assertSame(PostBoostStatus::Pending, PostBoost::query()->first()->status);
+        $this->assertFalse($post->fresh()->hasActiveBoost());
+
+        $this->postStripeWebhook([
+            'id' => 'evt_expired_current',
+            'type' => 'checkout.session.expired',
+            'data' => [
+                'object' => [
+                    'id' => 'cs_test_123',
+                    'object' => 'checkout.session',
+                    'payment_status' => 'unpaid',
+                    'client_reference_id' => (string) $order->id,
+                    'metadata' => ['order_id' => (string) $order->id],
+                ],
+            ],
+        ])->assertOk();
+
+        $this->assertSame(OrderStatus::Failed, $order->fresh()->status);
+        $this->assertSame(PaymentStatus::Failed, $order->payments()->latest('id')->first()->status);
+        $this->assertSame(PostBoostStatus::Cancelled, PostBoost::query()->first()->status);
+    }
+
     public function test_payment_intent_succeeded_does_not_fulfill_the_order(): void
     {
         [$order, $post] = $this->pendingBoostOrder();
@@ -268,6 +321,19 @@ class StripeWebhookTest extends TestCase
             'CONTENT_TYPE' => 'application/json',
             'HTTP_STRIPE_SIGNATURE' => 't='.$timestamp.',v1='.$signature,
         ], $body);
+    }
+
+    private function fakeStripe(): FakeStripeCheckoutGateway
+    {
+        config([
+            'cashier.key' => 'pk_test_123',
+            'cashier.secret' => 'sk_test_123',
+            'cashier.webhook.secret' => 'whsec_test_123',
+        ]);
+        $gateway = new FakeStripeCheckoutGateway;
+        $this->app->instance(StripeCheckoutGateway::class, $gateway);
+
+        return $gateway;
     }
 
     private function enableBoostPackages()

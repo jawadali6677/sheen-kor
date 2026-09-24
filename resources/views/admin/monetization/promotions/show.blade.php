@@ -19,6 +19,9 @@
                 <p class="text-sm text-gray-600">{{ $promotion->user?->email }}</p>
                 <p class="mt-2 text-sm text-gray-600">Listing: {{ $promotion->listing?->title ?? 'Deleted listing' }} (ID {{ $promotion->market_listing_id }})</p>
                 <p class="mt-2 text-sm text-gray-600">Status: {{ $promotion->displayStatus()->label() }} · {{ $promotion->source->label() }}</p>
+                @if($promotion->status->value === 'pending')
+                    <p class="mt-1 text-sm text-gray-600">Pending payment is not paid. The listing is not promoted until Stripe confirms payment or you mark the related order paid.</p>
+                @endif
                 <p class="mt-1 text-sm text-gray-600">{{ $promotion->package_name }} · {{ $promotion->placement->label() }} · {{ $promotion->price }} {{ $promotion->currency }} · {{ $promotion->duration_days }} days</p>
                 @if($promotion->starts_at)
                     <p class="mt-1 text-sm text-gray-600">{{ $promotion->starts_at->toDayDateTimeString() }} – {{ $promotion->ends_at?->toDayDateTimeString() }}</p>

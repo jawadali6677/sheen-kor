@@ -72,12 +72,22 @@ class PostBoostController extends Controller
 
         $boost->order?->cancelIfPending();
 
-        $boost->forceFill([
-            'status' => PostBoostStatus::Cancelled,
-        ])->save();
+        if ($boost->fresh()?->status === PostBoostStatus::Pending) {
+            $boost->forceFill([
+                'status' => PostBoostStatus::Cancelled,
+            ])->save();
+        }
+
+        $post = $boost->post;
+
+        if ($post === null) {
+            return redirect()
+                ->route('posts.index')
+                ->with('success', 'The boost request was cancelled.');
+        }
 
         return redirect()
-            ->route('posts.show', $boost->post)
+            ->route('posts.show', $post)
             ->with('success', 'The boost request was cancelled.');
     }
 

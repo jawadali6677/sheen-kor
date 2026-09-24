@@ -3,15 +3,19 @@
 namespace App\Models;
 
 use App\Contracts\StripeCheckoutGateway;
+use App\Enums\ListingPromotionStatus;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentProvider;
 use App\Enums\PaymentStatus;
+use App\Enums\PostBoostStatus;
+use App\Enums\UserVerificationStatus;
 use Database\Factories\OrderFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\DB;
 
 class Order extends Model
 {
@@ -28,6 +32,33 @@ class Order extends Model
         'currency',
         'snapshot',
     ];
+
+    protected static function booted(): void
+    {
+        static::deleting(function (Order $order): void {
+            $order->expireStripeCheckoutSessions();
+            $order->payments()->delete();
+            $order->load(['verification', 'boost', 'listingPromotion']);
+
+            if ($order->verification?->status === UserVerificationStatus::PendingPayment) {
+                $order->verification->forceFill([
+                    'status' => UserVerificationStatus::Cancelled,
+                ])->save();
+            }
+
+            if ($order->boost?->status === PostBoostStatus::Pending) {
+                $order->boost->forceFill([
+                    'status' => PostBoostStatus::Cancelled,
+                ])->save();
+            }
+
+            if ($order->listingPromotion?->status === ListingPromotionStatus::Pending) {
+                $order->listingPromotion->forceFill([
+                    'status' => ListingPromotionStatus::Cancelled,
+                ])->save();
+            }
+        });
+    }
 
     protected function casts(): array
     {
@@ -114,22 +145,48 @@ class Order extends Model
 
     public function cancelIfPending(): bool
     {
-        if ($this->status !== OrderStatus::Pending) {
-            return false;
-        }
+        return DB::transaction(function (): bool {
+            $locked = static::query()->whereKey($this->id)->lockForUpdate()->first();
 
-        $this->expireStripeCheckoutSessions();
+            if ($locked === null || $locked->status !== OrderStatus::Pending) {
+                return false;
+            }
 
-        $this->payments()
-            ->where('status', PaymentStatus::Pending)
-            ->update([
-                'status' => PaymentStatus::Cancelled->value,
-            ]);
+            $locked->expireStripeCheckoutSessions();
 
-        $this->forceFill([
-            'status' => OrderStatus::Cancelled,
-        ])->save();
+            $locked->payments()
+                ->where('status', PaymentStatus::Pending)
+                ->update([
+                    'status' => PaymentStatus::Cancelled->value,
+                ]);
 
-        return true;
+            $locked->forceFill([
+                'status' => OrderStatus::Cancelled,
+            ])->save();
+
+            $locked->load(['verification', 'boost', 'listingPromotion']);
+
+            if ($locked->verification?->status === UserVerificationStatus::PendingPayment) {
+                $locked->verification->forceFill([
+                    'status' => UserVerificationStatus::Cancelled,
+                ])->save();
+            }
+
+            if ($locked->boost?->status === PostBoostStatus::Pending) {
+                $locked->boost->forceFill([
+                    'status' => PostBoostStatus::Cancelled,
+                ])->save();
+            }
+
+            if ($locked->listingPromotion?->status === ListingPromotionStatus::Pending) {
+                $locked->listingPromotion->forceFill([
+                    'status' => ListingPromotionStatus::Cancelled,
+                ])->save();
+            }
+
+            $this->refresh();
+
+            return true;
+        });
     }
 }

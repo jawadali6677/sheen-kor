@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\MarkOrderPaid;
 use App\Enums\ListingPromotionSource;
 use App\Enums\ListingPromotionStatus;
 use App\Enums\MarketListingStatus;
 use App\Enums\MonetizationPackageType;
+use App\Enums\OrderStatus;
 use App\Enums\Permission;
 use App\Http\Controllers\Controller;
 use App\Models\ListingPromotion;
@@ -76,7 +78,7 @@ class ListingPromotionController extends Controller
         ]);
     }
 
-    public function activate(Request $request, ListingPromotion $promotion): RedirectResponse
+    public function activate(Request $request, ListingPromotion $promotion, MarkOrderPaid $markOrderPaid): RedirectResponse
     {
         $this->authorizeManage();
         abort_unless($promotion->status === ListingPromotionStatus::Pending, 403);
@@ -89,7 +91,14 @@ class ListingPromotionController extends Controller
             return back()->with('error', 'This listing already has an active promotion.');
         }
 
-        $promotion->activateFromSnapshot($request->user());
+        if ($promotion->order?->status === OrderStatus::Pending) {
+            $markOrderPaid->handle($promotion->order, $request->user());
+            $promotion->refresh();
+        }
+
+        if ($promotion->status === ListingPromotionStatus::Pending) {
+            $promotion->activateFromSnapshot($request->user());
+        }
 
         return redirect()
             ->route('admin.monetization.promotions.index')
@@ -101,9 +110,19 @@ class ListingPromotionController extends Controller
         $this->authorizeManage();
         abort_unless(in_array($promotion->status, [ListingPromotionStatus::Pending, ListingPromotionStatus::Active], true), 403);
 
-        $promotion->forceFill([
-            'status' => ListingPromotionStatus::Cancelled,
-        ])->save();
+        DB::transaction(function () use ($promotion): void {
+            if ($promotion->status === ListingPromotionStatus::Pending) {
+                $promotion->order?->cancelIfPending();
+            }
+
+            $locked = ListingPromotion::query()->whereKey($promotion->id)->lockForUpdate()->first();
+
+            if ($locked !== null && in_array($locked->status, [ListingPromotionStatus::Pending, ListingPromotionStatus::Active], true)) {
+                $locked->forceFill([
+                    'status' => ListingPromotionStatus::Cancelled,
+                ])->save();
+            }
+        });
 
         return redirect()
             ->route('admin.monetization.promotions.index')

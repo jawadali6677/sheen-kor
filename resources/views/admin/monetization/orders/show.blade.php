@@ -18,6 +18,9 @@
                 <h3 class="text-lg font-semibold text-gray-800">{{ $order->user?->name }}</h3>
                 <p class="text-sm text-gray-600">{{ $order->user?->email }}</p>
                 <p class="mt-2 text-sm text-gray-600">Status: {{ $order->status->label() }}</p>
+                @if($order->status->value === 'pending')
+                    <p class="mt-1 text-sm text-gray-600">Pending means unpaid. The benefit is reserved until Stripe confirms payment or you mark this order paid.</p>
+                @endif
                 <p class="mt-1 text-sm text-gray-600">{{ $order->snapshot['name'] ?? $order->package?->name }} · {{ $order->amount }} {{ $order->currency }}</p>
                 @if($order->boost)
                     <p class="mt-1 text-sm text-gray-600">Post: {{ $order->boost->post?->title ?? 'Deleted post' }}</p>

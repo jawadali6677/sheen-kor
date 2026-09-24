@@ -7,6 +7,7 @@ use App\Enums\MonetizationPackageType;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentProvider;
 use App\Enums\PaymentStatus;
+use App\Models\MarketListing;
 use App\Models\MonetizationPackage;
 use App\Models\Order;
 use App\Models\Payment;
@@ -48,7 +49,7 @@ class StripeCheckoutTest extends TestCase
         $this->assertSame('Post Boost - 1 Day', $gateway->charges[0]['name']);
     }
 
-    public function test_success_url_does_not_mark_the_order_paid(): void
+    public function test_success_url_leaves_the_order_pending_when_the_checkout_session_is_unpaid(): void
     {
         $this->fakeStripe();
         $user = User::factory()->create();
@@ -64,10 +65,77 @@ class StripeCheckoutTest extends TestCase
         $this->actingAs($user)
             ->get(route('orders.show', $order).'?checkout=success&session_id=cs_test_123')
             ->assertOk()
-            ->assertSee('Stripe is confirming this payment');
+            ->assertSee('Confirming payment with Stripe')
+            ->assertSee('still pending and is not paid');
 
         $this->assertSame(OrderStatus::Pending, $order->fresh()->status);
         $this->assertFalse($post->fresh()->hasActiveBoost());
+    }
+
+    public function test_success_url_marks_the_order_paid_when_the_checkout_session_is_paid(): void
+    {
+        $gateway = $this->fakeStripe();
+        $user = User::factory()->create();
+        $listing = MarketListing::factory()->create(['user_id' => $user->id]);
+        $package = $this->enablePromotionPackages()->firstWhere('slug', 'listing_featured_7d');
+        $package->forceFill(['price' => '9.00'])->save();
+
+        $this->travelTo('2026-09-19 12:00:00');
+
+        $this->actingAs($user)
+            ->post(route('market.promote.store', $listing), ['package_id' => $package->id])
+            ->assertRedirect('https://checkout.stripe.test/cs_test_123');
+
+        $order = Order::query()->firstOrFail();
+        $gateway->markSessionPaid('cs_test_123');
+
+        $this->actingAs($user)
+            ->get(route('orders.show', $order).'?checkout=success&session_id=cs_test_123')
+            ->assertRedirect(route('market.show', $listing))
+            ->assertSessionHas('success', 'Payment confirmed. Promoted until Sep 26, 2026.');
+
+        $this->assertSame(OrderStatus::Paid, $order->fresh()->status);
+        $this->assertSame(PaymentStatus::Paid, $order->payments()->first()->status);
+        $this->assertTrue($listing->fresh()->hasActivePromotion());
+
+        $this->actingAs($user)
+            ->get(route('market.show', $listing))
+            ->assertOk()
+            ->assertSee('Promoted until Sep 26, 2026')
+            ->assertDontSee('Pending payment');
+    }
+
+    public function test_success_url_does_not_mark_another_orders_session_as_paid(): void
+    {
+        $gateway = $this->fakeStripe();
+        $user = User::factory()->create();
+        $firstListing = MarketListing::factory()->create(['user_id' => $user->id]);
+        $secondListing = MarketListing::factory()->create(['user_id' => $user->id]);
+        $package = $this->enablePromotionPackages()->firstWhere('slug', 'listing_featured_7d');
+        $package->forceFill(['price' => '9.00'])->save();
+
+        $this->actingAs($user)
+            ->post(route('market.promote.store', $firstListing), ['package_id' => $package->id]);
+
+        $firstOrder = Order::query()->firstOrFail();
+        $gateway->nextSessionId = 'cs_test_other';
+        $gateway->nextUrl = 'https://checkout.stripe.test/cs_test_other';
+
+        $this->actingAs($user)
+            ->post(route('market.promote.store', $secondListing), ['package_id' => $package->id]);
+
+        $secondOrder = Order::query()->where('market_listing_id', $secondListing->id)->firstOrFail();
+        $gateway->markSessionPaid('cs_test_other');
+
+        $this->actingAs($user)
+            ->get(route('orders.show', $firstOrder).'?checkout=success&session_id=cs_test_other')
+            ->assertOk()
+            ->assertSee('Confirming payment with Stripe');
+
+        $this->assertSame(OrderStatus::Pending, $firstOrder->fresh()->status);
+        $this->assertSame(OrderStatus::Pending, $secondOrder->fresh()->status);
+        $this->assertFalse($firstListing->fresh()->hasActivePromotion());
+        $this->assertFalse($secondListing->fresh()->hasActivePromotion());
     }
 
     public function test_cancel_url_leaves_the_order_pending_so_payment_can_be_retried(): void
@@ -259,6 +327,17 @@ class StripeCheckoutTest extends TestCase
 
         return MonetizationPackage::query()
             ->where('type', MonetizationPackageType::PostBoost)
+            ->get();
+    }
+
+    private function enablePromotionPackages()
+    {
+        MonetizationPackage::query()
+            ->where('type', MonetizationPackageType::ListingPromotion)
+            ->update(['is_enabled' => true]);
+
+        return MonetizationPackage::query()
+            ->where('type', MonetizationPackageType::ListingPromotion)
             ->get();
     }
 }

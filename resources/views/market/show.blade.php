@@ -18,6 +18,15 @@
                     @if($listing->promotionBadge())
                         <span class="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-800">{{ $listing->promotionBadge() }}</span>
                     @endif
+                    @can('update', $listing)
+                        @if($listing->ownerPromotion()?->status === \App\Enums\ListingPromotionStatus::Pending)
+                            <span class="inline-flex rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-gray-700">Pending payment</span>
+                        @elseif($listing->ownerPromotionHeadline() && ! $listing->promotionBadge())
+                            <span class="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-800">{{ $listing->ownerPromotionHeadline() }}</span>
+                        @elseif($listing->currentPromotion()?->ends_at)
+                            <span class="text-xs font-medium text-amber-800">Promoted until {{ $listing->currentPromotion()->ends_at->toFormattedDateString() }}</span>
+                        @endif
+                    @endcan
                 </div>
                 <h1 class="mt-2 text-3xl font-bold text-forest-900 md:text-4xl">{{ $listing->title }}</h1>
                 <p class="mt-4 text-lg font-semibold text-forest-900">{{ $listing->listing_type->catalogOfferLabel($listing->price) }}</p>

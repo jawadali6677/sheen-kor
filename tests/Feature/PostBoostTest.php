@@ -29,7 +29,7 @@ class PostBoostTest extends TestCase
             ->assertOk()
             ->assertSee('Post Boost - 1 Day')
             ->assertSee('Post Boost - 7 Days')
-            ->assertSee('Confirm pending boost');
+            ->assertSee('Continue to payment');
     }
 
     public function test_disabled_packages_cannot_be_selected(): void

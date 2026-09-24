@@ -29,7 +29,14 @@ class MarketListingController extends Controller
         $search = trim((string) $request->input('q', ''));
 
         $listings = MarketListing::query()
-            ->with(['user', 'category'])
+            ->with([
+                'user',
+                'category',
+                'latestPromotion',
+                'promotions' => function ($query): void {
+                    $query->currentlyActive();
+                },
+            ])
             ->withCount([
                 'reports as pending_reports_count' => function ($query) {
                     $query->where('status', 'pending');
@@ -77,7 +84,7 @@ class MarketListingController extends Controller
     {
         $this->authorize('moderate', MarketListing::class);
 
-        $listing->load(['user', 'category', 'images', 'reports.user']);
+        $listing->load(['user', 'category', 'images', 'reports.user', 'promotions', 'latestPromotion']);
 
         return view('admin.market.show', compact('listing'));
     }

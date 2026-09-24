@@ -19,6 +19,9 @@
                 <h1 class="mt-2 text-3xl font-bold text-forest-900 md:text-4xl">{{ $post->title }}</h1>
                 @if($post->hasActiveBoost())
                     <p class="mt-2 inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-800">Boosted</p>
+                    @if($boostedUntil = $post->currentBoost()?->activeUntilPhrase())
+                        <p class="mt-2 text-sm font-medium text-amber-800">{{ $boostedUntil }}</p>
+                    @endif
                 @endif
                 <div class="mt-4 flex flex-wrap items-center gap-3 text-sm text-gray-500">
                     @if($post->user)

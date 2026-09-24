@@ -32,7 +32,7 @@ class ListingPromotionTest extends TestCase
             ->assertOk()
             ->assertSee('Featured Listing - 7 Days')
             ->assertSee('Top of Category - 7 Days')
-            ->assertSee('Confirm pending promotion');
+            ->assertSee('Continue to payment');
     }
 
     public function test_disabled_packages_cannot_be_selected(): void

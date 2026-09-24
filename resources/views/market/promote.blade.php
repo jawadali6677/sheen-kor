@@ -5,22 +5,35 @@
         <article class="sk-card p-6">
             <p class="text-sm text-gray-500">Promote listing</p>
             <h1 class="mt-1 text-2xl font-bold text-forest-900">{{ $listing->title }}</h1>
-            <p class="mt-2 text-sm text-gray-600">Choose a package. Confirming creates a pending order. An admin marks it paid for testing until a payment provider is connected. The listing is not featured until then.</p>
+            <p class="mt-2 text-sm text-gray-600">
+                @if($openPromotion?->isCurrentlyActive())
+                    This listing is already promoted.
+                @elseif($openPromotion)
+                    Finish payment to start this promotion.
+                @else
+                    Choose how long to promote this listing, then continue to payment. The promotion starts after payment succeeds.
+                @endif
+            </p>
         </article>
 
         @if($openPromotion)
             <section class="sk-card p-6 text-sm">
                 <p class="font-medium text-gray-900">Status: {{ $openPromotion->displayStatus()->label() }}</p>
                 <p class="mt-1 text-gray-600">{{ $openPromotion->package_name }} · {{ $openPromotion->placement->label() }} · {{ $openPromotion->price }} {{ $openPromotion->currency }} · {{ $openPromotion->duration_days }} days</p>
-                @if($openPromotion->isCurrentlyActive())
-                    <p class="mt-1 text-gray-600">Active until {{ $openPromotion->ends_at?->toFormattedDateString() }}.</p>
+                @if($openPromotion->isCurrentlyActive() && $openPromotion->activeUntilPhrase())
+                    <p class="mt-1 font-medium text-amber-800">{{ $openPromotion->activeUntilPhrase() }}.</p>
                 @endif
                 @if($openPromotion->status->value === 'pending')
-                    <form method="POST" action="{{ route('market.promote.destroy', $openPromotion) }}" class="mt-4">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="text-sm text-red-600">Cancel pending promotion</button>
-                    </form>
+                    <div class="mt-4 flex flex-wrap items-center gap-3">
+                        @if($openPromotion->order)
+                            <a href="{{ route('orders.show', $openPromotion->order) }}" class="btn-primary">Continue to payment</a>
+                        @endif
+                        <form method="POST" action="{{ route('market.promote.destroy', $openPromotion) }}">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="text-sm text-red-600">Cancel this promotion</button>
+                        </form>
+                    </div>
                 @endif
             </section>
         @elseif($packages->isEmpty())
@@ -38,7 +51,7 @@
                     </label>
                 @endforeach
                 <div class="flex flex-wrap gap-3">
-                    <button type="submit" class="btn-primary">Confirm pending promotion</button>
+                    <button type="submit" class="btn-primary">Continue to payment</button>
                     <a href="{{ route('market.show', $listing) }}" class="btn-secondary">Cancel</a>
                 </div>
             </form>

@@ -43,6 +43,9 @@
                                     <a href="{{ route('market.show', $listing) }}" class="font-semibold text-forest-900 hover:underline">{{ $listing->title }}</a>
                                     <x-market-status-badge :listing="$listing" />
                                 </div>
+                                @if($activeUntil = $listing->currentPromotion()?->activeUntilPhrase())
+                                    <p class="mt-1 text-sm font-medium text-amber-800">{{ $activeUntil }}</p>
+                                @endif
                                 <p class="mt-1 text-sm text-gray-500">
                                     {{ $listing->listing_type->label() }}
                                     @if($listing->category)

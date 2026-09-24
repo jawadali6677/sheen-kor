@@ -18,6 +18,9 @@
                     @if($listing->promotionBadge())
                         <span class="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-800">{{ $listing->promotionBadge() }}</span>
                     @endif
+                    @if($activeUntil = $listing->currentPromotion()?->activeUntilPhrase())
+                        <span class="text-sm font-medium text-amber-800">{{ $activeUntil }}</span>
+                    @endif
                 </div>
                 <h1 class="mt-2 text-3xl font-bold text-forest-900 md:text-4xl">{{ $listing->title }}</h1>
                 <p class="mt-4 text-lg font-semibold text-forest-900">{{ $listing->listing_type->catalogOfferLabel($listing->price) }}</p>

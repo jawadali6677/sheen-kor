@@ -45,37 +45,51 @@
                 <button type="submit" class="rounded bg-gray-800 px-3 py-2 text-sm text-white">Search</button>
             </form>
 
-            <div class="overflow-hidden rounded-lg bg-white shadow-sm">
+            <div class="overflow-x-auto rounded-lg bg-white shadow-sm">
                 <table class="min-w-full text-sm">
                     <thead class="bg-gray-50 text-left">
                         <tr>
                             <th class="px-4 py-3">Order</th>
                             <th class="px-4 py-3">Member</th>
-                            <th class="px-4 py-3">Package</th>
-                            <th class="px-4 py-3">Status</th>
+                            <th class="px-4 py-3">Purchase</th>
+                            <th class="px-4 py-3">Payment</th>
+                            <th class="px-4 py-3">Benefit</th>
                             <th class="px-4 py-3"></th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($orders as $order)
                             <tr class="border-t">
-                                <td class="px-4 py-3">#{{ $order->id }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    #{{ $order->id }}
+                                    <span class="block text-gray-500">{{ $order->created_at?->toFormattedDateString() }}</span>
+                                </td>
                                 <td class="px-4 py-3">
                                     <p class="font-medium">{{ $order->user?->name ?? 'Unknown' }}</p>
                                     <p class="text-gray-500">{{ $order->user?->email }}</p>
                                 </td>
                                 <td class="px-4 py-3">
-                                    {{ $order->snapshot['name'] ?? $order->package?->name }}
-                                    <span class="block text-gray-500">{{ $order->amount }} {{ $order->currency }}</span>
+                                    <p class="font-medium">{{ $order->purchaseTypeLabel() }}</p>
+                                    @include('admin.monetization.orders.partials.subject', ['order' => $order])
+                                    <p class="text-gray-500">{{ $order->snapshot['name'] ?? $order->package?->name }} · {{ $order->amount }} {{ $order->currency }}</p>
                                 </td>
-                                <td class="px-4 py-3">{{ $order->status->label() }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap">{{ $order->status->label() }}</td>
+                                <td class="px-4 py-3">
+                                    <p>{{ $order->benefitStatusLabel() }}</p>
+                                    @if($order->promotionPlacementLabel())
+                                        <p class="text-gray-500">{{ $order->promotionPlacementLabel() }}</p>
+                                    @endif
+                                    @if($order->resultDetail())
+                                        <p class="text-gray-500">{{ $order->resultDetail() }}</p>
+                                    @endif
+                                </td>
                                 <td class="px-4 py-3 text-right">
                                     <a href="{{ route('admin.monetization.orders.show', $order) }}" class="text-blue-700">Inspect</a>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="px-4 py-6 text-gray-500">No orders in this list.</td>
+                                <td colspan="6" class="px-4 py-6 text-gray-500">No orders in this list.</td>
                             </tr>
                         @endforelse
                     </tbody>

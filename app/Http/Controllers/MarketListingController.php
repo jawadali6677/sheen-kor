@@ -123,7 +123,12 @@ class MarketListingController extends Controller
 
         $listings = MarketListing::query()
             ->where('user_id', $request->user()->id)
-            ->with('category')
+            ->with([
+                'category',
+                'promotions' => function ($query): void {
+                    $query->currentlyActive();
+                },
+            ])
             ->when($filter === 'published', fn ($query) => $query->where('status', MarketListingStatus::Published))
             ->when($filter === 'pending', fn ($query) => $query->where('status', MarketListingStatus::Pending))
             ->when($filter === 'rejected', fn ($query) => $query->where('status', MarketListingStatus::Rejected))

@@ -56,6 +56,7 @@
                     <x-slot name="content">
                         <x-dropdown-link :href="route('users.show', auth()->user())">{{ __('My profile') }}</x-dropdown-link>
                         <x-dropdown-link :href="route('market.mine')">{{ __('My Market') }}</x-dropdown-link>
+                        <x-dropdown-link :href="route('orders.index')">{{ __('My Orders') }}</x-dropdown-link>
                         <x-dropdown-link :href="route('profile.edit')">{{ __('Edit profile') }}</x-dropdown-link>
                         <x-dropdown-link :href="route('leaderboard.index')">{{ __('Scores') }}</x-dropdown-link>
                         @can('posts.moderate')
@@ -119,6 +120,7 @@
                 <x-responsive-nav-link :href="route('messages.index')">{{ __('Chat') }} <span x-show="$store.notifications.chatUnread > 0" x-cloak x-text="'(' + $store.notifications.chatUnread + ')'">@if($unreadChats > 0) ({{ $unreadChats }}) @endif</span></x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('users.show', auth()->user())">{{ __('My profile') }}</x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('market.mine')">{{ __('My Market') }}</x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('orders.index')">{{ __('My Orders') }}</x-responsive-nav-link>
                 @can('posts.moderate')
                     <x-responsive-nav-link :href="route('admin.posts.index', ['status' => 'pending'])">{{ __('Review stories') }}</x-responsive-nav-link>
                 @endcan

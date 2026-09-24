@@ -15,16 +15,26 @@
             <p><a href="{{ route('admin.monetization.orders.index') }}" class="text-sm text-blue-700">Back to orders</a></p>
 
             <section class="rounded-lg bg-white p-6 shadow-sm">
-                <h3 class="text-lg font-semibold text-gray-800">{{ $order->user?->name }}</h3>
+                <h3 class="text-lg font-semibold text-gray-800">
+                    @if($order->user)
+                        <a href="{{ route('users.show', $order->user) }}" class="text-blue-700 hover:underline">{{ $order->user->name }}</a>
+                    @else
+                        Unknown member
+                    @endif
+                </h3>
                 <p class="text-sm text-gray-600">{{ $order->user?->email }}</p>
-                <p class="mt-2 text-sm text-gray-600">Status: {{ $order->status->label() }}</p>
-                <p class="mt-1 text-sm text-gray-600">{{ $order->snapshot['name'] ?? $order->package?->name }} · {{ $order->amount }} {{ $order->currency }}</p>
-                @if($order->boost)
-                    <p class="mt-1 text-sm text-gray-600">Post: {{ $order->boost->post?->title ?? 'Deleted post' }}</p>
+                <p class="mt-2 text-sm text-gray-600">Payment: {{ $order->status->label() }}</p>
+                <p class="mt-1 text-sm text-gray-600">{{ $order->purchaseTypeLabel() }} · {{ $order->snapshot['name'] ?? $order->package?->name }} · {{ $order->amount }} {{ $order->currency }}</p>
+                <p class="mt-1 text-sm text-gray-600">Benefit: {{ $order->benefitStatusLabel() }}</p>
+                @if($order->promotionPlacementLabel())
+                    <p class="mt-1 text-sm text-gray-600">Placement: {{ $order->promotionPlacementLabel() }}</p>
                 @endif
-                @if($order->listingPromotion)
-                    <p class="mt-1 text-sm text-gray-600">Listing: {{ $order->listingPromotion->listing?->title ?? 'Deleted listing' }}</p>
+                @if($order->resultDetail())
+                    <p class="mt-1 text-sm text-gray-600">{{ $order->resultDetail() }}</p>
                 @endif
+                <div class="mt-3 text-sm">
+                    @include('admin.monetization.orders.partials.subject', ['order' => $order])
+                </div>
                 @if($order->verification)
                     <p class="mt-1 text-sm text-gray-600">Green Tick: {{ $order->verification->displayStatus()->label() }}</p>
                 @endif

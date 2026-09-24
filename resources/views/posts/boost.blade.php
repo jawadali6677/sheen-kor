@@ -5,22 +5,35 @@
         <article class="sk-card p-6">
             <p class="text-sm text-gray-500">Boost Post</p>
             <h1 class="mt-1 text-2xl font-bold text-forest-900">{{ $post->title }}</h1>
-            <p class="mt-2 text-sm text-gray-600">Choose a package. Confirming creates a pending order. An admin marks it paid for testing until a payment provider is connected. The post is not boosted until then.</p>
+            <p class="mt-2 text-sm text-gray-600">
+                @if($openBoost?->isCurrentlyActive())
+                    This post is already boosted.
+                @elseif($openBoost)
+                    Finish payment to start this boost.
+                @else
+                    Choose how long to boost this post, then continue to payment. The boost starts after payment succeeds.
+                @endif
+            </p>
         </article>
 
         @if($openBoost)
             <section class="sk-card p-6 text-sm">
                 <p class="font-medium text-gray-900">Status: {{ $openBoost->displayStatus()->label() }}</p>
                 <p class="mt-1 text-gray-600">{{ $openBoost->package_name }} · {{ $openBoost->price }} {{ $openBoost->currency }} · {{ $openBoost->duration_days }} days</p>
-                @if($openBoost->isCurrentlyActive())
-                    <p class="mt-1 text-gray-600">Active until {{ $openBoost->ends_at?->toFormattedDateString() }}.</p>
+                @if($openBoost->isCurrentlyActive() && $openBoost->activeUntilPhrase())
+                    <p class="mt-1 font-medium text-amber-800">{{ $openBoost->activeUntilPhrase() }}.</p>
                 @endif
                 @if($openBoost->status->value === 'pending')
-                    <form method="POST" action="{{ route('posts.boost.destroy', $openBoost) }}" class="mt-4">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="text-sm text-red-600">Cancel pending boost</button>
-                    </form>
+                    <div class="mt-4 flex flex-wrap items-center gap-3">
+                        @if($openBoost->order)
+                            <a href="{{ route('orders.show', $openBoost->order) }}" class="btn-primary">Continue to payment</a>
+                        @endif
+                        <form method="POST" action="{{ route('posts.boost.destroy', $openBoost) }}">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="text-sm text-red-600">Cancel this boost</button>
+                        </form>
+                    </div>
                 @endif
             </section>
         @elseif($packages->isEmpty())
@@ -38,7 +51,7 @@
                     </label>
                 @endforeach
                 <div class="flex flex-wrap gap-3">
-                    <button type="submit" class="btn-primary">Confirm pending boost</button>
+                    <button type="submit" class="btn-primary">Continue to payment</button>
                     <a href="{{ route('posts.show', $post) }}" class="btn-secondary">Cancel</a>
                 </div>
             </form>

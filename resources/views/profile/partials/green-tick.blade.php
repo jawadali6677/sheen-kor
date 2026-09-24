@@ -2,7 +2,10 @@
     <header>
         <h2 class="text-lg font-medium text-gray-900">Green Tick</h2>
         <p class="mt-1 text-sm text-gray-600">
-            Request verification. Confirming creates a pending order. An admin marks it paid for testing, then reviews it if review is required.
+            Choose a plan and continue to payment. Your Green Tick starts after payment, and after a review when one is required.
+        </p>
+        <p class="mt-2">
+            <a href="{{ route('orders.index') }}" class="text-sm font-medium text-gray-800 underline">My Orders</a>
         </p>
     </header>
 

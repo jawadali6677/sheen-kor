@@ -14,11 +14,41 @@ use Illuminate\View\View;
 
 class OrderController extends Controller
 {
+    public function index(Request $request): View
+    {
+        $orders = $request->user()
+            ->orders()
+            ->with([
+                'user',
+                'package',
+                'listing',
+                'post',
+                'verification',
+                'boost.post',
+                'listingPromotion.listing',
+            ])
+            ->latest('id')
+            ->paginate(15);
+
+        return view('orders.index', [
+            'orders' => $orders,
+        ]);
+    }
+
     public function show(Request $request, Order $order): View
     {
         abort_unless($request->user()?->id === $order->user_id, 403);
 
-        $order->load(['package', 'payments', 'verification', 'boost.post', 'listingPromotion.listing']);
+        $order->load([
+            'user',
+            'package',
+            'payments',
+            'listing',
+            'post',
+            'verification',
+            'boost.post',
+            'listingPromotion.listing',
+        ]);
 
         return view('orders.show', [
             'order' => $order,

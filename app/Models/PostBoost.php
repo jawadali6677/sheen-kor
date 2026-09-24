@@ -98,6 +98,15 @@ class PostBoost extends Model
         return $this->status;
     }
 
+    public function activeUntilPhrase(): ?string
+    {
+        if (! $this->isCurrentlyActive() || $this->ends_at === null) {
+            return null;
+        }
+
+        return 'Boosted until '.$this->ends_at->toFormattedDateString();
+    }
+
     public function activateFromSnapshot(?User $activator = null): void
     {
         $startsAt = now();

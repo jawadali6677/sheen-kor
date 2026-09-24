@@ -25,6 +25,7 @@ class StartStripeCheckout
             $order->amountInCents(),
             (string) ($order->snapshot['name'] ?? 'Sheen Kor'),
             [
+                // Keep {CHECKOUT_SESSION_ID} unencoded. route() would percent-encode the braces and Stripe would not substitute the session id.
                 'success_url' => route('orders.show', $order).'?checkout=success&session_id={CHECKOUT_SESSION_ID}',
                 'cancel_url' => route('orders.show', $order).'?checkout=cancelled',
                 'client_reference_id' => (string) $order->id,

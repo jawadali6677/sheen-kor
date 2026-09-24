@@ -38,6 +38,14 @@
                 @if($order->verification)
                     <p class="mt-1 text-sm text-gray-600">Green Tick: {{ $order->verification->displayStatus()->label() }}</p>
                 @endif
+                @foreach($order->payments as $payment)
+                    <p class="mt-1 text-sm text-gray-600">
+                        Payment {{ $payment->provider->label() }} · {{ $payment->status->label() }}
+                        @if($payment->provider === \App\Enums\PaymentProvider::Stripe && filled($payment->provider_reference))
+                            · Stripe session {{ $payment->provider_reference }}
+                        @endif
+                    </p>
+                @endforeach
             </section>
 
             @if($order->status->value === 'pending')

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\FulfillStripeCheckoutSession;
 use App\Actions\StartStripeCheckout;
 use App\Enums\ListingPromotionStatus;
 use App\Enums\OrderStatus;
@@ -35,9 +36,20 @@ class OrderController extends Controller
         ]);
     }
 
-    public function show(Request $request, Order $order): View
+    public function show(Request $request, Order $order, FulfillStripeCheckoutSession $fulfillStripeCheckoutSession): View
     {
         abort_unless($request->user()?->id === $order->user_id, 403);
+
+        $checkoutReturn = null;
+
+        if ($request->query('checkout') === 'success') {
+            $result = $fulfillStripeCheckoutSession->handle(
+                $order,
+                $request->string('session_id')->trim()->toString(),
+            );
+            $order = $result['order'];
+            $checkoutReturn = $result['outcome']->value;
+        }
 
         $order->load([
             'user',
@@ -52,6 +64,7 @@ class OrderController extends Controller
 
         return view('orders.show', [
             'order' => $order,
+            'checkoutReturn' => $checkoutReturn,
         ]);
     }
 

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\ListingPromotionPlacement;
 use App\Enums\ListingPromotionSource;
 use App\Enums\ListingPromotionStatus;
+use App\Enums\OrderStatus;
 use Database\Factories\ListingPromotionFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -110,6 +111,19 @@ class ListingPromotion extends Model
         return $this->placement->activeUntilLead().' until '.$this->ends_at->toFormattedDateString();
     }
 
+    public function memberStatusLabel(): string
+    {
+        if ($this->isCurrentlyActive()) {
+            return 'Active';
+        }
+
+        if ($this->displayStatus() === ListingPromotionStatus::Pending) {
+            return $this->orderIsPaid() ? 'Pending' : 'Pending payment';
+        }
+
+        return $this->displayStatus()->label();
+    }
+
     public function ownerStatusHeadline(): string
     {
         if ($this->isCurrentlyActive()) {
@@ -120,7 +134,7 @@ class ListingPromotion extends Model
                 : 'Promoted';
         }
 
-        return $this->displayStatus()->label();
+        return $this->memberStatusLabel();
     }
 
     public function ownerStatusExplanation(): ?string
@@ -129,11 +143,28 @@ class ListingPromotion extends Model
             return null;
         }
 
+        if ($this->orderIsPaid()) {
+            return 'Payment is complete. This promotion stays pending until the listing is published.';
+        }
+
         if ($this->order?->shouldChargeWithStripe()) {
             return 'This promotion is reserved. Pay with Stripe to finish checkout. Pending payment is not paid, and the listing is not featured until Stripe confirms payment.';
         }
 
         return 'This promotion is reserved and is not paid. An admin can mark the order paid for testing until Stripe Checkout is connected.';
+    }
+
+    private function orderIsPaid(): bool
+    {
+        if ($this->relationLoaded('order')) {
+            return $this->order?->status === OrderStatus::Paid;
+        }
+
+        if ($this->order_id === null) {
+            return false;
+        }
+
+        return $this->order()->where('status', OrderStatus::Paid->value)->exists();
     }
 
     public function activateFromSnapshot(?User $activator = null): void

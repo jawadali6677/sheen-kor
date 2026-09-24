@@ -22,6 +22,8 @@
                     @if($boostedUntil = $post->currentBoost()?->activeUntilPhrase())
                         <p class="mt-2 text-sm font-medium text-amber-800">{{ $boostedUntil }}</p>
                     @endif
+                @elseif(auth()->id() === $post->user_id && ($ownerBoost = $post->ownerBoost()) && $ownerBoost->status === \App\Enums\PostBoostStatus::Pending)
+                    <p class="mt-2 inline-flex rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-gray-700">{{ $ownerBoost->memberStatusLabel() }}</p>
                 @endif
                 <div class="mt-4 flex flex-wrap items-center gap-3 text-sm text-gray-500">
                     @if($post->user)

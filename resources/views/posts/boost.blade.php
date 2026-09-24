@@ -8,6 +8,8 @@
             <p class="mt-2 text-sm text-gray-600">
                 @if($openBoost?->isCurrentlyActive())
                     This post is already boosted.
+                @elseif($openBoost?->status->value === 'pending' && $openBoost->order?->status->value === 'paid')
+                    Payment is complete. This boost is pending until the post is published.
                 @elseif($openBoost)
                     Finish payment to start this boost.
                 @else
@@ -18,14 +20,20 @@
 
         @if($openBoost)
             <section class="sk-card p-6 text-sm">
-                <p class="font-medium text-gray-900">Status: {{ $openBoost->displayStatus()->label() }}</p>
+                <p class="font-medium text-gray-900">Status: {{ $openBoost->memberStatusLabel() }}</p>
                 <p class="mt-1 text-gray-600">{{ $openBoost->package_name }} · {{ $openBoost->price }} {{ $openBoost->currency }} · {{ $openBoost->duration_days }} days</p>
                 @if($openBoost->isCurrentlyActive() && $openBoost->activeUntilPhrase())
                     <p class="mt-1 font-medium text-amber-800">{{ $openBoost->activeUntilPhrase() }}.</p>
                 @endif
-                @if($openBoost->status->value === 'pending')
+                @if($openBoost->status->value === 'pending' && $openBoost->order?->status->value === 'pending')
                     <div class="mt-4 flex flex-wrap items-center gap-3">
-                        @if($openBoost->order)
+                        @if($openBoost->order->shouldChargeWithStripe())
+                            <form method="POST" action="{{ route('orders.pay', $openBoost->order) }}">
+                                @csrf
+                                <button type="submit" class="btn-primary">Continue payment</button>
+                            </form>
+                            <a href="{{ route('orders.show', $openBoost->order) }}" class="btn-secondary">View order</a>
+                        @else
                             <a href="{{ route('orders.show', $openBoost->order) }}" class="btn-primary">Continue to payment</a>
                         @endif
                         <form method="POST" action="{{ route('posts.boost.destroy', $openBoost) }}">
@@ -39,11 +47,17 @@
         @elseif($packages->isEmpty())
             <p class="sk-card p-6 text-sm text-gray-600">No boost packages are enabled.</p>
         @else
-            <form method="POST" action="{{ route('posts.boost.store', $post) }}" class="sk-card space-y-4 p-6">
+            <form
+                method="POST"
+                action="{{ route('posts.boost.store', $post) }}"
+                class="sk-card space-y-4 p-6"
+                x-data="{ label: $el.dataset.initialLabel }"
+                data-initial-label="{{ $packages->first()->boostCheckoutLabel() }}"
+            >
                 @csrf
                 @foreach($packages as $package)
                     <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-4">
-                        <input type="radio" name="package_id" value="{{ $package->id }}" class="mt-1" @checked($loop->first) required>
+                        <input type="radio" name="package_id" value="{{ $package->id }}" class="mt-1" data-checkout-label="{{ $package->boostCheckoutLabel() }}" @checked($loop->first) @change="label = $el.dataset.checkoutLabel" required>
                         <span>
                             <span class="block font-medium text-gray-900">{{ $package->name }}</span>
                             <span class="mt-1 block text-sm text-gray-600">{{ $package->price }} {{ $package->currency }} · {{ $package->duration_days }} {{ $package->duration_days === 1 ? 'day' : 'days' }}</span>
@@ -51,7 +65,7 @@
                     </label>
                 @endforeach
                 <div class="flex flex-wrap gap-3">
-                    <button type="submit" class="btn-primary">Continue to payment</button>
+                    <button type="submit" class="btn-primary" x-text="label">{{ $packages->first()->boostCheckoutLabel() }}</button>
                     <a href="{{ route('posts.show', $post) }}" class="btn-secondary">Cancel</a>
                 </div>
             </form>

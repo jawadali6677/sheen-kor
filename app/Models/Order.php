@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class Order extends Model
@@ -229,6 +230,13 @@ class Order extends Model
         };
     }
 
+    public function purchasedPackageName(): string
+    {
+        $name = $this->snapshot['name'] ?? $this->package?->name;
+
+        return is_string($name) && $name !== '' ? $name : 'Purchase';
+    }
+
     public function promotionPlacementLabel(): ?string
     {
         return $this->listingPromotion?->placement->label();
@@ -236,13 +244,56 @@ class Order extends Model
 
     public function benefitStatusLabel(): string
     {
-        $entitlement = $this->listingPromotion ?? $this->boost ?? $this->verification;
+        $promotion = $this->listingPromotion;
 
-        if ($entitlement === null) {
-            return 'None';
+        if ($promotion !== null) {
+            $promotion->setRelation('order', $this);
+
+            return $promotion->memberStatusLabel();
         }
 
-        return $entitlement->displayStatus()->label();
+        $boost = $this->boost;
+
+        if ($boost !== null) {
+            $boost->setRelation('order', $this);
+
+            return $boost->memberStatusLabel();
+        }
+
+        if ($this->verification !== null) {
+            return $this->verification->displayStatus()->label();
+        }
+
+        return 'None';
+    }
+
+    public function durationLabel(): ?string
+    {
+        $days = $this->durationDays();
+
+        if ($days === null || $days < 1) {
+            return null;
+        }
+
+        return $days.' '.($days === 1 ? 'day' : 'days');
+    }
+
+    public function benefitStartsAt(): ?Carbon
+    {
+        $startsAt = $this->listingPromotion?->starts_at
+            ?? $this->boost?->starts_at
+            ?? $this->verification?->starts_at;
+
+        return $startsAt instanceof Carbon ? $startsAt : null;
+    }
+
+    public function benefitEndsAt(): ?Carbon
+    {
+        $endsAt = $this->listingPromotion?->ends_at
+            ?? $this->boost?->ends_at
+            ?? $this->verification?->ends_at;
+
+        return $endsAt instanceof Carbon ? $endsAt : null;
     }
 
     public function durationDays(): ?int
@@ -379,6 +430,10 @@ class Order extends Model
             return 'Your listing promotion has ended.';
         }
 
+        if ($promotion?->displayStatus() === ListingPromotionStatus::Pending) {
+            return 'Your listing promotion is pending until the listing is published.';
+        }
+
         return 'Your listing promotion is paid'.$forDays.'.';
     }
 
@@ -390,6 +445,10 @@ class Order extends Model
 
         if ($this->boost?->displayStatus() === PostBoostStatus::Expired) {
             return 'Your post boost has ended.';
+        }
+
+        if ($this->boost?->displayStatus() === PostBoostStatus::Pending) {
+            return 'Your post boost is pending until the post is published.';
         }
 
         return 'Your post boost is paid'.$forDays.'.';

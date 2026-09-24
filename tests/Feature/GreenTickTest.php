@@ -7,6 +7,7 @@ use App\Enums\UserVerificationSource;
 use App\Enums\UserVerificationStatus;
 use App\Models\MonetizationPackage;
 use App\Models\MonetizationSetting;
+use App\Models\Order;
 use App\Models\User;
 use App\Models\UserVerification;
 use App\Notifications\GreenTickNeedsReview;
@@ -237,6 +238,25 @@ class GreenTickTest extends TestCase
             ->assertSee('You are not eligible to request a Green Tick yet');
     }
 
+    public function test_pending_green_tick_profile_links_to_payment(): void
+    {
+        $user = User::factory()->create();
+        $this->makeEligible();
+        $package = $this->enableGreenTickPackages()->firstWhere('slug', 'green_tick_monthly');
+
+        $this->actingAs($user)
+            ->post(route('green-tick.store'), ['package_id' => $package->id]);
+
+        $order = Order::query()->where('user_id', $user->id)->firstOrFail();
+
+        $this->actingAs($user)
+            ->get(route('profile.edit'))
+            ->assertSee('Pending payment')
+            ->assertSee('Continue to payment')
+            ->assertSee(route('orders.show', $order))
+            ->assertDontSee('Get Green Tick');
+    }
+
     public function test_profile_edit_shows_enabled_packages_when_eligible(): void
     {
         $user = User::factory()->create();
@@ -247,7 +267,7 @@ class GreenTickTest extends TestCase
             ->get(route('profile.edit'))
             ->assertOk()
             ->assertSee('Green Tick Monthly')
-            ->assertSee('Request Green Tick');
+            ->assertSee('Get Green Tick');
     }
 
     /**

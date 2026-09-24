@@ -2,7 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ListingPromotionStatus;
+use App\Enums\MarketListingStatus;
 use App\Enums\MonetizationPackageType;
+use App\Enums\OrderStatus;
 use App\Models\MarketListing;
 use App\Models\MonetizationPackage;
 use App\Models\MonetizationSetting;
@@ -39,11 +42,16 @@ class OrderPurchaseExperienceTest extends TestCase
             ->get(route('orders.show', $order))
             ->assertSee('Your listing is featured for 7 days.')
             ->assertSee('Featured until Oct 1, 2026.')
+            ->assertSee('Payment received.')
             ->assertSee('View your listing')
             ->assertSee('My Listings')
+            ->assertSee('Back to Market')
             ->assertSee('My Orders')
+            ->assertSee('Sep 24, 2026')
+            ->assertSee('Oct 1, 2026')
             ->assertSee(route('market.show', $listing))
             ->assertSee(route('market.mine'))
+            ->assertSee(route('market.index'))
             ->assertSee(route('orders.index'))
             ->assertDontSee('This order is paid.');
 
@@ -217,6 +225,7 @@ class OrderPurchaseExperienceTest extends TestCase
         $this->actingAs($user)
             ->get(route('orders.index'))
             ->assertSee('My Orders')
+            ->assertSee('Order #'.$order->id)
             ->assertSee('Listing promotion')
             ->assertSee('Visible cedar box')
             ->assertSee('Featured Listing - 7 Days')
@@ -234,6 +243,109 @@ class OrderPurchaseExperienceTest extends TestCase
         $this->actingAs($user)
             ->get(route('profile.edit'))
             ->assertSee(route('orders.index'));
+    }
+
+    public function test_paid_listing_promotion_stays_pending_when_the_listing_is_unpublished(): void
+    {
+        $this->travelTo('2026-09-24 12:00:00');
+
+        $user = User::factory()->create();
+        $listing = MarketListing::factory()->create([
+            'user_id' => $user->id,
+            'title' => 'Unpublished cedar box',
+            'description' => 'A cedar box for herbs on the balcony rail.',
+        ]);
+        $order = $this->purchaseListing($user, $listing, 'listing_featured_7d');
+
+        $listing->forceFill([
+            'status' => MarketListingStatus::Pending,
+            'published_at' => null,
+        ])->save();
+
+        $this->actingAs(User::factory()->admin()->create())
+            ->post(route('admin.monetization.orders.mark-paid', $order));
+
+        $order->refresh()->load('listingPromotion');
+
+        $this->assertSame(OrderStatus::Paid, $order->status);
+        $this->assertSame(ListingPromotionStatus::Pending, $order->listingPromotion->status);
+
+        $this->actingAs($user)
+            ->get(route('orders.show', $order))
+            ->assertSee('Payment received.')
+            ->assertSee('Your listing promotion is pending until the listing is published.')
+            ->assertSee('Unpublished cedar box')
+            ->assertSee('Featured Listing')
+            ->assertSee('7 days')
+            ->assertSee('Pending')
+            ->assertDontSee('Pending payment')
+            ->assertDontSee('Your listing is featured')
+            ->assertDontSee('Featured until')
+            ->assertDontSee('entitlement')
+            ->assertDontSee('fulfillment');
+
+        $this->actingAs($user)
+            ->get(route('market.show', $listing))
+            ->assertSee('Pending')
+            ->assertDontSee('Featured until')
+            ->assertDontSee('Pending payment');
+
+        $this->actingAs($user)
+            ->get(route('market.mine'))
+            ->assertSee('Unpublished cedar box')
+            ->assertSee('Pending')
+            ->assertDontSee('Featured until')
+            ->assertDontSee('Pending payment');
+
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)
+            ->get(route('admin.monetization.orders.show', $order))
+            ->assertSee('Payment: Paid')
+            ->assertSee('Benefit: Pending')
+            ->assertDontSee('Benefit: Active');
+    }
+
+    public function test_paid_post_boost_stays_pending_when_the_post_is_unpublished(): void
+    {
+        $this->travelTo('2026-09-24 12:00:00');
+
+        $user = User::factory()->create();
+        $post = Post::factory()->create([
+            'user_id' => $user->id,
+            'title' => 'Unpublished compost notes',
+            'content' => 'Notes about a balcony compost bin.',
+        ]);
+        $package = $this->enableBoostPackages()->firstWhere('slug', 'post_boost_1d');
+
+        $this->actingAs($user)
+            ->post(route('posts.boost.store', $post), ['package_id' => $package->id]);
+
+        $order = Order::query()->where('post_id', $post->id)->firstOrFail();
+
+        $post->forceFill([
+            'status' => 'pending',
+            'published_at' => null,
+        ])->save();
+
+        $this->actingAs(User::factory()->admin()->create())
+            ->post(route('admin.monetization.orders.mark-paid', $order));
+
+        $this->actingAs($user)
+            ->get(route('orders.show', $order))
+            ->assertSee('Payment received.')
+            ->assertSee('Your post boost is pending until the post is published.')
+            ->assertSee('Unpublished compost notes')
+            ->assertSee('Pending')
+            ->assertDontSee('Pending payment')
+            ->assertDontSee('Your post is boosted')
+            ->assertDontSee('Boosted until');
+
+        $this->actingAs($user)
+            ->get(route('posts.show', $post))
+            ->assertSee('Pending')
+            ->assertDontSee('Boosted until')
+            ->assertDontSee('Pending payment');
     }
 
     public function test_guests_are_redirected_from_my_orders(): void
@@ -303,6 +415,7 @@ class OrderPurchaseExperienceTest extends TestCase
             ->assertSee('River market stool')
             ->assertSee('Pending')
             ->assertSee('Pending payment')
+            ->assertSee('Failed')
             ->assertSee('Featured Listing')
             ->assertSee(route('admin.market.show', $listing));
 

@@ -7,6 +7,7 @@ use App\Actions\ModerateContent;
 use App\Actions\RevokeScore;
 use App\Enums\ModerationDecision;
 use App\Enums\Permission;
+use App\Enums\PostBoostStatus;
 use App\Enums\ScoreReason;
 use App\Models\Category;
 use App\Models\Post;
@@ -284,7 +285,10 @@ class PostController extends Controller
             'category',
             'images',
             'boosts' => function ($query): void {
-                $query->currentlyActive();
+                $query->with('order')->where(function ($query): void {
+                    $query->currentlyActive()
+                        ->orWhere('status', PostBoostStatus::Pending);
+                })->latest('id');
             },
         ])
             ->loadExists([

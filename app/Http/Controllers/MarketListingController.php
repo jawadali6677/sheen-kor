@@ -123,7 +123,7 @@ class MarketListingController extends Controller
 
         $listings = MarketListing::query()
             ->where('user_id', $request->user()->id)
-            ->with(['category', 'promotions'])
+            ->with(['category', 'promotions.order'])
             ->when($filter === 'published', fn ($query) => $query->where('status', MarketListingStatus::Published))
             ->when($filter === 'pending', fn ($query) => $query->where('status', MarketListingStatus::Pending))
             ->when($filter === 'rejected', fn ($query) => $query->where('status', MarketListingStatus::Rejected))
@@ -218,7 +218,7 @@ class MarketListingController extends Controller
             abort(404);
         }
 
-        $listing->load(['user', 'category', 'images', 'promotions']);
+        $listing->load(['user', 'category', 'images', 'promotions.order']);
 
         $viewerHasReported = auth()->check()
             && $listing->reports()->where('user_id', auth()->id())->exists();

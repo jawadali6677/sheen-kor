@@ -24,10 +24,16 @@
                 </h3>
                 <p class="text-sm text-gray-600">{{ $order->user?->email }}</p>
                 <p class="mt-2 text-sm text-gray-600">Payment: {{ $order->status->label() }}</p>
-                <p class="mt-1 text-sm text-gray-600">{{ $order->purchaseTypeLabel() }} · {{ $order->snapshot['name'] ?? $order->package?->name }} · {{ $order->amount }} {{ $order->currency }}</p>
+                <p class="mt-1 text-sm text-gray-600">{{ $order->purchaseTypeLabel() }} · {{ $order->purchasedPackageName() }} · {{ $order->amount }} {{ $order->currency }}</p>
                 <p class="mt-1 text-sm text-gray-600">Benefit: {{ $order->benefitStatusLabel() }}</p>
                 @if($order->promotionPlacementLabel())
                     <p class="mt-1 text-sm text-gray-600">Placement: {{ $order->promotionPlacementLabel() }}</p>
+                @endif
+                @if($duration = $order->durationLabel())
+                    <p class="mt-1 text-sm text-gray-600">Duration: {{ $duration }}</p>
+                @endif
+                @if($order->benefitStartsAt() || $order->benefitEndsAt())
+                    <p class="mt-1 text-sm text-gray-600">{{ $order->benefitStartsAt()?->toFormattedDateString() ?? 'Not started' }} – {{ $order->benefitEndsAt()?->toFormattedDateString() ?? 'No end date' }}</p>
                 @endif
                 @if($order->boost)
                     <p class="mt-1 text-sm text-gray-600">Post: {{ $order->boost->post?->title ?? 'Deleted post' }}</p>

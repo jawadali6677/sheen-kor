@@ -23,6 +23,19 @@
             @if($greenTickVerification->isCurrentlyActive())
                 <p class="mt-1 text-gray-600">Active until {{ $greenTickVerification->ends_at?->toFormattedDateString() }}.</p>
             @endif
+            @if($greenTickVerification->status->value === 'pending_payment' && $greenTickVerification->order?->status->value === 'pending')
+                <div class="mt-3 flex flex-wrap items-center gap-3">
+                    @if($greenTickVerification->order->shouldChargeWithStripe())
+                        <form method="POST" action="{{ route('orders.pay', $greenTickVerification->order) }}">
+                            @csrf
+                            <button type="submit" class="rounded bg-gray-800 px-4 py-2 text-sm text-white">Continue payment</button>
+                        </form>
+                        <a href="{{ route('orders.show', $greenTickVerification->order) }}" class="text-sm font-medium text-gray-800 underline">View order</a>
+                    @else
+                        <a href="{{ route('orders.show', $greenTickVerification->order) }}" class="text-sm font-medium text-gray-800 underline">Continue to payment</a>
+                    @endif
+                </div>
+            @endif
             @if(in_array($greenTickVerification->status->value, ['pending_payment', 'pending_review'], true))
                 <form method="POST" action="{{ route('green-tick.destroy', $greenTickVerification) }}" class="mt-3">
                     @csrf
@@ -60,7 +73,7 @@
                     </select>
                     <x-input-error class="mt-2" :messages="$errors->get('package_id')" />
                 </div>
-                <button type="submit" class="rounded bg-gray-800 px-4 py-2 text-sm text-white">Request Green Tick</button>
+                <button type="submit" class="rounded bg-gray-800 px-4 py-2 text-sm text-white">Get Green Tick</button>
             </form>
         @endif
     @elseif($greenTickEligibility['eligible'] && $user->hasOpenGreenTickRequest())

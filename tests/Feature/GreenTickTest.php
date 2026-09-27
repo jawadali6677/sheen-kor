@@ -8,6 +8,7 @@ use App\Enums\UserVerificationStatus;
 use App\Models\MonetizationPackage;
 use App\Models\MonetizationSetting;
 use App\Models\Order;
+use App\Models\Post;
 use App\Models\User;
 use App\Models\UserVerification;
 use App\Notifications\GreenTickNeedsReview;
@@ -235,7 +236,103 @@ class GreenTickTest extends TestCase
             ->get(route('profile.edit'))
             ->assertOk()
             ->assertSee('Green Tick')
-            ->assertSee('You are not eligible to request a Green Tick yet');
+            ->assertSee('You are not eligible to request a Green Tick yet')
+            ->assertSee('Qualified views in the last 30 days are not tracked yet, so they are not required.')
+            ->assertDontSee('so that requirement is 0')
+            ->assertDontSee('Not enforced yet');
+    }
+
+    public function test_profile_offers_green_tick_when_followers_and_posts_are_met_and_views_are_untracked(): void
+    {
+        $user = User::factory()->create();
+        $this->meetFollowerAndPostMinimums($user);
+        $this->enableGreenTickPackages();
+
+        $this->assertSame(5000, monetization_setting('eligibility_min_qualified_views_30d', 0));
+
+        $this->actingAs($user)
+            ->get(route('profile.edit'))
+            ->assertOk()
+            ->assertSee('1 / 1 followers')
+            ->assertSee('1 / 1 published posts')
+            ->assertSee('Get Green Tick')
+            ->assertSee('Qualified views in the last 30 days are not tracked yet, so they are not required.')
+            ->assertDontSee('You are not eligible to request a Green Tick yet.')
+            ->assertDontSee('so that requirement is 0');
+    }
+
+    public function test_member_who_meets_follower_and_post_minimums_can_buy_while_views_are_untracked(): void
+    {
+        $user = User::factory()->create();
+        $this->meetFollowerAndPostMinimums($user);
+        $package = $this->enableGreenTickPackages()->firstWhere('slug', 'green_tick_monthly');
+
+        $this->assertSame(5000, monetization_setting('eligibility_min_qualified_views_30d', 0));
+
+        $this->actingAs($user)
+            ->from(route('profile.edit'))
+            ->post(route('green-tick.store'), ['package_id' => $package->id])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('user_verifications', [
+            'user_id' => $user->id,
+            'package_slug' => 'green_tick_monthly',
+            'status' => UserVerificationStatus::PendingPayment->value,
+            'source' => UserVerificationSource::Request->value,
+        ]);
+    }
+
+    public function test_follower_minimum_still_blocks_a_green_tick_purchase(): void
+    {
+        MonetizationSetting::query()->where('key', 'eligibility_min_followers')->update(['value' => '1']);
+        MonetizationSetting::query()->where('key', 'eligibility_min_published_posts')->update(['value' => '1']);
+
+        $user = User::factory()->create();
+        Post::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'published',
+        ]);
+        $package = $this->enableGreenTickPackages()->firstWhere('slug', 'green_tick_monthly');
+
+        $this->actingAs($user)
+            ->from(route('profile.edit'))
+            ->post(route('green-tick.store'), ['package_id' => $package->id])
+            ->assertRedirect(route('profile.edit'))
+            ->assertSessionHas('error', 'You do not meet the Green Tick eligibility requirements yet.');
+
+        $this->assertDatabaseCount('user_verifications', 0);
+    }
+
+    public function test_published_post_minimum_still_blocks_a_green_tick_purchase(): void
+    {
+        MonetizationSetting::query()->where('key', 'eligibility_min_followers')->update(['value' => '1']);
+        MonetizationSetting::query()->where('key', 'eligibility_min_published_posts')->update(['value' => '1']);
+
+        $user = User::factory()->create();
+        $follower = User::factory()->create();
+        $user->followers()->attach($follower);
+        $package = $this->enableGreenTickPackages()->firstWhere('slug', 'green_tick_monthly');
+
+        $this->actingAs($user)
+            ->from(route('profile.edit'))
+            ->post(route('green-tick.store'), ['package_id' => $package->id])
+            ->assertRedirect(route('profile.edit'))
+            ->assertSessionHas('error', 'You do not meet the Green Tick eligibility requirements yet.');
+
+        $this->assertDatabaseCount('user_verifications', 0);
+    }
+
+    public function test_admin_review_says_qualified_views_are_not_tracked_yet(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $verification = UserVerification::factory()->create();
+
+        $this->actingAs($admin)
+            ->get(route('admin.monetization.green-ticks.show', $verification))
+            ->assertOk()
+            ->assertSee('Qualified views in the last 30 days are not tracked yet, so they are not required.')
+            ->assertDontSee('Not enforced yet');
     }
 
     public function test_pending_green_tick_profile_links_to_payment(): void
@@ -289,5 +386,19 @@ class GreenTickTest extends TestCase
         MonetizationSetting::query()->where('key', 'eligibility_min_followers')->update(['value' => '0']);
         MonetizationSetting::query()->where('key', 'eligibility_min_published_posts')->update(['value' => '0']);
         MonetizationSetting::query()->where('key', 'eligibility_min_qualified_views_30d')->update(['value' => '0']);
+    }
+
+    private function meetFollowerAndPostMinimums(User $user): void
+    {
+        MonetizationSetting::query()->where('key', 'eligibility_min_followers')->update(['value' => '1']);
+        MonetizationSetting::query()->where('key', 'eligibility_min_published_posts')->update(['value' => '1']);
+
+        $follower = User::factory()->create();
+        $user->followers()->attach($follower);
+
+        Post::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'published',
+        ]);
     }
 }

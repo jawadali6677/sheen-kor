@@ -194,12 +194,14 @@ class StripeCheckoutTest extends TestCase
     {
         $gateway = $this->fakeStripe();
         [$user, $listing, $order] = $this->pendingListingPromotion();
+        unset($gateway->sessions['cs_test_123']);
         $logged = $this->captureLogs();
 
         $this->actingAs($user)
             ->get(route('orders.show', $order).'?checkout=success&session_id=cs_test_123')
             ->assertOk()
             ->assertSee('marked paid when the webhook arrives')
+            ->assertDontSee('This checkout is not paid yet')
             ->assertDontSee('Pay with Stripe');
 
         $this->assertSame(1, $gateway->retrieveCount);

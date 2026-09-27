@@ -30,7 +30,7 @@ class CheckoutRateLimitTest extends TestCase
             $this->actingAs($user)
                 ->from(route('orders.show', $order))
                 ->post(route('orders.pay', $order))
-                ->assertRedirect('https://checkout.stripe.test/cs_test_123');
+                ->assertRedirect($this->stripeCheckoutUrlForAttempt($attempt));
         }
     }
 
@@ -43,7 +43,7 @@ class CheckoutRateLimitTest extends TestCase
             $this->actingAs($user)
                 ->from(route('orders.show', $order))
                 ->post(route('orders.pay', $order))
-                ->assertRedirect('https://checkout.stripe.test/cs_test_123');
+                ->assertRedirect($this->stripeCheckoutUrlForAttempt($attempt));
         }
 
         $response = $this->actingAs($user)
@@ -102,7 +102,7 @@ class CheckoutRateLimitTest extends TestCase
             $this->actingAs($firstUser)
                 ->from(route('orders.show', $firstOrder))
                 ->post(route('orders.pay', $firstOrder))
-                ->assertRedirect('https://checkout.stripe.test/cs_test_123');
+                ->assertRedirect($this->stripeCheckoutUrlForAttempt($attempt));
         }
 
         $gateway->nextSessionId = 'cs_test_other_user';
@@ -123,7 +123,7 @@ class CheckoutRateLimitTest extends TestCase
             $this->actingAs($user)
                 ->from(route('orders.show', $order))
                 ->post(route('orders.pay', $order))
-                ->assertRedirect('https://checkout.stripe.test/cs_test_123');
+                ->assertRedirect($this->stripeCheckoutUrlForAttempt($attempt));
         }
 
         Artisan::call('cache:clear');
@@ -131,7 +131,7 @@ class CheckoutRateLimitTest extends TestCase
         $this->actingAs($user)
             ->from(route('orders.show', $order))
             ->post(route('orders.pay', $order))
-            ->assertRedirect('https://checkout.stripe.test/cs_test_123');
+            ->assertRedirect($this->stripeCheckoutUrlForAttempt(31));
     }
 
     public function test_local_checkout_throttle_flash_explains_how_to_clear_the_cache(): void
@@ -145,7 +145,7 @@ class CheckoutRateLimitTest extends TestCase
             $this->actingAs($user)
                 ->from(route('orders.show', $order))
                 ->post(route('orders.pay', $order))
-                ->assertRedirect('https://checkout.stripe.test/cs_test_123');
+                ->assertRedirect($this->stripeCheckoutUrlForAttempt($attempt));
         }
 
         $this->actingAs($user)
@@ -155,6 +155,11 @@ class CheckoutRateLimitTest extends TestCase
             ->assertSessionHas('error');
 
         $this->assertStringContainsString('php artisan cache:clear', (string) session('error'));
+    }
+
+    private function stripeCheckoutUrlForAttempt(int $attempt): string
+    {
+        return 'https://checkout.stripe.test/cs_test_'.(122 + $attempt);
     }
 
     /**

@@ -449,6 +449,9 @@ class User extends Authenticatable
     }
 
     /**
+     * Followers and published posts are enforced. Qualified views for the last
+     * 30 days are not recorded yet, so that minimum does not affect eligibility.
+     *
      * @return array{
      *     eligible: bool,
      *     followers: int,
@@ -456,7 +459,8 @@ class User extends Authenticatable
      *     published_posts: int,
      *     min_published_posts: int,
      *     qualified_views: int,
-     *     min_qualified_views: int
+     *     min_qualified_views: int,
+     *     views_tracked: bool
      * }
      */
     public function greenTickEligibility(): array
@@ -468,17 +472,19 @@ class User extends Authenticatable
         $followers = $this->followers()->count();
         $publishedPosts = $this->posts()->where('status', 'published')->count();
         $qualifiedViews = 0;
+        $viewsAreTracked = false;
 
         return [
             'eligible' => $followers >= $minFollowers
                 && $publishedPosts >= $minPosts
-                && $qualifiedViews >= $minViews,
+                && ($viewsAreTracked ? $qualifiedViews >= $minViews : true),
             'followers' => $followers,
             'min_followers' => $minFollowers,
             'published_posts' => $publishedPosts,
             'min_published_posts' => $minPosts,
             'qualified_views' => $qualifiedViews,
             'min_qualified_views' => $minViews,
+            'views_tracked' => $viewsAreTracked,
         ];
     }
 }

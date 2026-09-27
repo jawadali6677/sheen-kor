@@ -25,11 +25,7 @@
                         <ul class="mt-2 list-disc ps-5">
                             <li>{{ number_format($eligibility['followers']) }} / {{ number_format($eligibility['min_followers']) }} followers</li>
                             <li>{{ number_format($eligibility['published_posts']) }} / {{ number_format($eligibility['min_published_posts']) }} published posts</li>
-                            @if($eligibility['views_tracked'])
-                                <li>{{ number_format($eligibility['qualified_views']) }} / {{ number_format($eligibility['min_qualified_views']) }} qualified views (30 days)</li>
-                            @else
-                                <li>Qualified views in the last 30 days are not tracked yet, so they are not required.</li>
-                            @endif
+                            <li>{{ number_format($eligibility['qualified_views']) }} / {{ number_format($eligibility['min_qualified_views']) }} qualified views (30 days)</li>
                         </ul>
                     </div>
                 @endif

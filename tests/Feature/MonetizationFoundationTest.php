@@ -41,7 +41,7 @@ class MonetizationFoundationTest extends TestCase
     {
         $this->assertSame(500, monetization_setting('eligibility_min_followers', 0));
         $this->assertSame(10, monetization_setting('eligibility_min_published_posts', 0));
-        $this->assertSame(5000, monetization_setting('eligibility_min_qualified_views_30d', 0));
+        $this->assertSame(0, monetization_setting('eligibility_min_qualified_views_30d', 1));
     }
 
     public function test_monetization_setting_helper_casts_booleans_from_the_fallback_type(): void
@@ -62,8 +62,29 @@ class MonetizationFoundationTest extends TestCase
         ]);
         $this->assertDatabaseHas('monetization_settings', [
             'key' => 'eligibility_min_qualified_views_30d',
-            'value' => '5000',
+            'value' => '0',
         ]);
+    }
+
+    public function test_resetting_the_qualified_view_minimum_changes_only_the_untouched_default(): void
+    {
+        $migration = require database_path('migrations/2026_09_27_163918_reset_untouched_qualified_view_minimum.php');
+
+        MonetizationSetting::query()
+            ->where('key', 'eligibility_min_qualified_views_30d')
+            ->update(['value' => '2500']);
+
+        $migration->up();
+
+        $this->assertSame('2500', MonetizationSetting::query()->where('key', 'eligibility_min_qualified_views_30d')->value('value'));
+
+        MonetizationSetting::query()
+            ->where('key', 'eligibility_min_qualified_views_30d')
+            ->update(['value' => '5000']);
+
+        $migration->up();
+
+        $this->assertSame('0', MonetizationSetting::query()->where('key', 'eligibility_min_qualified_views_30d')->value('value'));
     }
 
     public function test_placeholder_packages_are_seeded_disabled_at_zero_price(): void

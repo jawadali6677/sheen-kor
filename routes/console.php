@@ -11,3 +11,7 @@ Artisan::command('inspire', function () {
 Schedule::command('monetization:expire-entitlements')
     ->hourly()
     ->withoutOverlapping();
+
+Schedule::command('post-views:prune')
+    ->daily()
+    ->withoutOverlapping();

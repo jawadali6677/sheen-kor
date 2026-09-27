@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\AwardScore;
 use App\Actions\ModerateContent;
+use App\Actions\RecordQualifiedPostView;
 use App\Actions\RevokeScore;
 use App\Enums\ModerationDecision;
 use App\Enums\Permission;
@@ -253,7 +254,7 @@ class PostController extends Controller
     /**
      * Display a single post.
      */
-    public function show(Post $post)
+    public function show(Request $request, Post $post, RecordQualifiedPostView $recordQualifiedPostView)
     {
         /*
         |--------------------------------------------------------------------------
@@ -315,6 +316,8 @@ class PostController extends Controller
         */
 
         $post->increment('views');
+
+        $recordQualifiedPostView->handle($post, $request);
 
         return view(
             'posts.show',

@@ -51,11 +51,12 @@
         <ul class="mt-2 list-disc space-y-1 ps-5">
             <li>{{ number_format($greenTickEligibility['followers']) }} / {{ number_format($greenTickEligibility['min_followers']) }} followers</li>
             <li>{{ number_format($greenTickEligibility['published_posts']) }} / {{ number_format($greenTickEligibility['min_published_posts']) }} published posts</li>
-            <li>{{ number_format($greenTickEligibility['qualified_views']) }} / {{ number_format($greenTickEligibility['min_qualified_views']) }} qualified views in 30 days</li>
+            @if($greenTickEligibility['views_tracked'])
+                <li>{{ number_format($greenTickEligibility['qualified_views']) }} / {{ number_format($greenTickEligibility['min_qualified_views']) }} qualified views in 30 days</li>
+            @else
+                <li>Qualified views in the last 30 days are not tracked yet, so they are not required.</li>
+            @endif
         </ul>
-        @if(! $greenTickEligibility['eligible'])
-            <p class="mt-2 text-gray-500">Qualified 30-day views are not tracked yet, so that requirement is 0 until view tracking is added. An admin can lower the views threshold for testing.</p>
-        @endif
     </div>
 
     @if($greenTickEligibility['eligible'] && ! $user->hasOpenGreenTickRequest())

@@ -50,7 +50,11 @@ class AdminMonetizationTest extends TestCase
             ->assertSee('Post Boost - 7 Days')
             ->assertSee('Featured Listing - 7 Days')
             ->assertSee('Orders')
-            ->assertDontSee('listing_promotion');
+            ->assertDontSee('listing_promotion')
+            ->assertSee('Enforced when a member requests a Green Tick. Use 0 for no follower minimum.')
+            ->assertSee('Enforced when a member requests a Green Tick. Use 0 for no published-post minimum.')
+            ->assertSee('Qualified views are not tracked yet, so this minimum is not applied.')
+            ->assertDontSee('Not enforced yet');
     }
 
     public function test_admins_can_update_monetization_settings(): void

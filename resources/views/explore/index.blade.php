@@ -19,7 +19,14 @@
         @if($tab === 'posts')
             <div class="grid gap-4 sm:grid-cols-2">
                 @forelse($posts as $post)
-                    <a href="{{ route('posts.show', $post) }}" class="sk-card p-4 hover:shadow-soft">
+                    <a
+                        href="{{ route('posts.show', $post) }}"
+                        class="sk-card p-4 hover:shadow-soft"
+                        @auth
+                            data-qualified-view-post="{{ $post->id }}"
+                            data-qualified-view-author="{{ $post->user_id }}"
+                        @endauth
+                    >
                         <p class="text-sm text-gray-500">{{ $post->user?->name }}</p>
                         <h2 class="mt-1 font-semibold text-forest-900">{{ $post->title }}</h2>
                     </a>

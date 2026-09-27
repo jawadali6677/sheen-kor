@@ -74,7 +74,13 @@
         @if($tab === 'stories')
             <div class="profile-grid">
                 @forelse($stories as $post)
-                    <a href="{{ route('posts.show', $post) }}">
+                    <a
+                        href="{{ route('posts.show', $post) }}"
+                        @auth
+                            data-qualified-view-post="{{ $post->id }}"
+                            data-qualified-view-author="{{ $post->user_id }}"
+                        @endauth
+                    >
                         @if($post->featured_image)
                             <img src="{{ asset('storage/'.$post->featured_image) }}" alt="{{ $post->title }}">
                         @else

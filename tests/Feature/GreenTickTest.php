@@ -238,6 +238,7 @@ class GreenTickTest extends TestCase
             ->assertSee('Green Tick')
             ->assertSee('You are not eligible to request a Green Tick yet')
             ->assertSee('0 / 0 qualified views (30 days)')
+            ->assertSee('Qualified views count logged-in viewers who are not you, once per post every 24 hours, when the post is at least 50% visible for 2 seconds in a feed or when someone opens the post.')
             ->assertDontSee('not tracked yet')
             ->assertDontSee('Not enforced yet');
     }
@@ -343,6 +344,7 @@ class GreenTickTest extends TestCase
             ->get(route('admin.monetization.green-ticks.show', $verification))
             ->assertOk()
             ->assertSee('1 / 3 qualified views (30 days)')
+            ->assertSee('once per viewer every 24 hours')
             ->assertDontSee('not tracked yet')
             ->assertDontSee('Not enforced yet');
     }

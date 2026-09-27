@@ -53,6 +53,7 @@
             <li>{{ number_format($greenTickEligibility['published_posts']) }} / {{ number_format($greenTickEligibility['min_published_posts']) }} published posts</li>
             <li>{{ number_format($greenTickEligibility['qualified_views']) }} / {{ number_format($greenTickEligibility['min_qualified_views']) }} qualified views (30 days)</li>
         </ul>
+        <p class="mt-2 text-gray-600">Qualified views count logged-in viewers who are not you, once per post every 24 hours, when the post is at least 50% visible for 2 seconds in a feed or when someone opens the post.</p>
     </div>
 
     @if($greenTickEligibility['eligible'] && ! $user->hasOpenGreenTickRequest())

@@ -167,7 +167,7 @@ class MonetizationController extends Controller
             'eligibility_min_qualified_views_30d' => [
                 'label' => 'Minimum qualified views (30 days)',
                 'type' => 'integer',
-                'help' => 'A qualified view is one view of a published post page, counted at most once per viewer per post each day. The author\'s own views and obvious bots are excluded. Signed-in viewers count once per account; guests count once per IP address. Use 0 for no minimum.',
+                'help' => 'Logged-in viewers other than the post author, once per post per rolling 24 hours. Counts when the post is at least 50% visible for 2 seconds in a feed, or when the viewer opens the post. Guests, the post author, and obvious bots are excluded. Use 0 for no minimum.',
                 'min' => 0,
                 'max' => 100000000,
             ],

@@ -5,7 +5,13 @@
     $hasMedia = $post->hasMedia();
 @endphp
 
-<article class="sk-card">
+<article
+    class="sk-card"
+    @auth
+        data-qualified-view-post="{{ $post->id }}"
+        data-qualified-view-author="{{ $post->user_id }}"
+    @endauth
+>
     <div class="flex items-center gap-3 px-4 py-3">
         @if($post->user)
             <a href="{{ route('users.show', $post->user) }}">

@@ -30,6 +30,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PostBoostController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\QualifiedPostViewController;
 use App\Http\Controllers\RewardedAdController;
 use App\Http\Controllers\VideoInterstitialController;
 use App\Models\Category;
@@ -113,6 +114,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/leaderboard', [LeaderboardController::class, 'index'])->name('leaderboard.index');
     Route::get('/analytics', [AnalyticsController::class, 'index'])->name('analytics.index');
 
+    Route::post('/posts/qualified-views', [QualifiedPostViewController::class, 'store'])
+        ->middleware('throttle:qualified-views')
+        ->name('posts.qualified-views.store');
     Route::get('/posts/create', [PostController::class, 'create'])->name('posts.create');
     Route::post('/posts', [PostController::class, 'store'])->name('posts.store');
     Route::get('/posts/{post}/edit', [PostController::class, 'edit'])->name('posts.edit');

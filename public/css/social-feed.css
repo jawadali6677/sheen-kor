@@ -110,6 +110,11 @@ img.feed-avatar {
     max-width: 935px;
     margin: 0 auto;
 }
+@media (min-width: 1280px) {
+    .profile-page {
+        max-width: none;
+    }
+}
 .profile-cover {
     height: 220px;
     background: linear-gradient(135deg, #0F3D2E, #1C3F30);

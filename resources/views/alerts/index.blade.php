@@ -1,5 +1,5 @@
 <x-app-layout>
-    <div class="mx-auto max-w-xl space-y-4">
+    <div class="mx-auto max-w-xl space-y-4 lg:max-w-2xl xl:max-w-3xl">
         <x-flash />
 
         <div class="flex flex-wrap items-center justify-between gap-3">

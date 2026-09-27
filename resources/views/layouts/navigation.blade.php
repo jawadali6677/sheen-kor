@@ -18,7 +18,7 @@
     }
 @endphp
 <nav x-data="{ open: false }" @if(auth()->check()) x-init="$store.notifications.boot(@js($notificationConfig))" @endif class="sticky top-0 z-40 border-b border-gray-100 bg-white/95 backdrop-blur">
-    <div class="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+    <div class="app-shell flex h-16 items-center justify-between gap-4">
         <a href="{{ auth()->check() ? route('posts.index') : route('home') }}" class="shrink-0">
             <x-brand />
         </a>

@@ -1,10 +1,14 @@
 <x-app-layout>
-    <div class="mx-auto max-w-5xl space-y-6">
+    <div class="mx-auto w-full max-w-5xl space-y-6 lg:max-w-none">
         <x-flash />
 
         <article class="sk-card overflow-hidden">
             @if($listing->hasMedia())
-                <x-media-carousel :slides="$listing->mediaSlides()" />
+                <x-media-carousel :slides="$listing->mediaSlides()" hero />
+            @else
+                <div class="aspect-[4/3] overflow-hidden sm:aspect-[16/10] lg:aspect-[2/1]">
+                    <x-market-photo-placeholder icon-class="h-20 w-20" />
+                </div>
             @endif
             @if($listing->status->isCompleted())
                 <div class="border-b border-amber-100 bg-amber-50 px-6 py-3 text-sm font-medium text-amber-900 md:px-10">

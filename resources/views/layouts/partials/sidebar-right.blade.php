@@ -8,7 +8,7 @@
     $ads = app(\App\Actions\PlaceFeedAds::class)->sidebarCards();
 @endphp
 
-<aside class="hidden w-72 shrink-0 xl:block">
+<aside class="hidden w-64 shrink-0 xl:block">
     <div class="sticky top-20 space-y-4">
         @foreach($ads as $ad)
             <x-sidebar-ad :ad="$ad" />

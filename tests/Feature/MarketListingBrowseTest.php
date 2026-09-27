@@ -142,6 +142,62 @@ class MarketListingBrowseTest extends TestCase
             ->assertDontSee('Unmapped stool');
     }
 
+    public function test_catalog_cards_show_a_photo_or_placeholder_with_the_offer_and_place(): void
+    {
+        $category = MarketCategory::factory()->create(['name' => 'Planters']);
+
+        MarketListing::factory()->create([
+            'title' => 'Cedar window box',
+            'market_category_id' => $category->id,
+            'listing_type' => MarketListingType::Sell,
+            'price' => '18.00',
+            'location_name' => 'Erbil garden',
+            'featured_image' => 'market/featured/window-box.jpg',
+        ]);
+        MarketListing::factory()->create([
+            'title' => 'Unpictured stool',
+            'featured_image' => '',
+            'location_name' => 'Duhok park',
+        ]);
+
+        $this->get(route('market.index'))
+            ->assertOk()
+            ->assertSee('storage/market/featured/window-box.jpg', false)
+            ->assertSee('aspect-[4/3]', false)
+            ->assertSee('xl:grid-cols-4', false)
+            ->assertSee('app-shell', false)
+            ->assertSee('Cedar window box')
+            ->assertSee('Price 18.00')
+            ->assertSee('Erbil garden')
+            ->assertSee('Planters')
+            ->assertSee('Unpictured stool')
+            ->assertSee('Duhok park')
+            ->assertSee('No photo', false);
+    }
+
+    public function test_listing_page_uses_a_wide_photo_hero(): void
+    {
+        $withPhoto = MarketListing::factory()->create([
+            'title' => 'Hero planter',
+            'featured_image' => 'market/featured/hero.jpg',
+        ]);
+        $withoutPhoto = MarketListing::factory()->create([
+            'title' => 'Plain stool',
+            'featured_image' => '',
+        ]);
+
+        $this->get(route('market.show', $withPhoto))
+            ->assertOk()
+            ->assertSee('lg:aspect-[2/1]', false)
+            ->assertSee('storage/market/featured/hero.jpg', false)
+            ->assertSee('Hero planter');
+
+        $this->get(route('market.show', $withoutPhoto))
+            ->assertOk()
+            ->assertSee('Plain stool')
+            ->assertSee('No photo', false);
+    }
+
     public function test_catalog_paginates_twelve_listings_per_page(): void
     {
         MarketListing::factory()->count(13)->create();

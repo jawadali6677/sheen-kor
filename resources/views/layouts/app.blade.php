@@ -40,13 +40,13 @@
 
             @isset($header)
                 <header class="border-b border-gray-100 bg-white">
-                    <div class="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+                    <div class="app-shell py-5">
                         {{ $header }}
                     </div>
                 </header>
             @endisset
 
-            <main class="{{ $fullBleed ? '' : 'mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8' }}">
+            <main class="{{ $fullBleed ? '' : 'app-shell py-6' }}">
                 @if($fullBleed || $hideSidebars)
                     {{ $slot }}
                 @else

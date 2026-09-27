@@ -37,6 +37,11 @@
     .sk-input {
         @apply mt-1 block w-full rounded-xl border-gray-200 shadow-sm focus:border-forest-600 focus:ring-forest-600;
     }
+
+    /* Shared header, nav, and page column. Wider only from xl (1280px) up. */
+    .app-shell {
+        @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 xl:max-w-[1440px] 2xl:max-w-[1680px];
+    }
 }
 
 /* Keep existing jQuery engagement scripts working without Bootstrap. */

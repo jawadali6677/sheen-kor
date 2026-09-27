@@ -103,4 +103,17 @@ class AnalyticsTest extends TestCase
             ->get(route('analytics.index'))
             ->assertOk();
     }
+
+    public function test_analytics_time_series_charts_span_the_wide_layout(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)
+            ->get(route('analytics.index'))
+            ->assertOk()
+            ->assertSee('app-shell', false)
+            ->assertSee('lg:col-span-2', false)
+            ->assertSee('id="activity-chart"', false)
+            ->assertSee('id="workflow-chart"', false);
+    }
 }

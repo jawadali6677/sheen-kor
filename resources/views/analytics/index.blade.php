@@ -18,7 +18,7 @@
     </x-slot>
 
     <div class="py-8">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+        <div class="mx-auto w-full max-w-7xl space-y-6 sm:px-6 lg:max-w-none lg:px-0">
             <p class="text-sm text-gray-500">{{ $report['range_label'] }}</p>
 
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -52,34 +52,34 @@
                 </div>
             </div>
 
-            <div class="grid md:grid-cols-2 gap-6">
-                <div class="bg-white rounded-lg shadow-sm p-4">
+            <div class="grid gap-6 md:grid-cols-2">
+                <div class="min-w-0 rounded-lg bg-white p-4 shadow-sm lg:col-span-2">
                     <h3 class="font-semibold mb-2">Activity</h3>
-                    <div id="activity-chart"></div>
+                    <div id="activity-chart" class="w-full min-w-0"></div>
                 </div>
-                <div class="bg-white rounded-lg shadow-sm p-4">
+                <div class="min-w-0 rounded-lg bg-white p-4 shadow-sm lg:col-span-2">
                     <h3 class="font-semibold mb-2">Alert workflow</h3>
-                    <div id="workflow-chart"></div>
+                    <div id="workflow-chart" class="w-full min-w-0"></div>
                 </div>
-                <div class="bg-white rounded-lg shadow-sm p-4">
+                <div class="min-w-0 rounded-lg bg-white p-4 shadow-sm">
                     <h3 class="font-semibold mb-2">Alerts by status</h3>
-                    <div id="alert-status-chart"></div>
+                    <div id="alert-status-chart" class="w-full min-w-0"></div>
                 </div>
-                <div class="bg-white rounded-lg shadow-sm p-4">
+                <div class="min-w-0 rounded-lg bg-white p-4 shadow-sm">
                     <h3 class="font-semibold mb-2">Alerts by severity</h3>
-                    <div id="alert-severity-chart"></div>
+                    <div id="alert-severity-chart" class="w-full min-w-0"></div>
                 </div>
-                <div class="bg-white rounded-lg shadow-sm p-4">
+                <div class="min-w-0 rounded-lg bg-white p-4 shadow-sm">
                     <h3 class="font-semibold mb-2">Stories by status</h3>
-                    <div id="story-status-chart"></div>
+                    <div id="story-status-chart" class="w-full min-w-0"></div>
                 </div>
-                <div class="bg-white rounded-lg shadow-sm p-4">
+                <div class="min-w-0 rounded-lg bg-white p-4 shadow-sm">
                     <h3 class="font-semibold mb-2">Users by role</h3>
-                    <div id="user-role-chart"></div>
+                    <div id="user-role-chart" class="w-full min-w-0"></div>
                 </div>
-                <div class="bg-white rounded-lg shadow-sm p-4">
+                <div class="min-w-0 rounded-lg bg-white p-4 shadow-sm">
                     <h3 class="font-semibold mb-2">Users by account status</h3>
-                    <div id="user-status-chart"></div>
+                    <div id="user-status-chart" class="w-full min-w-0"></div>
                 </div>
             </div>
         </div>

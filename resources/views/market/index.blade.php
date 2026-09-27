@@ -1,5 +1,5 @@
 <x-app-layout>
-    <div class="mx-auto max-w-6xl space-y-6">
+    <div class="mx-auto w-full max-w-6xl space-y-6 lg:max-w-none">
         <x-flash />
 
         <div class="flex flex-wrap items-end justify-between gap-3">
@@ -78,7 +78,7 @@
                 @endcan
             </div>
         @else
-            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div class="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
                 @foreach($listings as $listing)
                     <x-market-listing-card :listing="$listing" />
                 @endforeach

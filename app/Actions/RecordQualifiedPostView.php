@@ -4,55 +4,77 @@ namespace App\Actions;
 
 use App\Models\Post;
 use App\Models\PostView;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Throwable;
 
 class RecordQualifiedPostView
 {
     /**
-     * Record at most one qualified view per viewer, post, and calendar day.
+     * Record at most one qualified view per logged-in viewer and post per rolling 24 hours.
      *
-     * Signed-in viewers are keyed by user id, so a refresh, a new session, or
-     * an IP change cannot add another view. Guests are keyed by a hash of the
-     * request IP, so clearing cookies does not add another view and the raw IP
-     * is not stored. The post author and obvious bots are skipped. This does
-     * not change the raw posts.views counter.
+     * Feed cards qualify in the browser (at least 50% visible for 2 continuous
+     * seconds) and call the beacon. Opening the post page qualifies here on
+     * the same counter, so a feed view and a page open inside 24 hours count
+     * once. Guests, the author, unpublished posts, and obvious bots are
+     * skipped. This does not change the raw posts.views counter.
+     *
+     * The window is rolling: a later view counts only when the previous row's
+     * created_at is at least 24 hours old. Concurrent requests for the same
+     * viewer and post take a cache lock (the default store; database and array
+     * both support it) and re-check that window before inserting.
      */
-    public function handle(Post $post, Request $request): void
+    public function handle(Post $post, Request $request): bool
     {
-        if ($post->status !== 'published' || $this->isObviousBot($request)) {
-            return;
-        }
-
         $viewer = $request->user();
 
-        if ($viewer !== null && (int) $viewer->id === (int) $post->user_id) {
-            return;
+        if (
+            ! $viewer instanceof User
+            || $post->status !== 'published'
+            || (int) $viewer->id === (int) $post->user_id
+            || $this->isObviousBot($request)
+        ) {
+            return false;
         }
 
         try {
-            PostView::query()->insertOrIgnore([
-                'post_id' => $post->id,
-                'user_id' => $post->user_id,
-                'viewer_key' => $this->viewerKey($request),
-                'viewed_on' => now()->toDateString(),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            return $this->record($post, $viewer);
         } catch (Throwable $exception) {
             report($exception);
+
+            return false;
         }
     }
 
-    private function viewerKey(Request $request): string
+    private function record(Post $post, User $viewer): bool
     {
-        $viewer = $request->user();
+        return Cache::lock('qualified-post-view:'.$post->id.':'.$viewer->id, 10)
+            ->block(5, function () use ($post, $viewer): bool {
+                $viewedWithinWindow = PostView::query()
+                    ->where('post_id', $post->id)
+                    ->where('viewer_user_id', $viewer->id)
+                    ->where('created_at', '>', now()->subHours(24))
+                    ->exists();
 
-        if ($viewer !== null) {
-            return 'user:'.$viewer->id;
-        }
+                if ($viewedWithinWindow) {
+                    return false;
+                }
 
-        return 'guest:'.hash('sha256', (string) $request->ip());
+                $timestamp = now();
+
+                PostView::query()->insert([
+                    'post_id' => $post->id,
+                    'user_id' => $post->user_id,
+                    'viewer_user_id' => $viewer->id,
+                    'viewer_key' => 'user:'.$viewer->id,
+                    'viewed_on' => $timestamp->toDateString(),
+                    'created_at' => $timestamp,
+                    'updated_at' => $timestamp,
+                ]);
+
+                return true;
+            });
     }
 
     private function isObviousBot(Request $request): bool

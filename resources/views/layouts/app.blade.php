@@ -19,6 +19,8 @@
             <script>
                 window.chatReverb = @json($chatReverb);
             </script>
+            <meta name="qualified-view-url" content="{{ route('posts.qualified-views.store') }}">
+            <meta name="qualified-view-user" content="{{ auth()->id() }}">
         @endauth
 
         <title>{{ $title ?? config('app.name', 'SHEEN KOR') }}</title>

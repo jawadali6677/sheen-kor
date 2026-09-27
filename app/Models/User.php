@@ -93,6 +93,9 @@ class User extends Authenticatable
         return $this->hasMany(Post::class);
     }
 
+    /**
+     * Qualified views of this member's posts. user_id is the post author.
+     */
     public function qualifiedPostViews(): HasMany
     {
         return $this->hasMany(PostView::class);
@@ -456,7 +459,8 @@ class User extends Authenticatable
     /**
      * Followers, published posts, and qualified views from the last 30 days
      * are enforced. A minimum of 0 means that requirement is not applied.
-     * A view dated exactly 30 days ago still counts.
+     * A view dated exactly 30 days ago still counts. Only logged-in viewers
+     * are counted (viewer_user_id set), and only while the post is published.
      *
      * @return array{
      *     eligible: bool,
@@ -478,6 +482,7 @@ class User extends Authenticatable
         $followers = $this->followers()->count();
         $publishedPosts = $this->posts()->where('status', 'published')->count();
         $qualifiedViews = $this->qualifiedPostViews()
+            ->whereNotNull('viewer_user_id')
             ->where('viewed_on', '>=', now()->subDays(30)->toDateString())
             ->whereHas('post', function (Builder $query): void {
                 $query->where('status', 'published');

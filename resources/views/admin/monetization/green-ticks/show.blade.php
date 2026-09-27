@@ -27,6 +27,7 @@
                             <li>{{ number_format($eligibility['published_posts']) }} / {{ number_format($eligibility['min_published_posts']) }} published posts</li>
                             <li>{{ number_format($eligibility['qualified_views']) }} / {{ number_format($eligibility['min_qualified_views']) }} qualified views (30 days)</li>
                         </ul>
+                        <p class="mt-2 text-gray-600">Logged-in viewers other than the post author. A view counts when the post is at least 50% visible for 2 seconds in a feed, or when the viewer opens the post, once per viewer every 24 hours.</p>
                     </div>
                 @endif
             </section>

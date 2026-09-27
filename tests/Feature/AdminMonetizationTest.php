@@ -53,7 +53,7 @@ class AdminMonetizationTest extends TestCase
             ->assertDontSee('listing_promotion')
             ->assertSee('Enforced when a member requests a Green Tick. Use 0 for no follower minimum.')
             ->assertSee('Enforced when a member requests a Green Tick. Use 0 for no published-post minimum.')
-            ->assertSee('A qualified view is one view of a published post page, counted at most once per viewer per post each day. The author\'s own views and obvious bots are excluded. Signed-in viewers count once per account; guests count once per IP address. Use 0 for no minimum.')
+            ->assertSee('Logged-in viewers other than the post author, once per post per rolling 24 hours. Counts when the post is at least 50% visible for 2 seconds in a feed, or when the viewer opens the post. Guests, the post author, and obvious bots are excluded. Use 0 for no minimum.')
             ->assertDontSee('not tracked yet')
             ->assertDontSee('Not enforced yet');
     }

@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Models\Post;
 use App\Models\PostView;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -23,7 +24,12 @@ class PostViewFactory extends Factory
             'user_id' => function (array $attributes): int {
                 return (int) Post::query()->whereKey($attributes['post_id'])->value('user_id');
             },
-            'viewer_key' => 'user:'.fake()->unique()->numberBetween(1_000_000, 9_000_000),
+            'viewer_user_id' => User::factory(),
+            'viewer_key' => function (array $attributes): string {
+                $viewerId = $attributes['viewer_user_id'];
+
+                return 'user:'.(is_object($viewerId) ? $viewerId->getKey() : $viewerId);
+            },
             'viewed_on' => now()->toDateString(),
         ];
     }

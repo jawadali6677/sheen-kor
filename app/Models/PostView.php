@@ -15,6 +15,7 @@ class PostView extends Model
     protected $fillable = [
         'post_id',
         'user_id',
+        'viewer_user_id',
         'viewer_key',
         'viewed_on',
     ];
@@ -34,5 +35,10 @@ class PostView extends Model
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function viewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'viewer_user_id');
     }
 }

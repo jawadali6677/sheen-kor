@@ -40,6 +40,7 @@ class AppServiceProvider extends ServiceProvider
         }
 
         $this->configureCheckoutRateLimiter();
+        $this->configureQualifiedViewRateLimiter();
     }
 
     /**
@@ -69,6 +70,16 @@ class AppServiceProvider extends ServiceProvider
                         ->with('error', $message)
                         ->withHeaders($headers);
                 });
+        });
+    }
+
+    /**
+     * Feed qualified-view beacons. Authenticated, so the key is the user id.
+     */
+    private function configureQualifiedViewRateLimiter(): void
+    {
+        RateLimiter::for('qualified-views', function (Request $request): Limit {
+            return Limit::perMinute(30)->by($request->user()?->id ?: $request->ip());
         });
     }
 }

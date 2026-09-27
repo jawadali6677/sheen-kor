@@ -93,6 +93,11 @@ class User extends Authenticatable
         return $this->hasMany(Post::class);
     }
 
+    public function qualifiedPostViews(): HasMany
+    {
+        return $this->hasMany(PostView::class);
+    }
+
     public function alerts(): HasMany
     {
         return $this->hasMany(Alert::class);
@@ -449,8 +454,9 @@ class User extends Authenticatable
     }
 
     /**
-     * Followers and published posts are enforced. Qualified views for the last
-     * 30 days are not recorded yet, so that minimum does not affect eligibility.
+     * Followers, published posts, and qualified views from the last 30 days
+     * are enforced. A minimum of 0 means that requirement is not applied.
+     * A view dated exactly 30 days ago still counts.
      *
      * @return array{
      *     eligible: bool,
@@ -471,20 +477,24 @@ class User extends Authenticatable
 
         $followers = $this->followers()->count();
         $publishedPosts = $this->posts()->where('status', 'published')->count();
-        $qualifiedViews = 0;
-        $viewsAreTracked = false;
+        $qualifiedViews = $this->qualifiedPostViews()
+            ->where('viewed_on', '>=', now()->subDays(30)->toDateString())
+            ->whereHas('post', function (Builder $query): void {
+                $query->where('status', 'published');
+            })
+            ->count();
 
         return [
             'eligible' => $followers >= $minFollowers
                 && $publishedPosts >= $minPosts
-                && ($viewsAreTracked ? $qualifiedViews >= $minViews : true),
+                && $qualifiedViews >= $minViews,
             'followers' => $followers,
             'min_followers' => $minFollowers,
             'published_posts' => $publishedPosts,
             'min_published_posts' => $minPosts,
             'qualified_views' => $qualifiedViews,
             'min_qualified_views' => $minViews,
-            'views_tracked' => $viewsAreTracked,
+            'views_tracked' => true,
         ];
     }
 }

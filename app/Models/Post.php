@@ -67,6 +67,11 @@ class Post extends Model
         return $this->hasMany(PostBoost::class);
     }
 
+    public function qualifiedViews(): HasMany
+    {
+        return $this->hasMany(PostView::class);
+    }
+
     /**
      * @param  Builder<Post>  $query
      */

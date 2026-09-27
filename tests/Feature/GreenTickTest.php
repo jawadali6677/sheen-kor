@@ -237,37 +237,37 @@ class GreenTickTest extends TestCase
             ->assertOk()
             ->assertSee('Green Tick')
             ->assertSee('You are not eligible to request a Green Tick yet')
-            ->assertSee('Qualified views in the last 30 days are not tracked yet, so they are not required.')
-            ->assertDontSee('so that requirement is 0')
+            ->assertSee('0 / 0 qualified views (30 days)')
+            ->assertDontSee('not tracked yet')
             ->assertDontSee('Not enforced yet');
     }
 
-    public function test_profile_offers_green_tick_when_followers_and_posts_are_met_and_views_are_untracked(): void
+    public function test_profile_offers_green_tick_when_follower_and_post_minimums_are_met_and_view_minimum_is_zero(): void
     {
         $user = User::factory()->create();
         $this->meetFollowerAndPostMinimums($user);
         $this->enableGreenTickPackages();
 
-        $this->assertSame(5000, monetization_setting('eligibility_min_qualified_views_30d', 0));
+        $this->assertSame(0, monetization_setting('eligibility_min_qualified_views_30d', 1));
 
         $this->actingAs($user)
             ->get(route('profile.edit'))
             ->assertOk()
             ->assertSee('1 / 1 followers')
             ->assertSee('1 / 1 published posts')
+            ->assertSee('0 / 0 qualified views (30 days)')
             ->assertSee('Get Green Tick')
-            ->assertSee('Qualified views in the last 30 days are not tracked yet, so they are not required.')
             ->assertDontSee('You are not eligible to request a Green Tick yet.')
-            ->assertDontSee('so that requirement is 0');
+            ->assertDontSee('not tracked yet');
     }
 
-    public function test_member_who_meets_follower_and_post_minimums_can_buy_while_views_are_untracked(): void
+    public function test_member_who_meets_follower_and_post_minimums_can_buy_when_view_minimum_is_zero(): void
     {
         $user = User::factory()->create();
         $this->meetFollowerAndPostMinimums($user);
         $package = $this->enableGreenTickPackages()->firstWhere('slug', 'green_tick_monthly');
 
-        $this->assertSame(5000, monetization_setting('eligibility_min_qualified_views_30d', 0));
+        $this->assertSame(0, monetization_setting('eligibility_min_qualified_views_30d', 1));
 
         $this->actingAs($user)
             ->from(route('profile.edit'))
@@ -323,16 +323,153 @@ class GreenTickTest extends TestCase
         $this->assertDatabaseCount('user_verifications', 0);
     }
 
-    public function test_admin_review_says_qualified_views_are_not_tracked_yet(): void
+    public function test_admin_review_shows_qualified_views_for_the_last_thirty_days(): void
     {
+        $this->travelTo('2026-09-27 12:00:00');
+
+        MonetizationSetting::query()->where('key', 'eligibility_min_qualified_views_30d')->update(['value' => '3']);
+
         $admin = User::factory()->admin()->create();
         $verification = UserVerification::factory()->create();
+        $post = Post::factory()->create([
+            'user_id' => $verification->user_id,
+            'status' => 'published',
+        ]);
+        $viewer = User::factory()->create();
+
+        $this->viewPost($viewer, $post);
 
         $this->actingAs($admin)
             ->get(route('admin.monetization.green-ticks.show', $verification))
             ->assertOk()
-            ->assertSee('Qualified views in the last 30 days are not tracked yet, so they are not required.')
+            ->assertSee('1 / 3 qualified views (30 days)')
+            ->assertDontSee('not tracked yet')
             ->assertDontSee('Not enforced yet');
+    }
+
+    public function test_qualified_view_minimum_blocks_a_green_tick_until_it_is_met(): void
+    {
+        MonetizationSetting::query()->where('key', 'eligibility_min_followers')->update(['value' => '0']);
+        MonetizationSetting::query()->where('key', 'eligibility_min_published_posts')->update(['value' => '0']);
+        MonetizationSetting::query()->where('key', 'eligibility_min_qualified_views_30d')->update(['value' => '2']);
+
+        $author = User::factory()->create();
+        $post = Post::factory()->create([
+            'user_id' => $author->id,
+            'status' => 'published',
+        ]);
+        $package = $this->enableGreenTickPackages()->firstWhere('slug', 'green_tick_monthly');
+
+        $this->viewPost(User::factory()->create(), $post);
+
+        $eligibility = $author->fresh()->greenTickEligibility();
+
+        $this->assertSame(1, $eligibility['qualified_views']);
+        $this->assertSame(2, $eligibility['min_qualified_views']);
+        $this->assertTrue($eligibility['views_tracked']);
+        $this->assertFalse($eligibility['eligible']);
+
+        $this->actingAs($author)
+            ->from(route('profile.edit'))
+            ->post(route('green-tick.store'), ['package_id' => $package->id])
+            ->assertRedirect(route('profile.edit'))
+            ->assertSessionHas('error', 'You do not meet the Green Tick eligibility requirements yet.');
+
+        $this->assertDatabaseCount('user_verifications', 0);
+
+        $this->actingAs($author)
+            ->get(route('profile.edit'))
+            ->assertOk()
+            ->assertSee('1 / 2 qualified views (30 days)')
+            ->assertSee('You are not eligible to request a Green Tick yet.')
+            ->assertDontSee('Get Green Tick');
+
+        $this->viewPost(User::factory()->create(), $post);
+
+        $this->assertTrue($author->fresh()->greenTickEligibility()['eligible']);
+
+        $this->actingAs($author)
+            ->get(route('profile.edit'))
+            ->assertOk()
+            ->assertSee('2 / 2 qualified views (30 days)')
+            ->assertSee('Get Green Tick');
+    }
+
+    public function test_qualified_views_older_than_thirty_days_do_not_count(): void
+    {
+        $this->travelTo('2026-09-27 12:00:00');
+
+        MonetizationSetting::query()->where('key', 'eligibility_min_followers')->update(['value' => '0']);
+        MonetizationSetting::query()->where('key', 'eligibility_min_published_posts')->update(['value' => '0']);
+        MonetizationSetting::query()->where('key', 'eligibility_min_qualified_views_30d')->update(['value' => '2']);
+
+        $author = User::factory()->create();
+        $post = Post::factory()->create([
+            'user_id' => $author->id,
+            'status' => 'published',
+        ]);
+        $viewer = User::factory()->create();
+
+        $this->travelTo('2026-08-27 12:00:00');
+        $this->viewPost($viewer, $post);
+
+        $this->travelTo('2026-08-28 12:00:00');
+        $this->viewPost($viewer, $post);
+
+        $this->travelTo('2026-09-27 12:00:00');
+        $this->viewPost(User::factory()->create(), $post);
+
+        $eligibility = $author->fresh()->greenTickEligibility();
+
+        $this->assertSame(2, $eligibility['qualified_views']);
+        $this->assertTrue($eligibility['eligible']);
+    }
+
+    public function test_raw_post_view_counts_do_not_satisfy_the_qualified_view_minimum(): void
+    {
+        MonetizationSetting::query()->where('key', 'eligibility_min_followers')->update(['value' => '0']);
+        MonetizationSetting::query()->where('key', 'eligibility_min_published_posts')->update(['value' => '0']);
+        MonetizationSetting::query()->where('key', 'eligibility_min_qualified_views_30d')->update(['value' => '1']);
+
+        $author = User::factory()->create();
+        Post::factory()->create([
+            'user_id' => $author->id,
+            'status' => 'published',
+            'views' => 10000,
+        ]);
+
+        $eligibility = $author->greenTickEligibility();
+
+        $this->assertSame(0, $eligibility['qualified_views']);
+        $this->assertSame(1, $eligibility['min_qualified_views']);
+        $this->assertFalse($eligibility['eligible']);
+    }
+
+    public function test_qualified_views_on_unpublished_posts_do_not_count(): void
+    {
+        MonetizationSetting::query()->where('key', 'eligibility_min_followers')->update(['value' => '0']);
+        MonetizationSetting::query()->where('key', 'eligibility_min_published_posts')->update(['value' => '0']);
+        MonetizationSetting::query()->where('key', 'eligibility_min_qualified_views_30d')->update(['value' => '1']);
+
+        $author = User::factory()->create();
+        $post = Post::factory()->create([
+            'user_id' => $author->id,
+            'status' => 'published',
+        ]);
+
+        $this->viewPost(User::factory()->create(), $post);
+        $post->update(['status' => 'pending']);
+
+        $eligibility = $author->fresh()->greenTickEligibility();
+
+        $this->assertSame(0, $eligibility['qualified_views']);
+        $this->assertSame(0, $eligibility['published_posts']);
+        $this->assertFalse($eligibility['eligible']);
+
+        $post->update(['status' => 'published']);
+
+        $this->assertSame(1, $author->fresh()->greenTickEligibility()['qualified_views']);
+        $this->assertTrue($author->fresh()->greenTickEligibility()['eligible']);
     }
 
     public function test_pending_green_tick_profile_links_to_payment(): void
@@ -386,6 +523,14 @@ class GreenTickTest extends TestCase
         MonetizationSetting::query()->where('key', 'eligibility_min_followers')->update(['value' => '0']);
         MonetizationSetting::query()->where('key', 'eligibility_min_published_posts')->update(['value' => '0']);
         MonetizationSetting::query()->where('key', 'eligibility_min_qualified_views_30d')->update(['value' => '0']);
+    }
+
+    private function viewPost(User $viewer, Post $post)
+    {
+        return $this->actingAs($viewer)
+            ->withHeader('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+            ->get(route('posts.show', $post))
+            ->assertOk();
     }
 
     private function meetFollowerAndPostMinimums(User $user): void

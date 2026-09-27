@@ -51,11 +51,7 @@
         <ul class="mt-2 list-disc space-y-1 ps-5">
             <li>{{ number_format($greenTickEligibility['followers']) }} / {{ number_format($greenTickEligibility['min_followers']) }} followers</li>
             <li>{{ number_format($greenTickEligibility['published_posts']) }} / {{ number_format($greenTickEligibility['min_published_posts']) }} published posts</li>
-            @if($greenTickEligibility['views_tracked'])
-                <li>{{ number_format($greenTickEligibility['qualified_views']) }} / {{ number_format($greenTickEligibility['min_qualified_views']) }} qualified views in 30 days</li>
-            @else
-                <li>Qualified views in the last 30 days are not tracked yet, so they are not required.</li>
-            @endif
+            <li>{{ number_format($greenTickEligibility['qualified_views']) }} / {{ number_format($greenTickEligibility['min_qualified_views']) }} qualified views (30 days)</li>
         </ul>
     </div>
 

@@ -10,6 +10,7 @@
 
 <article
     class="sk-card"
+    data-post-id="{{ $post->id }}"
     data-post-layout="{{ $isStatus ? 'status' : 'article' }}"
     @auth
         data-qualified-view-post="{{ $post->id }}"

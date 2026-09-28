@@ -138,7 +138,7 @@ class ContentModerationTest extends TestCase
         $this->actingAs($user)
             ->post(route('posts.store'), $this->storyPayload($category, 'A walk along the river bank today'))
             ->assertRedirect(route('posts.index'))
-            ->assertSessionHas('success', 'Your post is being checked.');
+            ->assertSessionHas('success', 'Your post is being checked. It will appear shortly.');
 
         $post = Post::query()->firstOrFail();
 

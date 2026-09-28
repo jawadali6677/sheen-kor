@@ -117,6 +117,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/posts/qualified-views', [QualifiedPostViewController::class, 'store'])
         ->middleware('throttle:qualified-views')
         ->name('posts.qualified-views.store');
+    Route::get('/posts/{post}/moderation-status', [PostController::class, 'moderationStatus'])
+        ->name('posts.moderation-status');
     Route::get('/posts/create', [PostController::class, 'create'])->name('posts.create');
     Route::post('/posts', [PostController::class, 'store'])->name('posts.store');
     Route::get('/posts/{post}/edit', [PostController::class, 'edit'])->name('posts.edit');

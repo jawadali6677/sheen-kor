@@ -2,6 +2,13 @@
     <div class="mx-auto max-w-xl space-y-4 lg:max-w-2xl xl:max-w-3xl">
         <x-flash />
 
+        @if(session('checking_post_id'))
+            <div
+                x-data="postModerationWatch(@js(['url' => route('posts.moderation-status', session('checking_post_id'))]))"
+                x-init="start()"
+            ></div>
+        @endif
+
         @if($posts->currentPage() === 1)
             @auth
                 <section class="sk-card p-4" data-feed-composer-bar x-data>

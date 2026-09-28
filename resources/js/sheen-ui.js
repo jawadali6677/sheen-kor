@@ -708,6 +708,90 @@ export function registerSheenUi(Alpine) {
     Alpine.data('adminPostsQueue', () => adminModerationQueue('admin-posts'));
     Alpine.data('adminMarketQueue', () => adminModerationQueue('admin-market'));
 
+    function prependFeedPost(html) {
+        const feed = document.getElementById('feed-items');
+
+        if (! feed || ! html) {
+            return false;
+        }
+
+        const wrap = document.createElement('div');
+        wrap.innerHTML = html.trim();
+        const incoming = wrap.querySelector('[data-post-id]');
+
+        if (incoming && feed.querySelector(`[data-post-id="${incoming.getAttribute('data-post-id')}"]`)) {
+            return true;
+        }
+
+        const nodes = [];
+
+        while (wrap.firstChild) {
+            const node = wrap.firstChild;
+            feed.insertBefore(node, feed.firstChild);
+            nodes.push(node);
+        }
+
+        nodes.forEach((node) => {
+            if (node.nodeType === 1 && window.Alpine) {
+                window.Alpine.initTree(node);
+            }
+        });
+
+        feed.querySelector('[data-empty-state]')?.remove();
+
+        return true;
+    }
+
+    Alpine.data('postModerationWatch', (config = {}) => ({
+        timer: null,
+        started: 0,
+        start() {
+            this.started = Date.now();
+            this.timer = window.setTimeout(() => this.poll(), 2000);
+        },
+        destroy() {
+            if (this.timer) {
+                window.clearTimeout(this.timer);
+            }
+        },
+        async poll() {
+            if (! config.url || Date.now() - this.started > 45000) {
+                return;
+            }
+
+            try {
+                const response = await fetch(config.url, {
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+
+                    if (data.status === 'published' || data.status === 'rejected') {
+                        const message = document.querySelector('[data-post-status-message]');
+
+                        if (message && data.message) {
+                            message.textContent = data.message;
+                        }
+
+                        if (data.status === 'published' && data.html) {
+                            prependFeedPost(data.html);
+                        }
+
+                        return;
+                    }
+                }
+            } catch (error) {
+                // Keep waiting until the check finishes or the timeout.
+            }
+
+            this.timer = window.setTimeout(() => this.poll(), 2000);
+        },
+    }));
+
     Alpine.data('quickPostComposer', (config = {}) => ({
         embedded: Boolean(config.embedded),
         open: Boolean(config.open || config.embedded),
@@ -718,6 +802,7 @@ export function registerSheenUi(Alpine) {
         phase: 'idle',
         progress: 0,
         success: '',
+        moderationTimer: null,
         maxImages: 11,
         maxVideos: 3,
         imageMaxBytes: 5 * 1024 * 1024,
@@ -748,6 +833,11 @@ export function registerSheenUi(Alpine) {
             });
         },
         close() {
+            if (this.moderationTimer) {
+                window.clearTimeout(this.moderationTimer);
+                this.moderationTimer = null;
+            }
+
             if (this.embedded) {
                 return;
             }
@@ -1005,15 +1095,23 @@ export function registerSheenUi(Alpine) {
         },
         finishSuccess(data) {
             this.submitting = false;
-            this.success = data.message || 'Your post is live!';
+            this.success = data.message || 'Your post is being checked. It will appear shortly.';
             this.phase = 'success';
             this.clearItems();
             this.text = '';
 
-            const inserted = data.html ? this.prependPost(data.html) : false;
-
-            if (inserted) {
+            if (data.status === 'published' && data.html && this.prependPost(data.html)) {
                 window.setTimeout(() => this.close(), 1400);
+
+                return;
+            }
+
+            if (data.status === 'rejected') {
+                return;
+            }
+
+            if (data.status === 'pending' && data.status_url && document.getElementById('feed-items')) {
+                this.watchModeration(data.status_url);
 
                 return;
             }
@@ -1021,6 +1119,45 @@ export function registerSheenUi(Alpine) {
             if (this.embedded || ! document.getElementById('feed-items')) {
                 window.location = data.redirect || window.location.href;
             }
+        },
+        watchModeration(url) {
+            const started = Date.now();
+
+            const poll = async () => {
+                if (Date.now() - started > 45000) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(url, {
+                        headers: {
+                            Accept: 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+
+                        if (data.status === 'published' || data.status === 'rejected') {
+                            this.success = data.message || this.success;
+
+                            if (data.status === 'published' && data.html) {
+                                this.prependPost(data.html);
+                                window.setTimeout(() => this.close(), 1400);
+                            }
+
+                            return;
+                        }
+                    }
+                } catch (error) {
+                    // Keep the pending message and try again.
+                }
+
+                this.moderationTimer = window.setTimeout(poll, 2000);
+            };
+
+            this.moderationTimer = window.setTimeout(poll, 2000);
         },
         clearItems() {
             this.items.forEach((item) => {
@@ -1031,31 +1168,7 @@ export function registerSheenUi(Alpine) {
             this.items = [];
         },
         prependPost(html) {
-            const feed = document.getElementById('feed-items');
-
-            if (! feed || ! html) {
-                return false;
-            }
-
-            const wrap = document.createElement('div');
-            wrap.innerHTML = html.trim();
-            const nodes = [];
-
-            while (wrap.firstChild) {
-                const node = wrap.firstChild;
-                feed.insertBefore(node, feed.firstChild);
-                nodes.push(node);
-            }
-
-            nodes.forEach((node) => {
-                if (node.nodeType === 1 && window.Alpine) {
-                    window.Alpine.initTree(node);
-                }
-            });
-
-            feed.querySelector('[data-empty-state]')?.remove();
-
-            return true;
+            return prependFeedPost(html);
         },
     }));
 

@@ -25,6 +25,7 @@ class Post extends Model
         'excerpt',
         'content',
         'featured_image',
+        'title_is_generated',
         'status',
         'published_at',
         'views',
@@ -33,8 +34,14 @@ class Post extends Model
     protected function casts(): array
     {
         return [
+            'title_is_generated' => 'boolean',
             'published_at' => 'datetime',
         ];
+    }
+
+    public function usesGeneratedTitle(): bool
+    {
+        return (bool) $this->title_is_generated;
     }
 
     public function user()

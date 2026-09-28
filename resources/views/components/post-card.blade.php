@@ -3,10 +3,14 @@
 @php
     $slides = $post->mediaSlides();
     $hasMedia = $post->hasMedia();
+    $isStatus = $post->usesGeneratedTitle();
+    $body = trim((string) $post->content);
+    $bodyLimit = $hasMedia ? 280 : 500;
 @endphp
 
 <article
     class="sk-card"
+    data-post-layout="{{ $isStatus ? 'status' : 'article' }}"
     @auth
         data-qualified-view-post="{{ $post->id }}"
         data-qualified-view-author="{{ $post->user_id }}"
@@ -33,27 +37,46 @@
                     ·
                     <a href="{{ route('categories.show', $post->category) }}" class="hover:underline">{{ $post->category->name }}</a>
                 @endif
+                @if($isStatus && $post->hasActiveBoost())
+                    · <span class="font-semibold uppercase tracking-wide text-amber-800">Boosted</span>
+                @endif
             </p>
         </div>
     </div>
 
-    @if($hasMedia)
-        <x-media-carousel :slides="$slides" :href="route('posts.show', $post)" />
+    @if($isStatus)
+        @if($body !== '')
+            <div class="px-4 {{ $hasMedia ? 'pb-3' : 'pb-1' }}">
+                <p class="{{ $hasMedia ? 'text-base leading-7 text-gray-800' : 'text-lg leading-8 text-gray-900' }} whitespace-pre-line">{{ \Illuminate\Support\Str::limit($body, $bodyLimit) }}</p>
+                @if(mb_strlen($body) > $bodyLimit)
+                    <a href="{{ route('posts.show', $post) }}" class="mt-1 inline-flex text-sm font-semibold text-forest-800 hover:underline">See more</a>
+                @endif
+            </div>
+        @endif
+        @if($hasMedia)
+            <x-media-carousel :slides="$slides" :href="route('posts.show', $post)" />
+        @endif
+    @else
+        @if($hasMedia)
+            <x-media-carousel :slides="$slides" :href="route('posts.show', $post)" />
+        @endif
     @endif
 
     <div class="space-y-2 px-4 py-3">
-        <h3 class="text-base font-semibold text-forest-900 {{ $hasMedia ? '' : 'text-xl' }}">
-            <a href="{{ route('posts.show', $post) }}" class="hover:underline">{{ $post->title }}</a>
-            @if($post->hasActiveBoost())
-                <span class="ms-2 inline-flex align-middle rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-amber-800">Boosted</span>
+        @unless($isStatus)
+            <h3 class="text-base font-semibold text-forest-900 {{ $hasMedia ? '' : 'text-xl' }}">
+                <a href="{{ route('posts.show', $post) }}" class="hover:underline">{{ $post->title }}</a>
+                @if($post->hasActiveBoost())
+                    <span class="ms-2 inline-flex align-middle rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-amber-800">Boosted</span>
+                @endif
+            </h3>
+            @if($body !== '')
+                <p class="whitespace-pre-line text-sm leading-6 text-gray-600">{{ \Illuminate\Support\Str::limit($body, $hasMedia ? 280 : 220) }}</p>
+            @elseif($post->excerpt)
+                <p class="text-sm leading-6 text-gray-600">{{ \Illuminate\Support\Str::limit($post->excerpt, $hasMedia ? 140 : 220) }}</p>
             @endif
-        </h3>
-        @if($post->excerpt)
-            <p class="text-sm leading-6 text-gray-600">{{ \Illuminate\Support\Str::limit($post->excerpt, $hasMedia ? 140 : 220) }}</p>
-        @elseif(! $hasMedia)
-            <p class="text-sm leading-6 text-gray-600">{{ \Illuminate\Support\Str::limit(strip_tags($post->content), 220) }}</p>
-        @endif
-        <a href="{{ route('posts.show', $post) }}" class="inline-flex text-sm font-semibold text-forest-800 hover:underline">Read more →</a>
+            <a href="{{ route('posts.show', $post) }}" class="inline-flex text-sm font-semibold text-forest-800 hover:underline">Read more →</a>
+        @endunless
         @include('posts.partials.engagement-bar', [
             'post' => $post,
             'liked' => (bool) $post->liked_by_user,

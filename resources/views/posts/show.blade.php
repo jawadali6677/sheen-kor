@@ -2,7 +2,26 @@
     <div class="mx-auto max-w-5xl space-y-6">
         <x-flash />
 
-        <article class="sk-card overflow-hidden">
+        <article class="sk-card overflow-hidden" data-post-layout="{{ $post->usesGeneratedTitle() ? 'status' : 'article' }}">
+            @if($post->usesGeneratedTitle())
+                <div class="p-6 md:p-10 {{ $post->hasMedia() ? '' : 'md:px-16' }}">
+                    <div class="flex flex-wrap items-center gap-3 text-sm text-gray-500">
+                        @if($post->user)
+                            <a href="{{ route('users.show', $post->user) }}" class="inline-flex items-center gap-2 text-lg font-semibold text-forest-900">
+                                <x-user-avatar :user="$post->user" size="sm" />
+                                {{ $post->user->name }}
+                            </a>
+                        @endif
+                        @if($post->category)
+                            <a href="{{ route('categories.show', $post->category) }}" class="font-semibold text-forest-700 hover:underline">{{ $post->category->name }}</a>
+                        @endif
+                        <span>{{ ($post->published_at ?? $post->created_at)?->format('M d, Y') }}</span>
+                    </div>
+                    @if(filled($post->content))
+                        <div class="mt-4 text-lg leading-8 text-gray-800">{!! nl2br(e($post->content)) !!}</div>
+                    @endif
+                </div>
+            @endif
             @if($post->hasMedia())
                 @if($post->hasVideo() && monetization_setting('video_ads_enabled', false))
                     <x-video-interstitial-host source-type="post" :source-id="$post->id">
@@ -13,10 +32,12 @@
                 @endif
             @endif
             <div class="p-6 md:p-10 {{ $post->hasMedia() ? '' : 'md:px-16' }}">
-                @if($post->category)
-                    <a href="{{ route('categories.show', $post->category) }}" class="text-sm font-semibold text-forest-700 hover:underline">{{ $post->category->name }}</a>
-                @endif
-                <h1 class="mt-2 text-3xl font-bold text-forest-900 md:text-4xl">{{ $post->title }}</h1>
+                @unless($post->usesGeneratedTitle())
+                    @if($post->category)
+                        <a href="{{ route('categories.show', $post->category) }}" class="text-sm font-semibold text-forest-700 hover:underline">{{ $post->category->name }}</a>
+                    @endif
+                    <h1 class="mt-2 text-3xl font-bold text-forest-900 md:text-4xl">{{ $post->title }}</h1>
+                @endunless
                 @if($post->hasActiveBoost())
                     <p class="mt-2 inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-800">Boosted</p>
                     @if($boostedUntil = $post->currentBoost()?->activeUntilPhrase())
@@ -25,21 +46,25 @@
                 @elseif(auth()->id() === $post->user_id && ($ownerBoost = $post->ownerBoost()) && $ownerBoost->status === \App\Enums\PostBoostStatus::Pending)
                     <p class="mt-2 inline-flex rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-gray-700">{{ $ownerBoost->memberStatusLabel() }}</p>
                 @endif
-                <div class="mt-4 flex flex-wrap items-center gap-3 text-sm text-gray-500">
-                    @if($post->user)
-                        <a href="{{ route('users.show', $post->user) }}" class="inline-flex items-center gap-2 font-semibold text-forest-800">
-                            <x-user-avatar :user="$post->user" size="sm" />
-                            {{ $post->user->name }}
-                        </a>
-                    @endif
-                    <span>{{ ($post->published_at ?? $post->created_at)?->format('M d, Y') }}</span>
-                    <span>{{ $post->views }} views</span>
-                </div>
-                <div class="prose mt-8 max-w-none text-lg leading-8 text-gray-700">{!! nl2br(e($post->content)) !!}</div>
+                @unless($post->usesGeneratedTitle())
+                    <div class="mt-4 flex flex-wrap items-center gap-3 text-sm text-gray-500">
+                        @if($post->user)
+                            <a href="{{ route('users.show', $post->user) }}" class="inline-flex items-center gap-2 font-semibold text-forest-800">
+                                <x-user-avatar :user="$post->user" size="sm" />
+                                {{ $post->user->name }}
+                            </a>
+                        @endif
+                        <span>{{ ($post->published_at ?? $post->created_at)?->format('M d, Y') }}</span>
+                        <span>{{ $post->views }} views</span>
+                    </div>
+                    <div class="prose mt-8 max-w-none text-lg leading-8 text-gray-700">{!! nl2br(e($post->content)) !!}</div>
+                @else
+                    <p class="text-sm text-gray-500">{{ $post->views }} views</p>
+                @endunless
 
                 <div class="mt-10 flex flex-wrap gap-3 border-t border-gray-100 pt-6">
                     @can('update', $post)
-                        <a href="{{ route('posts.edit', $post) }}" class="btn-primary">Edit Story</a>
+                        <a href="{{ route('posts.edit', $post) }}" class="btn-primary">Edit post</a>
                     @endcan
                     @can('delete', $post)
                         <form
@@ -51,13 +76,13 @@
                         >
                             @csrf
                             @method('DELETE')
-                            <button type="submit" class="btn-secondary text-red-700">Delete Story</button>
+                            <button type="submit" class="btn-secondary text-red-700">Delete post</button>
                         </form>
                     @endcan
                     @can('boost', $post)
                         <a href="{{ route('posts.boost.create', $post) }}" class="btn-secondary">Boost Post</a>
                     @endcan
-                    <a href="{{ route('posts.index') }}" class="btn-secondary" onclick="skBackToStories(event)">Back to Stories</a>
+                    <a href="{{ route('posts.index') }}" class="btn-secondary" onclick="skBackToStories(event)">Back to feed</a>
                 </div>
             </div>
         </article>

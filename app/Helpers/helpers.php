@@ -139,6 +139,27 @@ if (! function_exists('monetization_setting')) {
     }
 }
 
+if (! function_exists('friendly_post_message')) {
+    function friendly_post_message(string $message): string
+    {
+        $text = trim($message);
+
+        if (preg_match('/must be a file of type|must be an image|mimetypes/i', $text) === 1) {
+            return 'Please choose a photo (JPG, PNG, or WEBP) or a video (MP4, WEBM, or MOV).';
+        }
+
+        if (preg_match('/may not be greater than|kilobytes/i', $text) === 1) {
+            return 'That file is too big. Photos can be 5 MB and videos can be 20 MB.';
+        }
+
+        if (preg_match('/may not have more than/i', $text) === 1) {
+            return 'That is too many files. You can add up to 11 photos and 3 videos.';
+        }
+
+        return $text;
+    }
+}
+
 if (! function_exists('shortVideoRules')) {
     /**
      * @return array<string, list<mixed>>

@@ -15,9 +15,13 @@ use App\Models\Post;
 use App\Models\PostImage;
 use App\Models\User;
 use App\Notifications\PostNeedsReview;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class PostController extends Controller
@@ -88,167 +92,51 @@ class PostController extends Controller
     /**
      * Store a new post.
      */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse|JsonResponse
     {
         $this->authorize('create', Post::class);
 
-        /*
-        |--------------------------------------------------------------------------
-        | Validation
-        |--------------------------------------------------------------------------
-        */
+        $request->validate($this->postFieldRules());
+        $this->assertPostHasTextOrMedia($request, null);
 
-        $request->validate(array_merge([
-            'title' => [
-                'required',
-                'string',
-                'min:5',
-                'max:255',
-            ],
-
-            'category_id' => [
-                'required',
-                'integer',
-                'exists:categories,id',
-            ],
-
-            'excerpt' => [
-                'nullable',
-                'string',
-                'max:500',
-            ],
-
-            'content' => [
-                'required',
-                'string',
-                'min:20',
-            ],
-
-            'featured_image' => [
-                'nullable',
-                'image',
-                'mimes:jpg,jpeg,png,webp',
-                'max:5120',
-            ],
-
-            'images' => [
-                'nullable',
-                'array',
-                'max:10',
-            ],
-
-            'images.*' => [
-                'image',
-                'mimes:jpg,jpeg,png,webp',
-                'max:5120',
-            ],
-        ], shortVideoRules()));
+        [$hasPhoto, $hasVideo] = $this->mediaPresence($request, null);
+        $resolved = $this->resolvedTitle($request, null, $hasPhoto, $hasVideo);
 
         DB::beginTransaction();
 
         try {
-
-            /*
-            |--------------------------------------------------------------------------
-            | Create Post
-            |--------------------------------------------------------------------------
-            */
-
             $post = Post::create([
-                'user_id' => auth()->id(),
-                'category_id' => $request->category_id,
-                'title' => $request->title,
-                'slug' => generateUniqueSlug(
-                    Post::class,
-                    $request->title
-                ),
-                'excerpt' => $request->excerpt,
-                'content' => $request->content,
+                'user_id' => $request->user()->id,
+                'category_id' => $this->resolvedCategoryId($request),
+                'title' => $resolved['title'],
+                'slug' => $this->uniquePostSlug($resolved['title']),
+                'excerpt' => $this->resolvedExcerpt($request, null),
+                'content' => $this->resolvedContent($request),
+                'title_is_generated' => $resolved['generated'],
                 'status' => 'pending',
                 'published_at' => null,
                 'views' => 0,
             ]);
 
-            /*
-            |--------------------------------------------------------------------------
-            | Featured Image
-            |--------------------------------------------------------------------------
-            */
-
-            if ($request->hasFile('featured_image')) {
-
-                $featuredImage = $request
-                    ->file('featured_image')
-                    ->store('posts/featured', 'public');
-
-                $post->update([
-                    'featured_image' => $featuredImage,
-                ]);
-            }
-
-            /*
-            |--------------------------------------------------------------------------
-            | Additional Images
-            |--------------------------------------------------------------------------
-            */
-
-            if ($request->hasFile('images') || $request->hasFile('videos')) {
-                $sortOrder = 0;
-
-                if ($request->hasFile('images')) {
-                    foreach ($request->file('images') as $image) {
-                        PostImage::create([
-                            'post_id' => $post->id,
-                            'image' => $image->store('posts/images', 'public'),
-                            'caption' => null,
-                            'sort_order' => $sortOrder,
-                            'media_type' => 'image',
-                        ]);
-
-                        $sortOrder++;
-                    }
-                }
-
-                if ($request->hasFile('videos')) {
-                    foreach ($request->file('videos') as $video) {
-                        PostImage::create([
-                            'post_id' => $post->id,
-                            'image' => $video->store('posts/videos', 'public'),
-                            'caption' => null,
-                            'sort_order' => $sortOrder,
-                            'media_type' => 'video',
-                        ]);
-
-                        $sortOrder++;
-                    }
-                }
-            }
+            $this->attachUploadedMedia($request, $post);
 
             $this->awardScore->handle($request->user(), ScoreReason::PostCreated, $post);
 
             DB::commit();
         } catch (Throwable $e) {
-
             DB::rollBack();
 
             report($e);
 
-            return back()
-                ->withInput()
-                ->with(
-                    'error',
-                    'Something went wrong while creating your story.'
-                );
+            return $this->postFailureResponse(
+                $request,
+                'Something went wrong while creating your post.',
+            );
         }
 
         $this->applyContentModeration($post);
 
-        return redirect()
-            ->route('posts.index')
-            ->with(
-                'success',
-                $this->moderationFlashMessage($post, created: true)
-            );
+        return $this->postSavedResponse($request, $post, created: true);
     }
 
     /**
@@ -436,182 +324,48 @@ class PostController extends Controller
     /**
      * Update post.
      */
-    public function update(Request $request, Post $post)
+    public function update(Request $request, Post $post): RedirectResponse|JsonResponse
     {
-        /*
-        |--------------------------------------------------------------------------
-        | Authorization
-        |--------------------------------------------------------------------------
-        */
-
         $this->authorize('update', $post);
 
-        /*
-        |--------------------------------------------------------------------------
-        | Validation
-        |--------------------------------------------------------------------------
-        */
+        $request->validate($this->postFieldRules());
+        $this->assertPostHasTextOrMedia($request, $post);
 
-        $request->validate(array_merge([
-            'title' => [
-                'required',
-                'string',
-                'min:5',
-                'max:255',
-            ],
-
-            'category_id' => [
-                'required',
-                'integer',
-                'exists:categories,id',
-            ],
-
-            'excerpt' => [
-                'nullable',
-                'string',
-                'max:500',
-            ],
-
-            'content' => [
-                'required',
-                'string',
-                'min:20',
-            ],
-
-            'featured_image' => [
-                'nullable',
-                'image',
-                'mimes:jpg,jpeg,png,webp',
-                'max:5120',
-            ],
-
-            'images' => [
-                'nullable',
-                'array',
-                'max:10',
-            ],
-
-            'images.*' => [
-                'image',
-                'mimes:jpg,jpeg,png,webp',
-                'max:5120',
-            ],
-        ], shortVideoRules()));
+        [$hasPhoto, $hasVideo] = $this->mediaPresence($request, $post);
+        $resolved = $this->resolvedTitle($request, $post, $hasPhoto, $hasVideo);
 
         DB::beginTransaction();
 
         try {
-
-            /*
-            |--------------------------------------------------------------------------
-            | Update Post
-            |--------------------------------------------------------------------------
-            */
-
             $post->update([
-                'category_id' => $request->category_id,
-                'title' => $request->title,
-                'slug' => generateUniqueSlug(
-                    Post::class,
-                    $request->title,
-                    $post->id
-                ),
-                'excerpt' => $request->excerpt,
-                'content' => $request->content,
-
-                /*
-                | Send edited post back to moderation.
-                */
+                'category_id' => $this->resolvedCategoryId($request),
+                'title' => $resolved['title'],
+                'slug' => $this->uniquePostSlug($resolved['title'], $post->id),
+                'excerpt' => $this->resolvedExcerpt($request, $post),
+                'content' => $this->resolvedContent($request),
+                'title_is_generated' => $resolved['generated'],
                 'status' => 'pending',
                 'published_at' => null,
             ]);
 
-            /*
-            |--------------------------------------------------------------------------
-            | Update Featured Image
-            |--------------------------------------------------------------------------
-            */
-
-            if ($request->hasFile('featured_image')) {
-
-                $oldFeaturedImage = $post->featured_image;
-
-                $newFeaturedImage = $request
-                    ->file('featured_image')
-                    ->store('posts/featured', 'public');
-
-                $post->update([
-                    'featured_image' => $newFeaturedImage,
-                ]);
-
-                if ($oldFeaturedImage) {
-
-                    Storage::disk('public')
-                        ->delete($oldFeaturedImage);
-                }
-            }
-
-            /*
-            |--------------------------------------------------------------------------
-            | Add New Additional Images
-            |--------------------------------------------------------------------------
-            */
-
-            if ($request->hasFile('images') || $request->hasFile('videos')) {
-                $sortOrder = $post->images()->count();
-
-                if ($request->hasFile('images')) {
-                    foreach ($request->file('images') as $image) {
-                        PostImage::create([
-                            'post_id' => $post->id,
-                            'image' => $image->store('posts/images', 'public'),
-                            'caption' => null,
-                            'sort_order' => $sortOrder,
-                            'media_type' => 'image',
-                        ]);
-
-                        $sortOrder++;
-                    }
-                }
-
-                if ($request->hasFile('videos')) {
-                    foreach ($request->file('videos') as $video) {
-                        PostImage::create([
-                            'post_id' => $post->id,
-                            'image' => $video->store('posts/videos', 'public'),
-                            'caption' => null,
-                            'sort_order' => $sortOrder,
-                            'media_type' => 'video',
-                        ]);
-
-                        $sortOrder++;
-                    }
-                }
-            }
+            $this->deleteRequestedMedia($request, $post);
+            $this->attachUploadedMedia($request, $post);
 
             DB::commit();
         } catch (Throwable $e) {
-
             DB::rollBack();
 
             report($e);
 
-            return back()
-                ->withInput()
-                ->with(
-                    'error',
-                    'Something went wrong while updating your story.'
-                );
+            return $this->postFailureResponse(
+                $request,
+                'Something went wrong while updating your post.',
+            );
         }
 
         $this->applyContentModeration($post);
 
-        return redirect()
-            ->route('posts.index')
-            ->with(
-                'success',
-                $this->moderationFlashMessage($post, created: false)
-            );
+        return $this->postSavedResponse($request, $post, created: false);
     }
 
     /**
@@ -678,7 +432,7 @@ class PostController extends Controller
                 ->route('posts.index')
                 ->with(
                     'success',
-                    'Your story has been deleted successfully.'
+                    'Your post has been deleted.'
                 );
 
         } catch (Throwable $e) {
@@ -690,7 +444,7 @@ class PostController extends Controller
             return back()
                 ->with(
                     'error',
-                    'Something went wrong while deleting your story.'
+                    'Something went wrong while deleting your post.'
                 );
         }
     }
@@ -791,18 +545,379 @@ class PostController extends Controller
         }
     }
 
-    private function moderationFlashMessage(Post $post, bool $created): string
+    private function moderationFlashMessage(Post $post): string
     {
         $post->refresh();
 
         return match ($post->status) {
-            'published' => $created
-                ? 'Your story has been published.'
-                : 'Your story has been updated and published.',
-            'rejected' => 'Your story was not published because it did not meet community guidelines.',
-            default => $created
-                ? 'Your story has been submitted successfully and is awaiting review.'
-                : 'Your story has been updated successfully and is awaiting review.',
+            'published' => 'Your post is live!',
+            'rejected' => 'Your post was not published because it did not meet community guidelines.',
+            default => 'Your post is being checked.',
         };
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function postFieldRules(): array
+    {
+        return array_merge([
+            'title' => ['nullable', 'string', 'max:255'],
+            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
+            'excerpt' => ['nullable', 'string', 'max:500'],
+            'content' => ['nullable', 'string'],
+            'simple_post' => ['nullable', 'boolean'],
+            'featured_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'images' => ['nullable', 'array', 'max:10'],
+            'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'remove_media' => ['nullable', 'array'],
+            'remove_media.*' => ['integer'],
+            'remove_featured' => ['nullable', 'boolean'],
+        ], shortVideoRules());
+    }
+
+    private function assertPostHasTextOrMedia(Request $request, ?Post $post): void
+    {
+        $text = trim((string) $request->input('content', ''));
+        $title = trim((string) $request->input('title', ''));
+        [$hasPhoto, $hasVideo] = $this->mediaPresence($request, $post);
+        $hasUserTitle = $title !== '' && ! $request->boolean('simple_post');
+
+        if ($text !== '' || $hasUserTitle || $hasPhoto || $hasVideo) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'content' => 'Please write something or add a photo or video.',
+        ]);
+    }
+
+    /**
+     * @return array{0: bool, 1: bool}
+     */
+    private function mediaPresence(Request $request, ?Post $post): array
+    {
+        $hasPhoto = $request->hasFile('featured_image') || $request->hasFile('images');
+        $hasVideo = $request->hasFile('videos');
+        $removeIds = $this->removeMediaIds($request);
+
+        if ($post === null) {
+            return [$hasPhoto, $hasVideo];
+        }
+
+        $post->loadMissing('images');
+
+        if (filled($post->featured_image) && ! $request->boolean('remove_featured')) {
+            $hasPhoto = true;
+        }
+
+        foreach ($post->images as $image) {
+            if (in_array($image->id, $removeIds, true)) {
+                continue;
+            }
+
+            if ($image->isVideo()) {
+                $hasVideo = true;
+            } else {
+                $hasPhoto = true;
+            }
+        }
+
+        return [$hasPhoto, $hasVideo];
+    }
+
+    /**
+     * @return array{title: string, generated: bool}
+     */
+    private function resolvedTitle(Request $request, ?Post $post, bool $hasPhoto, bool $hasVideo): array
+    {
+        $provided = trim((string) $request->input('title', ''));
+
+        if (! $request->boolean('simple_post') && $provided !== '') {
+            return [
+                'title' => mb_substr($provided, 0, 255),
+                'generated' => false,
+            ];
+        }
+
+        $author = trim((string) ($request->user()?->name ?? $post?->user?->name ?? ''));
+
+        if ($author === '') {
+            $author = 'someone';
+        }
+
+        return [
+            'title' => $this->titleFromBody(
+                trim((string) $request->input('content', '')),
+                $hasPhoto,
+                $hasVideo,
+                $author,
+            ),
+            'generated' => true,
+        ];
+    }
+
+    private function titleFromBody(string $text, bool $hasPhoto, bool $hasVideo, string $authorName): string
+    {
+        $text = trim((string) preg_replace('/\s+/u', ' ', $text));
+
+        if ($text !== '') {
+            $words = preg_split('/\s+/u', $text, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+            $chosen = [];
+
+            foreach (array_slice($words, 0, 8) as $word) {
+                $candidate = trim(implode(' ', [...$chosen, $word]));
+
+                if (mb_strlen($candidate) > 80) {
+                    break;
+                }
+
+                $chosen[] = $word;
+            }
+
+            $title = trim(implode(' ', $chosen));
+
+            if ($title === '') {
+                $title = trim(mb_substr($text, 0, 80));
+            }
+
+            return mb_substr($title, 0, 255);
+        }
+
+        if ($hasPhoto) {
+            return mb_substr('Photo by '.$authorName, 0, 255);
+        }
+
+        if ($hasVideo) {
+            return mb_substr('Video by '.$authorName, 0, 255);
+        }
+
+        return mb_substr('Post by '.$authorName, 0, 255);
+    }
+
+    private function uniquePostSlug(string $title, ?int $ignoreId = null): string
+    {
+        // Emoji, Urdu, and symbols can slug to nothing, or to a lossy
+        // transliteration that changes between servers. Use a stable fallback.
+        $slugTitle = preg_match('/[A-Za-z0-9]/', $title) === 1 ? $title : 'post';
+        $slug = generateUniqueSlug(Post::class, $slugTitle, $ignoreId);
+
+        if ($slug !== '') {
+            return $slug;
+        }
+
+        return generateUniqueSlug(Post::class, 'post', $ignoreId);
+    }
+
+    private function resolvedCategoryId(Request $request): ?int
+    {
+        if ($request->filled('category_id')) {
+            return $request->integer('category_id');
+        }
+
+        $community = Category::query()
+            ->where('status', true)
+            ->where('slug', 'community')
+            ->first();
+
+        if ($community === null) {
+            $community = Category::query()
+                ->where('status', true)
+                ->where('name', 'Community')
+                ->first();
+        }
+
+        return $community?->id;
+    }
+
+    private function resolvedContent(Request $request): string
+    {
+        return trim((string) $request->input('content', ''));
+    }
+
+    private function resolvedExcerpt(Request $request, ?Post $post): ?string
+    {
+        if ($post !== null && ! $request->exists('excerpt')) {
+            return $post->excerpt;
+        }
+
+        $excerpt = trim((string) $request->input('excerpt', ''));
+
+        return $excerpt === '' ? null : $excerpt;
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function removeMediaIds(Request $request): array
+    {
+        return collect($request->input('remove_media', []))
+            ->filter(fn (mixed $id): bool => is_numeric($id))
+            ->map(fn (mixed $id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function deleteRequestedMedia(Request $request, Post $post): void
+    {
+        $ids = $this->removeMediaIds($request);
+
+        if ($ids !== []) {
+            $images = $post->images()->whereIn('id', $ids)->get();
+
+            foreach ($images as $image) {
+                Storage::disk('public')->delete($image->image);
+                $image->delete();
+            }
+        }
+
+        $post->refresh();
+
+        if ($request->boolean('remove_featured') && filled($post->featured_image)) {
+            Storage::disk('public')->delete($post->featured_image);
+            $post->update(['featured_image' => null]);
+        }
+    }
+
+    private function attachUploadedMedia(Request $request, Post $post): void
+    {
+        $images = $this->uploadedFiles($request, 'images');
+        $videos = $this->uploadedFiles($request, 'videos');
+
+        if ($request->hasFile('featured_image')) {
+            $previous = $post->featured_image;
+            $stored = $request->file('featured_image')->store('posts/featured', 'public');
+            $post->update(['featured_image' => $stored]);
+
+            if (filled($previous) && $previous !== $stored) {
+                Storage::disk('public')->delete($previous);
+            }
+        } elseif ($images !== [] && blank($post->featured_image)) {
+            $first = array_shift($images);
+            $post->update([
+                'featured_image' => $first->store('posts/featured', 'public'),
+            ]);
+        }
+
+        $sortOrder = (int) $post->images()->count();
+
+        foreach ($images as $image) {
+            PostImage::create([
+                'post_id' => $post->id,
+                'image' => $image->store('posts/images', 'public'),
+                'caption' => null,
+                'sort_order' => $sortOrder,
+                'media_type' => 'image',
+            ]);
+
+            $sortOrder++;
+        }
+
+        foreach ($videos as $video) {
+            PostImage::create([
+                'post_id' => $post->id,
+                'image' => $video->store('posts/videos', 'public'),
+                'caption' => null,
+                'sort_order' => $sortOrder,
+                'media_type' => 'video',
+            ]);
+
+            $sortOrder++;
+        }
+    }
+
+    /**
+     * @return list<UploadedFile>
+     */
+    private function uploadedFiles(Request $request, string $key): array
+    {
+        if (! $request->hasFile($key)) {
+            return [];
+        }
+
+        $files = $request->file($key);
+
+        if ($files === null) {
+            return [];
+        }
+
+        return array_values(is_array($files) ? $files : [$files]);
+    }
+
+    private function prepareFeedPost(Post $post): Post
+    {
+        $post->refresh();
+
+        $post->load([
+            'user' => function ($query): void {
+                $query->withExists([
+                    'greenTickVerifications as has_active_green_tick' => function ($query): void {
+                        $query->currentlyActive();
+                    },
+                ]);
+            },
+            'category',
+            'images',
+        ]);
+
+        $post->loadCount([
+            'likes',
+            'comments' => function ($query) {
+                $query->where('status', 'approved');
+            },
+        ]);
+
+        $post->loadExists([
+            'likes as liked_by_user' => function ($query) {
+                $query->where('user_id', auth()->id());
+            },
+            'boosts as is_boosted' => function ($query): void {
+                $query->currentlyActive();
+            },
+        ]);
+
+        return $post;
+    }
+
+    private function postSavedResponse(Request $request, Post $post, bool $created): RedirectResponse|JsonResponse
+    {
+        $message = $this->moderationFlashMessage($post);
+
+        if ($request->expectsJson()) {
+            $request->session()->flash('success', $message);
+
+            $html = null;
+
+            if ($post->status === 'published') {
+                $html = view('components.post-card', [
+                    'post' => $this->prepareFeedPost($post),
+                ])->render();
+            }
+
+            return response()->json([
+                'message' => $message,
+                'status' => $post->status,
+                'html' => $html,
+                'redirect' => route('posts.index'),
+            ]);
+        }
+
+        return redirect()
+            ->route('posts.index')
+            ->with('success', $message);
+    }
+
+    private function postFailureResponse(Request $request, string $message): RedirectResponse|JsonResponse
+    {
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => $message,
+            ], 500);
+        }
+
+        return back()
+            ->withInput()
+            ->with('error', $message);
     }
 }

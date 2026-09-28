@@ -8,7 +8,7 @@
     @endif
 @empty
     @unless(request()->boolean('partial') || request()->hasHeader('X-Infinite-Scroll'))
-        <x-empty-state title="No posts yet" :action-label="auth()->check() ? 'Create a post' : 'Join Sheen Kor'" :action-url="auth()->check() ? route('posts.create') : route('register')">
+        <x-empty-state data-empty-state title="No posts yet" :action-label="auth()->check() ? 'Create a post' : 'Join Sheen Kor'" :action-url="auth()->check() ? route('posts.create') : route('register')">
             Be the first to share a photo, story, or idea with the community.
         </x-empty-state>
     @endunless

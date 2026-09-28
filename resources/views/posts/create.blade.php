@@ -2,7 +2,7 @@
 
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            Create Story
+            Create a post
         </h2>
     </x-slot>
 
@@ -37,8 +37,7 @@
                             id="title"
                             value="{{ old('title') }}"
                             class="sk-input"
-                            placeholder="Enter your story title"
-                            required
+                            placeholder="Add a title (optional)"
                         >
                     </div>
 
@@ -56,7 +55,6 @@
                             name="category_id"
                             id="category_id"
                             class="sk-input"
-                            required
                         >
                             <option value="">
                                 Select Category
@@ -101,7 +99,7 @@
                             for="content"
                             class="block font-medium text-sm text-gray-700"
                         >
-                            Story / Article
+                            Your post
                         </label>
 
                         <textarea
@@ -109,8 +107,7 @@
                             id="content"
                             rows="12"
                             class="sk-input"
-                            placeholder="Write your story..."
-                            required
+                            placeholder="Write your post..."
                         >{{ old('content') }}</textarea>
                     </div>
 
@@ -125,7 +122,7 @@
                     <div class="flex items-center gap-4">
 
                         <button type="submit" class="btn-primary" x-bind:disabled="submitting">
-                            Submit Story
+                            Post
                         </button>
 
                         <a href="{{ route('posts.index') }}" class="btn-secondary">
@@ -142,7 +139,7 @@
                         aria-live="polite"
                         aria-busy="true"
                     >
-                        <p class="font-semibold text-forest-900">Checking your post...</p>
+                        <p class="font-semibold text-forest-900">Checking your post…</p>
                         <p class="text-sm text-gray-500">Verifying content...</p>
                     </div>
 

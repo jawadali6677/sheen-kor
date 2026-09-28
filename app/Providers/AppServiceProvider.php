@@ -6,6 +6,7 @@ use App\Contracts\RewardedAdVerifier;
 use App\Contracts\StripeCheckoutGateway;
 use App\Enums\Permission;
 use App\Models\Alert;
+use App\Models\Category;
 use App\Models\Post;
 use App\Models\User;
 use App\Support\CashierStripeCheckoutGateway;
@@ -15,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -41,6 +43,13 @@ class AppServiceProvider extends ServiceProvider
 
         $this->configureCheckoutRateLimiter();
         $this->configureQualifiedViewRateLimiter();
+
+        View::composer('layouts.partials.quick-post-composer', function ($view): void {
+            $view->with(
+                'composerCategories',
+                Category::query()->where('status', true)->orderBy('name')->get(),
+            );
+        });
     }
 
     /**

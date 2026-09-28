@@ -14,8 +14,8 @@
             <a href="{{ route('leaderboard.index') }}" class="flex items-center gap-3 rounded-xl px-3 py-2 {{ request()->routeIs('leaderboard.*') ? 'bg-forest-50 text-forest-900' : 'text-gray-600 hover:bg-white hover:text-forest-800' }}">Scores</a>
         </nav>
 
-        <div class="space-y-2">
-            <a href="{{ route('posts.create') }}" class="btn-primary w-full">Create post</a>
+        <div class="space-y-2" x-data>
+            <a href="{{ route('posts.create') }}" class="btn-primary w-full" @click.prevent="$dispatch('open-post-composer', { intent: 'text' })">Create post</a>
             <a href="{{ route('alerts.create') }}" class="btn-secondary w-full">Create alert</a>
             @can('create', App\Models\MarketListing::class)
                 <a href="{{ route('market.create') }}" class="btn-secondary w-full">Create listing</a>

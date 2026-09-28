@@ -66,6 +66,9 @@
         </div>
 
         @include('layouts.partials.mobile-nav')
+        @auth
+            @include('layouts.partials.quick-post-composer')
+        @endauth
         <x-confirm-dialog />
 
         @auth

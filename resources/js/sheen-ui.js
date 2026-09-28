@@ -708,6 +708,357 @@ export function registerSheenUi(Alpine) {
     Alpine.data('adminPostsQueue', () => adminModerationQueue('admin-posts'));
     Alpine.data('adminMarketQueue', () => adminModerationQueue('admin-market'));
 
+    Alpine.data('quickPostComposer', (config = {}) => ({
+        embedded: Boolean(config.embedded),
+        open: Boolean(config.open || config.embedded),
+        text: config.text || '',
+        items: [],
+        errors: Array.isArray(config.errors) ? config.errors : [],
+        submitting: false,
+        phase: 'idle',
+        progress: 0,
+        success: '',
+        maxImages: 11,
+        maxVideos: 3,
+        imageMaxBytes: 5 * 1024 * 1024,
+        videoMaxBytes: 20 * 1024 * 1024,
+        get canPost() {
+            return this.text.trim() !== '' || this.items.length > 0;
+        },
+        init() {
+            this.$nextTick(() => this.resizeBody());
+        },
+        openWith(detail) {
+            const intent = typeof detail === 'string' ? detail : (detail?.intent || 'text');
+
+            this.open = true;
+            this.phase = 'idle';
+            this.success = '';
+
+            this.$nextTick(() => {
+                if (intent === 'photo') {
+                    this.$refs.photoPicker?.click();
+                } else if (intent === 'video') {
+                    this.$refs.videoPicker?.click();
+                } else if (intent === 'camera') {
+                    this.$refs.cameraPicker?.click();
+                } else {
+                    this.$refs.body?.focus();
+                }
+            });
+        },
+        close() {
+            if (this.embedded) {
+                return;
+            }
+
+            this.open = false;
+            this.phase = 'idle';
+            this.submitting = false;
+        },
+        grow(event) {
+            this.resizeBody(event.target);
+        },
+        resizeBody(element) {
+            const field = element || this.$refs.body;
+
+            if (! field) {
+                return;
+            }
+
+            field.style.height = 'auto';
+            field.style.height = `${Math.min(field.scrollHeight, 224)}px`;
+        },
+        tryPost() {
+            if (this.submitting) {
+                return;
+            }
+
+            if (! this.canPost) {
+                this.errors = ['Please write something or add a photo or video.'];
+
+                return;
+            }
+
+            this.$refs.form?.requestSubmit();
+        },
+        onPickerChange(event) {
+            this.addFiles(Array.from(event.target.files || []));
+            event.target.value = '';
+        },
+        addFiles(files) {
+            this.errors = [];
+
+            files.forEach((file) => {
+                const kind = this.kindFor(file);
+
+                if (! kind) {
+                    this.errors = ['Please choose a photo (JPG, PNG, or WEBP) or a video (MP4, WEBM, or MOV).'];
+
+                    return;
+                }
+
+                if (kind === 'image' && file.size > this.imageMaxBytes) {
+                    this.errors = ['That photo is too big. Photos can be up to 5 MB.'];
+
+                    return;
+                }
+
+                if (kind === 'video' && file.size > this.videoMaxBytes) {
+                    this.errors = ['That video is too big. Videos can be up to 20 MB.'];
+
+                    return;
+                }
+
+                if (kind === 'image' && this.imageCount() >= this.maxImages) {
+                    this.errors = ['You can add up to 11 photos.'];
+
+                    return;
+                }
+
+                if (kind === 'video' && this.videoCount() >= this.maxVideos) {
+                    this.errors = ['You can add up to 3 videos.'];
+
+                    return;
+                }
+
+                this.items.push({
+                    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+                    file,
+                    kind,
+                    url: URL.createObjectURL(file),
+                });
+            });
+        },
+        removeItem(id) {
+            const item = this.items.find((entry) => entry.id === id);
+
+            if (item?.url) {
+                URL.revokeObjectURL(item.url);
+            }
+
+            this.items = this.items.filter((entry) => entry.id !== id);
+            this.errors = [];
+        },
+        imageCount() {
+            return this.items.filter((item) => item.kind === 'image').length;
+        },
+        videoCount() {
+            return this.items.filter((item) => item.kind === 'video').length;
+        },
+        kindFor(file) {
+            const type = (file.type || '').toLowerCase();
+            const name = (file.name || '').toLowerCase();
+
+            if (type.startsWith('image/jpeg') || type === 'image/png' || type === 'image/webp' || /\.(jpe?g|png|webp)$/.test(name)) {
+                return 'image';
+            }
+
+            if (type === 'video/mp4' || type === 'video/webm' || type === 'video/quicktime' || /\.(mp4|webm|mov)$/.test(name)) {
+                return 'video';
+            }
+
+            return null;
+        },
+        assignFiles(input, files) {
+            if (! input || typeof DataTransfer === 'undefined') {
+                return;
+            }
+
+            const fieldName = input.getAttribute('data-field-name') || input.name;
+
+            if (! files.length) {
+                input.removeAttribute('name');
+                input.files = new DataTransfer().files;
+
+                return;
+            }
+
+            input.setAttribute('name', fieldName);
+            const transfer = new DataTransfer();
+            files.forEach((file) => transfer.items.add(file));
+            input.files = transfer.files;
+        },
+        prepareSubmit() {
+            const images = this.items.filter((item) => item.kind === 'image').map((item) => item.file);
+            const videos = this.items.filter((item) => item.kind === 'video').map((item) => item.file);
+
+            this.assignFiles(this.$refs.featured, images.slice(0, 1));
+            this.assignFiles(this.$refs.images, images.slice(1));
+            this.assignFiles(this.$refs.videos, videos);
+
+            return true;
+        },
+        onSubmit(event) {
+            if (event.defaultPrevented || this.submitting) {
+                event.preventDefault();
+
+                return;
+            }
+
+            this.prepareSubmit();
+
+            if (! this.canPost) {
+                event.preventDefault();
+                this.errors = ['Please write something or add a photo or video.'];
+
+                return;
+            }
+
+            if (! window.XMLHttpRequest || ! window.FormData) {
+                this.submitting = true;
+                this.phase = 'checking';
+
+                return;
+            }
+
+            event.preventDefault();
+            this.upload(event.target);
+        },
+        upload(form) {
+            this.submitting = true;
+            this.phase = 'uploading';
+            this.progress = 0;
+            this.errors = [];
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', form.action);
+            xhr.setRequestHeader('Accept', 'application/json');
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            xhr.upload.addEventListener('progress', (progressEvent) => {
+                if (! progressEvent.lengthComputable || progressEvent.total === 0) {
+                    return;
+                }
+
+                this.progress = Math.min(100, Math.round((progressEvent.loaded / progressEvent.total) * 100));
+
+                if (this.progress >= 100) {
+                    this.phase = 'checking';
+                }
+            });
+            xhr.upload.addEventListener('load', () => {
+                this.progress = 100;
+                this.phase = 'checking';
+            });
+            xhr.addEventListener('load', () => this.handleUploadResponse(xhr));
+            xhr.addEventListener('error', () => {
+                this.submitting = false;
+                this.phase = 'idle';
+                this.errors = ['Something went wrong. Please try again.'];
+            });
+            xhr.send(new FormData(form));
+        },
+        handleUploadResponse(xhr) {
+            let data = {};
+
+            try {
+                data = JSON.parse(xhr.responseText || '{}');
+            } catch (error) {
+                data = {};
+            }
+
+            if (xhr.status === 419 || xhr.status === 401) {
+                window.location.reload();
+
+                return;
+            }
+
+            if (xhr.status === 422) {
+                this.submitting = false;
+                this.phase = 'idle';
+                const messages = Object.values(data.errors || {}).flat().map((message) => this.friendly(message));
+                this.errors = messages.length ? messages : [this.friendly(data.message || 'Please check your post and try again.')];
+
+                return;
+            }
+
+            if (xhr.status < 200 || xhr.status >= 300) {
+                this.submitting = false;
+                this.phase = 'idle';
+                this.errors = [this.friendly(data.message || 'Something went wrong. Please try again.')];
+
+                return;
+            }
+
+            this.finishSuccess(data);
+        },
+        friendly(message) {
+            const text = String(message || '');
+
+            if (/must be a file of type|must be an image|mimetypes/i.test(text)) {
+                return 'Please choose a photo (JPG, PNG, or WEBP) or a video (MP4, WEBM, or MOV).';
+            }
+
+            if (/may not be greater than|kilobytes/i.test(text)) {
+                return 'That file is too big. Photos can be 5 MB and videos can be 20 MB.';
+            }
+
+            if (/may not have more than/i.test(text)) {
+                return 'That is too many files. You can add up to 11 photos and 3 videos.';
+            }
+
+            if (/please write something or add a photo or video/i.test(text)) {
+                return 'Please write something or add a photo or video.';
+            }
+
+            return text;
+        },
+        finishSuccess(data) {
+            this.submitting = false;
+            this.success = data.message || 'Your post is live!';
+            this.phase = 'success';
+            this.clearItems();
+            this.text = '';
+
+            const inserted = data.html ? this.prependPost(data.html) : false;
+
+            if (inserted) {
+                window.setTimeout(() => this.close(), 1400);
+
+                return;
+            }
+
+            if (this.embedded || ! document.getElementById('feed-items')) {
+                window.location = data.redirect || window.location.href;
+            }
+        },
+        clearItems() {
+            this.items.forEach((item) => {
+                if (item.url) {
+                    URL.revokeObjectURL(item.url);
+                }
+            });
+            this.items = [];
+        },
+        prependPost(html) {
+            const feed = document.getElementById('feed-items');
+
+            if (! feed || ! html) {
+                return false;
+            }
+
+            const wrap = document.createElement('div');
+            wrap.innerHTML = html.trim();
+            const nodes = [];
+
+            while (wrap.firstChild) {
+                const node = wrap.firstChild;
+                feed.insertBefore(node, feed.firstChild);
+                nodes.push(node);
+            }
+
+            nodes.forEach((node) => {
+                if (node.nodeType === 1 && window.Alpine) {
+                    window.Alpine.initTree(node);
+                }
+            });
+
+            feed.querySelector('[data-empty-state]')?.remove();
+
+            return true;
+        },
+    }));
+
     document.addEventListener('submit', async (event) => {
         const form = event.target;
 

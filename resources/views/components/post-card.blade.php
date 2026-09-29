@@ -19,29 +19,38 @@
 >
     <div class="flex items-center gap-3 px-4 py-3">
         @if($post->user)
-            <a href="{{ route('users.show', $post->user) }}">
-                <x-user-avatar :user="$post->user" size="sm" />
+            <a href="{{ route('users.show', $post->user) }}" class="shrink-0">
+                <x-user-avatar :user="$post->user" size="sm" class="lg:h-10 lg:w-10" />
             </a>
         @endif
-        <div class="min-w-0">
-            @if($post->user)
-                <a href="{{ route('users.show', $post->user) }}" class="inline-flex items-center gap-1 font-semibold text-forest-900 hover:underline">
-                    <span>{{ $post->user->name }}</span>
-                    <x-green-tick :user="$post->user" />
-                </a>
-            @else
-                <span class="font-semibold text-forest-900">Unknown User</span>
-            @endif
-            <p class="text-xs text-gray-500">
-                {{ ($post->published_at ?? $post->created_at)?->diffForHumans() }}
+        <div class="min-w-0 flex-1">
+            <div class="flex items-center justify-between gap-2">
+                <div class="min-w-0">
+                    @if($post->user)
+                        <a href="{{ route('users.show', $post->user) }}" class="inline-flex max-w-full items-center gap-1 font-semibold text-forest-900 hover:underline">
+                            <span class="truncate">{{ $post->user->name }}</span>
+                            <x-green-tick :user="$post->user" />
+                        </a>
+                    @else
+                        <span class="font-semibold text-forest-900">Unknown User</span>
+                    @endif
+                    <p class="text-xs text-gray-500">
+                        {{ ($post->published_at ?? $post->created_at)?->diffForHumans() }}
+                        @if($post->category)
+                            <span class="lg:hidden">
+                                ·
+                                <a href="{{ route('categories.show', $post->category) }}" class="hover:underline">{{ $post->category->name }}</a>
+                            </span>
+                        @endif
+                        @if($isStatus && $post->hasActiveBoost())
+                            · <span class="font-semibold uppercase tracking-wide text-amber-800">Boosted</span>
+                        @endif
+                    </p>
+                </div>
                 @if($post->category)
-                    ·
-                    <a href="{{ route('categories.show', $post->category) }}" class="hover:underline">{{ $post->category->name }}</a>
+                    <a href="{{ route('categories.show', $post->category) }}" class="hidden shrink-0 rounded-full bg-forest-50 px-2.5 py-1 text-xs font-semibold text-forest-800 hover:bg-forest-100 lg:inline-flex">{{ $post->category->name }}</a>
                 @endif
-                @if($isStatus && $post->hasActiveBoost())
-                    · <span class="font-semibold uppercase tracking-wide text-amber-800">Boosted</span>
-                @endif
-            </p>
+            </div>
         </div>
     </div>
 
@@ -55,11 +64,19 @@
             </div>
         @endif
         @if($hasMedia)
-            <x-media-carousel :slides="$slides" :href="route('posts.show', $post)" />
+            <div class="lg:px-4">
+                <div class="overflow-hidden lg:rounded-2xl">
+                    <x-media-carousel :slides="$slides" :href="route('posts.show', $post)" />
+                </div>
+            </div>
         @endif
     @else
         @if($hasMedia)
-            <x-media-carousel :slides="$slides" :href="route('posts.show', $post)" />
+            <div class="lg:px-4">
+                <div class="overflow-hidden lg:rounded-2xl">
+                    <x-media-carousel :slides="$slides" :href="route('posts.show', $post)" />
+                </div>
+            </div>
         @endif
     @endif
 
@@ -84,6 +101,7 @@
             'likesCount' => $post->likes_count,
             'commentsCount' => $post->comments_count,
             'compact' => true,
+            'feed' => true,
         ])
         @can('update', $post)
             <div class="flex gap-3 pt-1 text-sm">

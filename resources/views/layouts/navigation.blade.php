@@ -17,26 +17,42 @@
         ];
     }
 @endphp
+@php
+    $homeNav = auth()->check() && request()->routeIs('posts.index');
+@endphp
 <nav x-data="{ open: false }" @if(auth()->check()) x-init="$store.notifications.boot(@js($notificationConfig))" @endif class="sticky top-0 z-40 border-b border-gray-100 bg-white/95 backdrop-blur">
-    <div class="app-shell flex h-16 items-center justify-between gap-4">
-        <a href="{{ auth()->check() ? route('posts.index') : route('home') }}" class="shrink-0">
+    <div class="app-shell flex h-16 items-center justify-between gap-4 {{ $homeNav ? 'lg:h-[4.5rem]' : '' }}">
+        <a href="{{ auth()->check() ? route('posts.index') : route('home') }}" class="shrink-0 {{ $homeNav ? 'lg:inline-flex lg:flex-col lg:justify-center' : '' }}">
             <x-brand />
+            @if($homeNav)
+                <span class="mt-0.5 hidden text-[11px] font-medium tracking-wide text-gray-500 lg:block">Greener Community · Stronger Together</span>
+            @endif
         </a>
 
         @auth
-            <div class="hidden items-center gap-6 lg:flex">
-                <x-nav-link :href="route('posts.index')" :active="request()->routeIs('posts.index', 'posts.show')">{{ __('Home') }}</x-nav-link>
-                <x-nav-link :href="route('explore.index')" :active="request()->routeIs('explore.*')">{{ __('Explore') }}</x-nav-link>
-                <x-nav-link :href="route('alerts.index')" :active="request()->routeIs('alerts.*')">{{ __('Alerts') }}</x-nav-link>
-                <x-nav-link :href="route('market.index')" :active="request()->routeIs('market.*')">{{ __('Market') }}</x-nav-link>
-                <!-- <x-nav-link :href="route('tips.index')" :active="request()->routeIs('tips.*') || (request()->routeIs('categories.show') && request()->route('category')?->slug === 'tips')">{{ __('Tips') }}</x-nav-link> -->
-            </div>
+            @if($homeNav)
+                <form method="GET" action="{{ route('explore.index') }}" class="mx-4 hidden min-w-0 max-w-xl flex-1 lg:block">
+                    <label for="home-search" class="sr-only">{{ __('Search posts, people, places') }}</label>
+                    <div class="relative">
+                        <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z"/></svg>
+                        <input id="home-search" type="search" name="q" placeholder="Search posts, people, places..." class="w-full rounded-full border-gray-200 bg-sand-50 py-2 pl-10 pr-4 text-sm text-forest-900 placeholder:text-gray-400 focus:border-forest-600 focus:ring-forest-600">
+                    </div>
+                </form>
+            @else
+                <div class="hidden items-center gap-6 lg:flex">
+                    <x-nav-link :href="route('posts.index')" :active="request()->routeIs('posts.index', 'posts.show')">{{ __('Home') }}</x-nav-link>
+                    <x-nav-link :href="route('explore.index')" :active="request()->routeIs('explore.*')">{{ __('Explore') }}</x-nav-link>
+                    <x-nav-link :href="route('alerts.index')" :active="request()->routeIs('alerts.*')">{{ __('Alerts') }}</x-nav-link>
+                    <x-nav-link :href="route('market.index')" :active="request()->routeIs('market.*')">{{ __('Market') }}</x-nav-link>
+                    <!-- <x-nav-link :href="route('tips.index')" :active="request()->routeIs('tips.*') || (request()->routeIs('categories.show') && request()->route('category')?->slug === 'tips')">{{ __('Tips') }}</x-nav-link> -->
+                </div>
+            @endif
 
             <div class="hidden items-center gap-3 sm:flex">
-                <a href="{{ route('explore.index') }}" class="inline-flex h-10 w-10 items-center justify-center rounded-full text-gray-500 hover:bg-sand-50 hover:text-forest-800" aria-label="{{ __('Search') }}">
+                <a href="{{ route('explore.index') }}" class="inline-flex h-10 w-10 items-center justify-center rounded-full text-gray-500 hover:bg-sand-50 hover:text-forest-800 {{ $homeNav ? 'lg:hidden' : '' }}" aria-label="{{ __('Search') }}">
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z"/></svg>
                 </a>
-                <a href="{{ route('messages.index') }}" class="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-gray-500 hover:bg-sand-50 hover:text-forest-800" aria-label="{{ __('Chat') }}">
+                <a href="{{ route('messages.index') }}" class="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-gray-500 hover:bg-sand-50 hover:text-forest-800 {{ $homeNav ? 'lg:order-2' : '' }}" aria-label="{{ __('Chat') }}">
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M7 8h10M7 12h6m8 1a9 9 0 1 1-3.2-6.96L21 3v6h-6"/></svg>
                     <span
                         x-show="$store.notifications.chatUnread > 0"
@@ -45,7 +61,10 @@
                         class="absolute -right-0.5 -top-0.5 inline-flex min-w-5 items-center justify-center rounded-full bg-lime-400 px-1 text-[10px] font-bold text-forest-900"
                     >{{ $unreadChats }}</span>
                 </a>
-                @include('layouts.partials.notification-bell')
+                <div class="{{ $homeNav ? 'lg:order-1' : '' }}">
+                    @include('layouts.partials.notification-bell')
+                </div>
+                <div class="{{ $homeNav ? 'lg:order-3' : '' }}">
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
                         <button type="button" class="inline-flex items-center gap-2 rounded-full p-0.5 hover:bg-sand-50">
@@ -85,6 +104,7 @@
                         </form>
                     </x-slot>
                 </x-dropdown>
+                </div>
             </div>
         @else
             <div class="hidden items-center gap-6 md:flex">

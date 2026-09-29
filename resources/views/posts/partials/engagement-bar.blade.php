@@ -10,6 +10,8 @@
     $commentsIndex = $isAlert ? route('alerts.comments.index', $model) : route('posts.comments.index', $model);
     $commentsStore = $isAlert ? route('alerts.comments.store', $model) : route('posts.comments.store', $model);
     $compact = $compact ?? false;
+    $feed = $feed ?? false;
+    $showFeedCountsInline = $feed && $canEngage && auth()->check();
 @endphp
 
 <div
@@ -24,19 +26,25 @@
     data-comments-url="{{ $commentsIndex }}"
     data-comment-url="{{ $commentsStore }}"
 >
-    <div class="mb-2 text-sm font-medium text-gray-600">
+    <div class="mb-2 text-sm font-medium text-gray-600 {{ $showFeedCountsInline ? 'lg:hidden' : '' }}">
         <span class="js-likes-count">{{ $likesCount }}</span> likes
         · <span class="js-comments-count">{{ $commentsCount }}</span> comments
     </div>
 
     @if($canEngage && auth()->check())
-        <div class="flex gap-2">
-            <button type="button" class="js-like-button inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold {{ $liked ? 'bg-red-50 text-red-700 btn-danger' : 'bg-sand-50 text-forest-800' }}">
+        <div class="flex gap-2 {{ $showFeedCountsInline ? 'lg:gap-4' : '' }}">
+            <button type="button" class="js-like-button inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold {{ $liked ? 'bg-red-50 text-red-700 btn-danger' : 'bg-sand-50 text-forest-800' }} {{ $showFeedCountsInline ? 'lg:flex-none lg:justify-start' : '' }}">
                 <span class="js-like-icon">{{ $liked ? '♥' : '♡' }}</span>
                 <span class="js-like-label">{{ $liked ? 'Liked' : 'Like' }}</span>
+                @if($showFeedCountsInline)
+                    <span class="js-likes-count hidden lg:inline">{{ $likesCount }}</span>
+                @endif
             </button>
-            <button type="button" class="js-comment-button inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-sand-50 px-3 py-2 text-sm font-semibold text-forest-800">
+            <button type="button" class="js-comment-button inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-sand-50 px-3 py-2 text-sm font-semibold text-forest-800 {{ $showFeedCountsInline ? 'lg:flex-none lg:justify-start' : '' }}">
                 Comment
+                @if($showFeedCountsInline)
+                    <span class="js-comments-count hidden lg:inline">{{ $commentsCount }}</span>
+                @endif
             </button>
         </div>
     @elseif($canEngage)

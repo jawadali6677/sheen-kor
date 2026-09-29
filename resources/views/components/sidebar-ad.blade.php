@@ -1,3 +1,6 @@
-@props(['ad'])
+@props([
+    'ad',
+    'sidebar' => false,
+])
 
-<x-ad-card :ad="$ad" {{ $attributes }} />
+<x-ad-card :ad="$ad" :sidebar="$sidebar" {{ $attributes }} />

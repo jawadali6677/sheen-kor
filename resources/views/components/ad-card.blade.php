@@ -1,6 +1,7 @@
 @props([
     'ad',
     'compact' => false,
+    'sidebar' => false,
 ])
 
 <article
@@ -19,14 +20,17 @@
         </button>
     </div>
     @if(! $compact && ! empty($ad['image']))
-        <img src="{{ $ad['image'] }}" alt="{{ $ad['title'] }}" class="mt-2 h-36 w-full object-cover" loading="lazy">
+        <img src="{{ $ad['image'] }}" alt="{{ $ad['title'] }}" class="{{ $sidebar ? 'mx-4 mt-3 h-28 w-[calc(100%-2rem)] rounded-xl object-cover' : 'mt-2 h-36 w-full object-cover' }}" loading="lazy">
     @endif
     <div class="space-y-1 px-4 py-3">
         <p class="text-xs font-medium text-forest-700">{{ $ad['advertiser'] }}</p>
         <h3 class="text-sm font-semibold text-forest-900">{{ $ad['title'] }}</h3>
         <p class="text-sm text-gray-500">{{ $ad['description'] }}</p>
-        <a href="{{ $ad['url'] }}" rel="nofollow sponsored noopener" class="mt-2 inline-flex text-sm font-semibold text-forest-800 hover:text-forest-600">
+        <a href="{{ $ad['url'] }}" rel="nofollow sponsored noopener" class="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-forest-800 hover:text-forest-600">
             {{ $ad['cta'] }}
+            @if($sidebar)
+                <span aria-hidden="true">→</span>
+            @endif
         </a>
     </div>
 </article>

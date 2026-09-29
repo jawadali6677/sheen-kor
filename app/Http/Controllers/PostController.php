@@ -468,7 +468,7 @@ class PostController extends Controller
 
         return match ($post->status) {
             'published' => 'Your post is live!',
-            'rejected' => 'Your post was not published because it did not meet community guidelines.',
+            'rejected' => 'Your post was not published. It did not follow our community rules.',
             default => 'Your post is being checked. It will appear shortly.',
         };
     }

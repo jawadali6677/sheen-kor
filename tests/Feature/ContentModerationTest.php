@@ -100,7 +100,7 @@ class ContentModerationTest extends TestCase
         $this->actingAs($user)
             ->post(route('posts.store'), $this->storyPayload($category, 'This title is long enough to submit'))
             ->assertRedirect(route('posts.index'))
-            ->assertSessionHas('success', 'Your post was not published because it did not meet community guidelines.');
+            ->assertSessionHas('success', 'Your post was not published. It did not follow our community rules.');
 
         $post = Post::query()->firstOrFail();
 

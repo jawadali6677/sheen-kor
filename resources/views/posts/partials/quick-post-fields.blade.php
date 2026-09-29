@@ -147,8 +147,8 @@
         <div class="h-2.5 overflow-hidden rounded-full bg-sand-100">
             <div class="h-full rounded-full bg-lime-400 transition-all" :style="`width: ${progress}%`"></div>
         </div>
-        <p class="text-center text-sm font-semibold text-forest-800" x-show="phase === 'uploading'">Uploading… <span x-text="progress"></span>%</p>
-        <p class="text-center text-sm font-semibold text-forest-800" x-show="phase === 'checking'" data-composer-checking>Checking your post…</p>
+        <p class="text-center text-sm font-semibold text-forest-800" x-show="phase === 'uploading'">Uploading... <span x-text="progress"></span>%</p>
+        <p class="text-center text-sm font-semibold text-forest-800" x-show="phase === 'checking'" data-composer-checking>Checking your post...</p>
     </div>
 
     <p class="mt-4 rounded-2xl bg-forest-50 px-4 py-3 text-center text-sm font-semibold text-forest-800" x-show="phase === 'success'" x-cloak x-text="success" role="status"></p>

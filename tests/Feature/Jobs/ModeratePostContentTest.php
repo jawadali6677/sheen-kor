@@ -243,6 +243,50 @@ class ModeratePostContentTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_author_sees_a_simple_message_when_moderation_rejects_the_post(): void
+    {
+        $post = $this->pendingPost([
+            'status' => 'rejected',
+        ]);
+
+        $this->actingAs($post->user)
+            ->getJson(route('posts.moderation-status', $post))
+            ->assertOk()
+            ->assertJsonPath('status', 'rejected')
+            ->assertJsonPath('message', 'Your post was not published. It did not follow our community rules.')
+            ->assertJsonPath('html', null);
+    }
+
+    public function test_feed_shows_a_checking_card_while_a_new_post_is_still_pending(): void
+    {
+        Queue::fake([ModeratePostContent::class]);
+
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->post(route('posts.store'), [
+                'simple_post' => '1',
+                'content' => 'Hello friends from the green valley today and tomorrow too',
+            ])
+            ->assertRedirect(route('posts.index'))
+            ->assertSessionHas('checking_post_id');
+
+        $post = Post::query()->firstOrFail();
+
+        $this->actingAs($user)
+            ->get(route('posts.index'))
+            ->assertOk()
+            ->assertSee('data-feed-post-status', false)
+            ->assertSee('data-live-feed="1"', false)
+            ->assertSee('Checking your post...', false)
+            ->assertSee('data-status-url="'.route('posts.moderation-status', $post).'"', false);
+
+        $this->actingAs($user)
+            ->get(route('posts.index', ['q' => 'trees']))
+            ->assertOk()
+            ->assertDontSee('data-live-feed="1"', false);
+    }
+
     public function test_author_sees_pending_moderation_status(): void
     {
         $post = $this->pendingPost();

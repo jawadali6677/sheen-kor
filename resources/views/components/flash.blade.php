@@ -1,5 +1,5 @@
 @if(session('success'))
-    <div class="mb-6 rounded-2xl border border-forest-100 bg-forest-50 px-4 py-3 text-sm text-forest-800" role="status">
+    <div class="mb-6 rounded-2xl border border-forest-100 bg-forest-50 px-4 py-3 text-sm text-forest-800" role="status" data-post-status-message>
         {{ session('success') }}
     </div>
 @endif

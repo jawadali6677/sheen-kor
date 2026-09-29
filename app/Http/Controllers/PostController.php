@@ -3,18 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Actions\AwardScore;
-use App\Actions\ModerateContent;
 use App\Actions\RecordQualifiedPostView;
 use App\Actions\RevokeScore;
-use App\Enums\ModerationDecision;
-use App\Enums\Permission;
 use App\Enums\PostBoostStatus;
 use App\Enums\ScoreReason;
+use App\Jobs\ModeratePostContent;
 use App\Models\Category;
 use App\Models\Post;
 use App\Models\PostImage;
 use App\Models\User;
-use App\Notifications\PostNeedsReview;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -29,7 +26,6 @@ class PostController extends Controller
     public function __construct(
         private AwardScore $awardScore,
         private RevokeScore $revokeScore,
-        private ModerateContent $moderateContent,
     ) {}
 
     /**
@@ -134,7 +130,7 @@ class PostController extends Controller
             );
         }
 
-        $this->applyContentModeration($post);
+        $this->queueContentModeration($post);
 
         return $this->postSavedResponse($request, $post, created: true);
     }
@@ -363,7 +359,7 @@ class PostController extends Controller
             );
         }
 
-        $this->applyContentModeration($post);
+        $this->queueContentModeration($post);
 
         return $this->postSavedResponse($request, $post, created: false);
     }
@@ -449,100 +445,21 @@ class PostController extends Controller
         }
     }
 
-    private function applyContentModeration(Post $post): void
+    public function moderationStatus(Request $request, Post $post): JsonResponse
     {
-        try {
-            $post->refresh()->load('images');
+        abort_unless($request->user()?->id === $post->user_id, 403);
 
-            $text = trim(implode("\n\n", array_filter([
-                $post->title,
-                $post->excerpt,
-                $post->content,
-            ], fn (?string $value): bool => filled($value))));
-
-            $imagePaths = [];
-            $videoPaths = [];
-
-            if (filled($post->featured_image)) {
-                $imagePaths[] = Storage::disk('public')->path($post->featured_image);
-            }
-
-            foreach ($post->images as $media) {
-                $path = Storage::disk('public')->path($media->image);
-
-                if ($media->isVideo()) {
-                    $videoPaths[] = $path;
-
-                    continue;
-                }
-
-                $imagePaths[] = $path;
-            }
-
-            $decision = $this->moderateContent->handle($text, $imagePaths, $videoPaths);
-
-            if ($decision === ModerationDecision::Allow) {
-                $post->update([
-                    'status' => 'published',
-                    'published_at' => now(),
-                ]);
-
-                return;
-            }
-
-            if ($decision === ModerationDecision::Reject) {
-                $post->update([
-                    'status' => 'rejected',
-                    'published_at' => null,
-                ]);
-
-                return;
-            }
-
-            $post->update([
-                'status' => 'pending',
-                'published_at' => null,
-            ]);
-
-            $this->notifyReviewersIfPending($post);
-        } catch (Throwable $exception) {
-            report($exception);
-
-            $post->update([
-                'status' => 'pending',
-                'published_at' => null,
-            ]);
-
-            $this->notifyReviewersIfPending($post);
-        }
+        return response()->json($this->moderationStatusPayload($post));
     }
 
-    private function notifyReviewersIfPending(Post $post): void
+    private function queueContentModeration(Post $post): void
     {
-        $post->refresh()->loadMissing('user');
+        $post->refresh()->load('images');
 
-        if ($post->status !== 'pending') {
-            return;
-        }
-
-        $reviewers = User::query()->withPermission(Permission::ModeratePosts)->get();
-
-        foreach ($reviewers as $reviewer) {
-            $alreadyNotified = $reviewer->unreadNotifications()
-                ->where('type', PostNeedsReview::class)
-                ->where('data->post_id', $post->id)
-                ->exists();
-
-            if ($alreadyNotified) {
-                continue;
-            }
-
-            try {
-                $reviewer->notifyInbox(new PostNeedsReview($post));
-            } catch (Throwable $exception) {
-                report($exception);
-            }
-        }
+        ModeratePostContent::dispatch(
+            $post->id,
+            ModeratePostContent::contentVersion($post),
+        )->afterCommit();
     }
 
     private function moderationFlashMessage(Post $post): string
@@ -551,9 +468,27 @@ class PostController extends Controller
 
         return match ($post->status) {
             'published' => 'Your post is live!',
-            'rejected' => 'Your post was not published because it did not meet community guidelines.',
-            default => 'Your post is being checked.',
+            'rejected' => 'Your post was not published. It did not follow our community rules.',
+            default => 'Your post is being checked. It will appear shortly.',
         };
+    }
+
+    /**
+     * @return array{message: string, status: string, html: ?string}
+     */
+    private function moderationStatusPayload(Post $post): array
+    {
+        $message = $this->moderationFlashMessage($post);
+
+        return [
+            'message' => $message,
+            'status' => $post->status,
+            'html' => $post->status === 'published'
+                ? view('components.post-card', [
+                    'post' => $this->prepareFeedPost($post),
+                ])->render()
+                : null,
+        ];
     }
 
     /**
@@ -882,30 +817,27 @@ class PostController extends Controller
 
     private function postSavedResponse(Request $request, Post $post, bool $created): RedirectResponse|JsonResponse
     {
-        $message = $this->moderationFlashMessage($post);
+        $payload = $this->moderationStatusPayload($post);
+
+        if ($post->status === 'pending') {
+            $request->session()->flash('checking_post_id', $post->id);
+        }
 
         if ($request->expectsJson()) {
-            $request->session()->flash('success', $message);
-
-            $html = null;
-
-            if ($post->status === 'published') {
-                $html = view('components.post-card', [
-                    'post' => $this->prepareFeedPost($post),
-                ])->render();
-            }
+            $request->session()->flash('success', $payload['message']);
 
             return response()->json([
-                'message' => $message,
-                'status' => $post->status,
-                'html' => $html,
+                ...$payload,
+                'status_url' => $post->status === 'pending'
+                    ? route('posts.moderation-status', $post)
+                    : null,
                 'redirect' => route('posts.index'),
             ]);
         }
 
         return redirect()
             ->route('posts.index')
-            ->with('success', $message);
+            ->with('success', $payload['message']);
     }
 
     private function postFailureResponse(Request $request, string $message): RedirectResponse|JsonResponse

@@ -31,6 +31,140 @@ export function registerSheenUi(Alpine) {
 
     window.skConfirm = (options) => Alpine.store('confirm').ask(options);
 
+    Alpine.store('feedPosting', {
+        visible: false,
+        phase: 'idle',
+        progress: 0,
+        message: '',
+        timer: null,
+        startedAt: 0,
+        statusUrl: null,
+        checkingMessage: 'Checking your post...',
+        reviewMessage: "Your post is waiting for review. We'll notify you.",
+        reviewAfterMs: 75000,
+        stopAfterMs: 90000,
+        beginUpload() {
+            this.clearTimer();
+            this.visible = true;
+            this.phase = 'uploading';
+            this.progress = 0;
+            this.message = 'Uploading...';
+            this.statusUrl = null;
+            this.dismissSavedFlash();
+            this.scrollIntoView();
+        },
+        setProgress(percent) {
+            if (this.statusUrl || this.phase === 'review' || this.phase === 'rejected') {
+                return;
+            }
+
+            const value = Math.max(0, Math.min(100, Math.round(percent)));
+
+            this.visible = true;
+            this.progress = value;
+            this.phase = value >= 100 ? 'checking' : 'uploading';
+            this.message = value >= 100 ? this.checkingMessage : `Uploading... ${value}%`;
+        },
+        hide() {
+            this.clearTimer();
+            this.visible = false;
+            this.phase = 'idle';
+            this.progress = 0;
+            this.statusUrl = null;
+        },
+        showMessage(message, phase) {
+            this.clearTimer();
+            this.visible = true;
+            this.phase = phase;
+            this.message = message;
+            this.statusUrl = null;
+            this.dismissSavedFlash();
+            this.scrollIntoView();
+        },
+        watch(url) {
+            this.clearTimer();
+            this.visible = true;
+            this.phase = 'checking';
+            this.message = this.checkingMessage;
+            this.statusUrl = url;
+            this.startedAt = Date.now();
+            this.dismissSavedFlash();
+            this.scrollIntoView();
+            this.timer = window.setTimeout(() => this.poll(), 0);
+        },
+        clearTimer() {
+            if (this.timer) {
+                window.clearTimeout(this.timer);
+                this.timer = null;
+            }
+        },
+        dismissSavedFlash() {
+            document.querySelector('[data-post-status-message]')?.remove();
+        },
+        scrollIntoView() {
+            window.requestAnimationFrame(() => {
+                document.getElementById('feed-post-status')?.scrollIntoView({ block: 'nearest' });
+            });
+        },
+        async poll() {
+            const url = this.statusUrl;
+
+            if (! url) {
+                return;
+            }
+
+            try {
+                const response = await fetch(url, {
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+
+                    if (data.status === 'published') {
+                        if (data.html) {
+                            prependFeedPost(data.html);
+                        }
+
+                        this.hide();
+
+                        return;
+                    }
+
+                    if (data.status === 'rejected') {
+                        this.showMessage(data.message || 'Your post was not published.', 'rejected');
+
+                        return;
+                    }
+                }
+            } catch (error) {
+                // Keep waiting until the check finishes or the wait is over.
+            }
+
+            if (this.statusUrl !== url) {
+                return;
+            }
+
+            const elapsed = Date.now() - this.startedAt;
+
+            if (elapsed >= this.stopAfterMs) {
+                this.showMessage(this.reviewMessage, 'review');
+
+                return;
+            }
+
+            if (elapsed >= this.reviewAfterMs) {
+                this.phase = 'review';
+                this.message = this.reviewMessage;
+            }
+
+            this.timer = window.setTimeout(() => this.poll(), 2000);
+        },
+    });
+
     window.skBackToStories = (event) => {
         if (window.history.length <= 1 || ! document.referrer) {
             return;
@@ -708,6 +842,39 @@ export function registerSheenUi(Alpine) {
     Alpine.data('adminPostsQueue', () => adminModerationQueue('admin-posts'));
     Alpine.data('adminMarketQueue', () => adminModerationQueue('admin-market'));
 
+    function prependFeedPost(html) {
+        const feed = document.getElementById('feed-items');
+
+        if (! feed || ! html) {
+            return false;
+        }
+
+        const wrap = document.createElement('div');
+        wrap.innerHTML = html.trim();
+        const incoming = wrap.querySelector('[data-post-id]');
+
+        if (incoming && feed.querySelector(`[data-post-id="${incoming.getAttribute('data-post-id')}"]`)) {
+            return true;
+        }
+
+        const nodes = Array.from(wrap.childNodes);
+        const anchor = feed.firstChild;
+
+        nodes.forEach((node) => {
+            feed.insertBefore(node, anchor);
+        });
+
+        nodes.forEach((node) => {
+            if (node.nodeType === 1 && window.Alpine) {
+                window.Alpine.initTree(node);
+            }
+        });
+
+        feed.querySelector('[data-empty-state]')?.remove();
+
+        return true;
+    }
+
     Alpine.data('quickPostComposer', (config = {}) => ({
         embedded: Boolean(config.embedded),
         open: Boolean(config.open || config.embedded),
@@ -753,8 +920,13 @@ export function registerSheenUi(Alpine) {
             }
 
             this.open = false;
-            this.phase = 'idle';
-            this.submitting = false;
+
+            if (! this.submitting) {
+                this.phase = 'idle';
+            }
+        },
+        usesLiveFeed() {
+            return document.getElementById('feed-items')?.hasAttribute('data-live-feed') === true;
         },
         grow(event) {
             this.resizeBody(event.target);
@@ -907,7 +1079,6 @@ export function registerSheenUi(Alpine) {
 
             if (! window.XMLHttpRequest || ! window.FormData) {
                 this.submitting = true;
-                this.phase = 'checking';
 
                 return;
             }
@@ -916,10 +1087,20 @@ export function registerSheenUi(Alpine) {
             this.upload(event.target);
         },
         upload(form) {
+            const liveFeed = this.usesLiveFeed() && ! this.embedded;
+
             this.submitting = true;
-            this.phase = 'uploading';
-            this.progress = 0;
             this.errors = [];
+            this.success = '';
+
+            if (liveFeed) {
+                this.open = false;
+                this.phase = 'idle';
+                Alpine.store('feedPosting').beginUpload();
+            } else {
+                this.phase = 'uploading';
+                this.progress = 0;
+            }
 
             const xhr = new XMLHttpRequest();
             xhr.open('POST', form.action);
@@ -930,23 +1111,27 @@ export function registerSheenUi(Alpine) {
                     return;
                 }
 
-                this.progress = Math.min(100, Math.round((progressEvent.loaded / progressEvent.total) * 100));
-
-                if (this.progress >= 100) {
-                    this.phase = 'checking';
-                }
+                this.reportProgress(Math.min(100, Math.round((progressEvent.loaded / progressEvent.total) * 100)), liveFeed);
             });
             xhr.upload.addEventListener('load', () => {
-                this.progress = 100;
-                this.phase = 'checking';
+                this.reportProgress(100, liveFeed);
             });
             xhr.addEventListener('load', () => this.handleUploadResponse(xhr));
             xhr.addEventListener('error', () => {
-                this.submitting = false;
-                this.phase = 'idle';
-                this.errors = ['Something went wrong. Please try again.'];
+                this.showUploadError(['Something went wrong. Please try again.']);
             });
             xhr.send(new FormData(form));
+        },
+        reportProgress(percent, liveFeed) {
+            this.progress = percent;
+
+            if (liveFeed) {
+                Alpine.store('feedPosting').setProgress(percent);
+
+                return;
+            }
+
+            this.phase = percent >= 100 ? 'checking' : 'uploading';
         },
         handleUploadResponse(xhr) {
             let data = {};
@@ -964,23 +1149,29 @@ export function registerSheenUi(Alpine) {
             }
 
             if (xhr.status === 422) {
-                this.submitting = false;
-                this.phase = 'idle';
                 const messages = Object.values(data.errors || {}).flat().map((message) => this.friendly(message));
-                this.errors = messages.length ? messages : [this.friendly(data.message || 'Please check your post and try again.')];
+                this.showUploadError(messages.length ? messages : [this.friendly(data.message || 'Please check your post and try again.')]);
 
                 return;
             }
 
             if (xhr.status < 200 || xhr.status >= 300) {
-                this.submitting = false;
-                this.phase = 'idle';
-                this.errors = [this.friendly(data.message || 'Something went wrong. Please try again.')];
+                this.showUploadError([this.friendly(data.message || 'Something went wrong. Please try again.')]);
 
                 return;
             }
 
             this.finishSuccess(data);
+        },
+        showUploadError(messages) {
+            this.submitting = false;
+            this.phase = 'idle';
+            this.errors = messages;
+            this.open = true;
+
+            if (this.usesLiveFeed() && ! this.embedded) {
+                Alpine.store('feedPosting').hide();
+            }
         },
         friendly(message) {
             const text = String(message || '');
@@ -1004,23 +1195,49 @@ export function registerSheenUi(Alpine) {
             return text;
         },
         finishSuccess(data) {
+            const liveFeed = this.usesLiveFeed() && ! this.embedded;
+
             this.submitting = false;
-            this.success = data.message || 'Your post is live!';
-            this.phase = 'success';
-            this.clearItems();
-            this.text = '';
+            this.phase = 'idle';
 
-            const inserted = data.html ? this.prependPost(data.html) : false;
-
-            if (inserted) {
-                window.setTimeout(() => this.close(), 1400);
+            if (! liveFeed) {
+                window.location = data.redirect || window.location.href;
 
                 return;
             }
 
-            if (this.embedded || ! document.getElementById('feed-items')) {
-                window.location = data.redirect || window.location.href;
+            this.open = false;
+            this.clearDraft();
+
+            if (data.status === 'published' && data.html && this.prependPost(data.html)) {
+                Alpine.store('feedPosting').hide();
+
+                return;
             }
+
+            if (data.status === 'rejected') {
+                Alpine.store('feedPosting').showMessage(
+                    data.message || 'Your post was not published.',
+                    'rejected',
+                );
+
+                return;
+            }
+
+            if (data.status === 'pending' && data.status_url) {
+                Alpine.store('feedPosting').watch(data.status_url);
+
+                return;
+            }
+
+            window.location = data.redirect || window.location.href;
+        },
+        clearDraft() {
+            this.clearItems();
+            this.text = '';
+            this.errors = [];
+            this.success = '';
+            this.$nextTick(() => this.resizeBody());
         },
         clearItems() {
             this.items.forEach((item) => {
@@ -1031,31 +1248,7 @@ export function registerSheenUi(Alpine) {
             this.items = [];
         },
         prependPost(html) {
-            const feed = document.getElementById('feed-items');
-
-            if (! feed || ! html) {
-                return false;
-            }
-
-            const wrap = document.createElement('div');
-            wrap.innerHTML = html.trim();
-            const nodes = [];
-
-            while (wrap.firstChild) {
-                const node = wrap.firstChild;
-                feed.insertBefore(node, feed.firstChild);
-                nodes.push(node);
-            }
-
-            nodes.forEach((node) => {
-                if (node.nodeType === 1 && window.Alpine) {
-                    window.Alpine.initTree(node);
-                }
-            });
-
-            feed.querySelector('[data-empty-state]')?.remove();
-
-            return true;
+            return prependFeedPost(html);
         },
     }));
 

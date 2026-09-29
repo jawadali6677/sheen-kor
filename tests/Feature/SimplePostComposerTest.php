@@ -24,7 +24,7 @@ class SimplePostComposerTest extends TestCase
                 'content' => 'Hello friends from the green valley today and tomorrow too',
             ])
             ->assertRedirect(route('posts.index'))
-            ->assertSessionHas('success', 'Your post is being checked.');
+            ->assertSessionHas('success', 'Your post is being checked. It will appear shortly.');
 
         $post = Post::query()->firstOrFail();
 

@@ -100,7 +100,7 @@ class ContentModerationTest extends TestCase
         $this->actingAs($user)
             ->post(route('posts.store'), $this->storyPayload($category, 'This title is long enough to submit'))
             ->assertRedirect(route('posts.index'))
-            ->assertSessionHas('success', 'Your post was not published because it did not meet community guidelines.');
+            ->assertSessionHas('success', 'Your post was not published. It did not follow our community rules.');
 
         $post = Post::query()->firstOrFail();
 
@@ -138,7 +138,7 @@ class ContentModerationTest extends TestCase
         $this->actingAs($user)
             ->post(route('posts.store'), $this->storyPayload($category, 'A walk along the river bank today'))
             ->assertRedirect(route('posts.index'))
-            ->assertSessionHas('success', 'Your post is being checked.');
+            ->assertSessionHas('success', 'Your post is being checked. It will appear shortly.');
 
         $post = Post::query()->firstOrFail();
 

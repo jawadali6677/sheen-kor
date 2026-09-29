@@ -40,6 +40,38 @@
             @endauth
         @endif
 
+        <div
+            id="feed-post-status"
+            class="sk-card p-4"
+            x-data
+            x-cloak
+            x-show="$store.feedPosting.visible"
+            :hidden="! $store.feedPosting.visible"
+            :role="$store.feedPosting.phase === 'rejected' ? 'alert' : 'status'"
+            aria-live="polite"
+            data-feed-post-status
+            data-status-url="{{ session('checking_post_id') ? route('posts.moderation-status', session('checking_post_id')) : '' }}"
+            x-init="if ($el.dataset.statusUrl) $store.feedPosting.watch($el.dataset.statusUrl)"
+        >
+            <p
+                class="text-base font-semibold text-forest-900"
+                :class="$store.feedPosting.phase === 'rejected' ? 'text-red-700' : 'text-forest-900'"
+                data-feed-post-status-message
+            >
+                <span x-text="$store.feedPosting.message">@if(session('checking_post_id'))Checking your post...@endif</span>
+            </p>
+            <div
+                class="mt-3 h-2.5 overflow-hidden rounded-full bg-sand-100"
+                x-show="$store.feedPosting.phase === 'uploading' || $store.feedPosting.phase === 'checking'"
+            >
+                <div
+                    class="h-full rounded-full bg-lime-400 transition-all duration-150"
+                    :class="$store.feedPosting.phase === 'checking' ? 'animate-pulse' : ''"
+                    :style="$store.feedPosting.phase === 'uploading' ? `width: ${Math.max($store.feedPosting.progress, 8)}%` : 'width: 100%'"
+                ></div>
+            </div>
+        </div>
+
         <form method="GET" action="{{ $author ? route('authors.show', $author) : route('posts.index') }}" class="sk-card grid gap-3 p-4 sm:grid-cols-[1fr_auto_auto] sm:items-end">
             <div>
                 <label for="story-search" class="text-xs font-semibold uppercase tracking-wide text-gray-400">Search stories</label>
@@ -65,7 +97,14 @@
                 finishedText: 'No more posts',
             })"
         >
-            <div x-ref="items" id="feed-items" class="space-y-4">
+            <div
+                x-ref="items"
+                id="feed-items"
+                class="space-y-4"
+                @if(! $author && ! $category && $search === null && $posts->currentPage() === 1)
+                    data-live-feed="1"
+                @endif
+            >
                 @include('posts.partials.feed-items')
             </div>
             <div x-ref="sentinel" class="h-8"></div>

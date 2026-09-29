@@ -55,6 +55,12 @@ class HomeFeedPresentationTest extends TestCase
         $response->assertSee(route('market.mine'), false);
         $response->assertSee(route('explore.index'), false);
         $response->assertSee('Search posts, people, places...', false);
+        $response->assertSee('data-home-sidebar', false);
+        $response->assertSee('bg-emerald-100', false);
+        $response->assertSee('lg:bg-emerald-50', false);
+        $response->assertSee('lg:text-purple-600', false);
+        $response->assertSee('lg:bg-forest-800', false);
+        $response->assertSee('from-emerald-50 via-white to-lime-50', false);
         $response->assertSee('Community Impact');
         $response->assertSee('Alerts fixed');
         $response->assertSee('Active members');
@@ -83,6 +89,7 @@ class HomeFeedPresentationTest extends TestCase
         $response->assertOk();
         $response->assertSee('Top scores');
         $response->assertDontSee('Your activity');
+        $response->assertDontSee('data-home-sidebar', false);
         $response->assertDontSee('Community Impact');
         $response->assertDontSee('Top contributors');
         $response->assertDontSee('Search posts, people, places...', false);
@@ -104,6 +111,7 @@ class HomeFeedPresentationTest extends TestCase
         $response->assertSee('id="category-filter"', false);
         $response->assertDontSee('Good morning');
         $response->assertDontSee('Your activity');
+        $response->assertDontSee('data-home-sidebar', false);
         $response->assertDontSee('Community Impact');
     }
 }

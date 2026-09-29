@@ -13,12 +13,22 @@
                     };
                     $feedFirstName = \Illuminate\Support\Str::before(auth()->user()->name, ' ');
                 @endphp
-                <section class="sk-card p-4 lg:p-5" data-feed-composer-bar x-data>
-                    <div class="mb-4 hidden items-center justify-between gap-4 lg:flex">
+                <section class="sk-card relative p-4 lg:bg-gradient-to-br lg:from-white lg:via-white lg:to-forest-50 lg:p-5" data-feed-composer-bar x-data>
+                    <div class="pointer-events-none absolute right-3 top-3 hidden text-forest-200 xl:block" aria-hidden="true">
+                        <svg class="h-16 w-24" viewBox="0 0 96 64" fill="currentColor">
+                            <path d="M8 52c10-16 18-16 28 0 8-18 18-22 30-8 6 8 14 10 22 6v14H8V52Z" opacity=".9"/>
+                            <circle cx="28" cy="28" r="10"/>
+                            <circle cx="58" cy="22" r="12" opacity=".75"/>
+                        </svg>
+                    </div>
+                    <div class="relative mb-4 hidden items-center justify-between gap-4 lg:flex">
                         <div class="flex min-w-0 items-center gap-3">
                             <x-user-avatar :user="auth()->user()" size="sm" class="lg:h-11 lg:w-11" />
                             <div class="min-w-0">
-                                <p class="truncate text-base font-semibold text-forest-900">{{ $feedGreeting }}, {{ $feedFirstName }}</p>
+                                <p class="truncate text-base font-semibold text-forest-900">
+                                    {{ $feedGreeting }}, {{ $feedFirstName }}
+                                    <svg class="ms-1 inline h-4 w-4 text-forest-600" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M16 3c.6 4.2 2.4 7.4 6.4 10.2-3.1.6-5.3 2.1-6.4 5.3-1.1-3.2-3.3-4.7-6.4-5.3C13.6 10.4 15.4 7.2 16 3Z"/><path d="M16 13.8c4.6 1.8 7.7 5 8.8 10.2-3.7-1.2-6.4-.6-8.8 2.4-2.4-3-5.1-3.6-8.8-2.4 1.1-5.2 4.2-8.4 8.8-10.2Z" opacity=".85"/></svg>
+                                </p>
                                 <p class="text-sm text-gray-500">Share something green and inspire your community.</p>
                             </div>
                         </div>
@@ -38,24 +48,24 @@
                         @click.prevent="$dispatch('open-post-composer', { intent: 'text' })"
                     >What's on your mind?</a>
                     <div class="mt-3 grid grid-cols-3 gap-2 lg:flex lg:flex-wrap">
-                        <a href="{{ route('posts.create') }}" class="flex min-h-[4.5rem] flex-col items-center justify-center gap-1 rounded-2xl bg-sand-50 px-2 py-3 text-sm font-semibold text-forest-800 transition duration-150 hover:bg-forest-50 lg:min-h-0 lg:flex-row lg:gap-2 lg:rounded-full lg:px-3 lg:py-2" @click.prevent="$dispatch('open-post-composer', { intent: 'photo' })">
-                            <svg class="h-7 w-7 text-forest-700 lg:h-4 lg:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m4 16 4.6-4.6a2 2 0 0 1 2.8 0L16 16m-2-2 1.6-1.6a2 2 0 0 1 2.8 0L20 14M8 8h.01M6 20h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2Z"/></svg>
+                        <a href="{{ route('posts.create') }}" class="flex min-h-[4.5rem] flex-col items-center justify-center gap-1 rounded-2xl bg-sand-50 px-2 py-3 text-sm font-semibold text-forest-800 transition duration-150 hover:bg-forest-50 lg:min-h-0 lg:flex-row lg:gap-2 lg:rounded-full lg:border lg:border-emerald-100 lg:bg-emerald-50 lg:px-3 lg:py-2 lg:text-emerald-900 lg:hover:bg-emerald-100" @click.prevent="$dispatch('open-post-composer', { intent: 'photo' })">
+                            <svg class="h-7 w-7 text-forest-700 lg:h-4 lg:w-4 lg:text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m4 16 4.6-4.6a2 2 0 0 1 2.8 0L16 16m-2-2 1.6-1.6a2 2 0 0 1 2.8 0L20 14M8 8h.01M6 20h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2Z"/></svg>
                             Photo
                         </a>
-                        <a href="{{ route('posts.create') }}" class="flex min-h-[4.5rem] flex-col items-center justify-center gap-1 rounded-2xl bg-sand-50 px-2 py-3 text-sm font-semibold text-forest-800 transition duration-150 hover:bg-forest-50 lg:min-h-0 lg:flex-row lg:gap-2 lg:rounded-full lg:px-3 lg:py-2" @click.prevent="$dispatch('open-post-composer', { intent: 'video' })">
-                            <svg class="h-7 w-7 text-forest-700 lg:h-4 lg:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m15 10 4.6-2.3A1 1 0 0 1 21 8.6v6.8a1 1 0 0 1-1.4.9L15 14M4 8h8a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2Z"/></svg>
+                        <a href="{{ route('posts.create') }}" class="flex min-h-[4.5rem] flex-col items-center justify-center gap-1 rounded-2xl bg-sand-50 px-2 py-3 text-sm font-semibold text-forest-800 transition duration-150 hover:bg-forest-50 lg:min-h-0 lg:flex-row lg:gap-2 lg:rounded-full lg:border lg:border-purple-100 lg:bg-purple-50 lg:px-3 lg:py-2 lg:text-purple-900 lg:hover:bg-purple-100" @click.prevent="$dispatch('open-post-composer', { intent: 'video' })">
+                            <svg class="h-7 w-7 text-forest-700 lg:h-4 lg:w-4 lg:text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m15 10 4.6-2.3A1 1 0 0 1 21 8.6v6.8a1 1 0 0 1-1.4.9L15 14M4 8h8a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2Z"/></svg>
                             Video
                         </a>
-                        <a href="{{ route('posts.create') }}" class="flex min-h-[4.5rem] flex-col items-center justify-center gap-1 rounded-2xl bg-sand-50 px-2 py-3 text-sm font-semibold text-forest-800 transition duration-150 hover:bg-forest-50 lg:min-h-0 lg:flex-row lg:gap-2 lg:rounded-full lg:px-3 lg:py-2" @click.prevent="$dispatch('open-post-composer', { intent: 'camera' })">
-                            <svg class="h-7 w-7 text-forest-700 lg:h-4 lg:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8h2.5l1.2-2h8.6l1.2 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg>
+                        <a href="{{ route('posts.create') }}" class="flex min-h-[4.5rem] flex-col items-center justify-center gap-1 rounded-2xl bg-sand-50 px-2 py-3 text-sm font-semibold text-forest-800 transition duration-150 hover:bg-forest-50 lg:min-h-0 lg:flex-row lg:gap-2 lg:rounded-full lg:border lg:border-sky-100 lg:bg-sky-50 lg:px-3 lg:py-2 lg:text-sky-900 lg:hover:bg-sky-100" @click.prevent="$dispatch('open-post-composer', { intent: 'camera' })">
+                            <svg class="h-7 w-7 text-forest-700 lg:h-4 lg:w-4 lg:text-sky-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8h2.5l1.2-2h8.6l1.2 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg>
                             Camera
                         </a>
-                        <a href="{{ route('posts.create') }}" class="hidden items-center gap-2 rounded-full bg-sand-50 px-3 py-2 text-sm font-semibold text-forest-800 transition duration-150 hover:bg-forest-50 lg:inline-flex" @click.prevent="$dispatch('open-post-composer', { intent: 'text' })">
-                            <svg class="h-4 w-4 text-forest-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h8M8 12h8M8 17h5"/></svg>
+                        <a href="{{ route('posts.create') }}" class="hidden items-center gap-2 rounded-full border border-amber-100 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900 transition duration-150 hover:bg-amber-100 lg:inline-flex" @click.prevent="$dispatch('open-post-composer', { intent: 'text' })">
+                            <svg class="h-4 w-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h8M8 12h8M8 17h5"/></svg>
                             Text
                         </a>
-                        <a href="{{ route('alerts.create') }}" class="hidden items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 transition duration-150 hover:bg-red-100 lg:inline-flex">
-                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.3 4.2 2.6 18a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z"/></svg>
+                        <a href="{{ route('alerts.create') }}" class="hidden items-center gap-2 rounded-full border border-red-100 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 transition duration-150 hover:bg-red-100 lg:inline-flex">
+                            <svg class="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.3 4.2 2.6 18a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z"/></svg>
                             Create Alert
                         </a>
                     </div>
@@ -111,9 +121,9 @@
         <form method="GET" action="{{ $feedHomeUrl }}" class="sk-card p-4 lg:flex lg:flex-wrap lg:items-center lg:justify-between lg:gap-3 lg:p-3">
             @unless($author)
                 <div class="hidden items-center gap-1 lg:flex">
-                    <a href="{{ $allStoriesUrl }}" class="rounded-full px-3 py-1.5 text-sm font-semibold transition duration-150 {{ $category ? 'text-gray-600 hover:bg-sand-50' : 'bg-forest-800 text-white' }}">All</a>
-                    <a href="{{ route('alerts.index') }}" class="rounded-full px-3 py-1.5 text-sm font-semibold text-gray-600 transition duration-150 hover:bg-sand-50">Alerts</a>
-                    <a href="{{ route('market.index') }}" class="rounded-full px-3 py-1.5 text-sm font-semibold text-gray-600 transition duration-150 hover:bg-sand-50">Market</a>
+                    <a href="{{ $allStoriesUrl }}" class="rounded-full px-3 py-1.5 text-sm font-semibold transition duration-150 {{ $category ? 'text-gray-600 hover:bg-forest-50 hover:text-forest-800' : 'bg-forest-800 text-white shadow-sm' }}">All</a>
+                    <a href="{{ route('alerts.index') }}" class="rounded-full px-3 py-1.5 text-sm font-semibold text-gray-600 transition duration-150 hover:bg-forest-50 hover:text-forest-800">Alerts</a>
+                    <a href="{{ route('market.index') }}" class="rounded-full px-3 py-1.5 text-sm font-semibold text-gray-600 transition duration-150 hover:bg-forest-50 hover:text-forest-800">Market</a>
                 </div>
             @endunless
             <div class="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end lg:flex lg:items-center lg:gap-2">
@@ -132,7 +142,7 @@
                         </select>
                     </div>
                 @endif
-                <button type="submit" class="btn-secondary lg:shrink-0">Search</button>
+                <button type="submit" class="btn-secondary lg:shrink-0 lg:border-forest-800 lg:bg-forest-800 lg:text-white lg:hover:border-forest-700 lg:hover:bg-forest-700">Search</button>
             </div>
         </form>
 

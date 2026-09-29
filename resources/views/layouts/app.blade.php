@@ -34,7 +34,7 @@
         @stack('styles')
         <style>[x-cloak]{display:none !important;}</style>
     </head>
-    <body class="bg-sand-50 font-sans text-gray-800 antialiased">
+        <body class="bg-sand-50 font-sans text-gray-800 antialiased {{ request()->routeIs('posts.index') ? 'lg:bg-[#f3f6f4]' : '' }}">
         <div class="{{ $fullBleed ? 'min-h-screen' : 'min-h-screen pb-20 lg:pb-0' }}">
             @include('layouts.navigation')
 

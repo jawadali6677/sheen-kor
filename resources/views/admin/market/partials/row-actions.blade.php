@@ -8,7 +8,7 @@
         </form>
         <form method="POST" action="{{ route('admin.market.reject', $listing) }}" data-admin-market-action data-confirm="Reject this listing?" data-confirm-message="The owner will be told it did not meet community guidelines." data-confirm-action="Reject">
             @csrf
-            <button type="submit" class="rounded-md bg-gray-800 px-2 py-1 text-xs font-medium text-white">Reject</button>
+            <button type="submit" class="btn-primary px-2 py-1 text-xs">Reject</button>
         </form>
     @elseif($listing->status->value === 'published')
         <form method="POST" action="{{ route('admin.market.pending', $listing) }}" data-admin-market-action>

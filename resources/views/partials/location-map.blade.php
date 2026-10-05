@@ -20,7 +20,7 @@
             <input
                 type="search"
                 id="{{ $mapId }}-search"
-                class="block w-full border-gray-300 rounded-md shadow-sm"
+                class="sk-input"
                 placeholder="Search a place, then click the map"
                 autocomplete="off"
             >
@@ -53,7 +53,7 @@
             name="{{ $nameField }}"
             id="{{ $nameField }}"
             value="{{ $nameValue }}"
-            class="mt-3 block w-full border-gray-300 rounded-md shadow-sm"
+            class="sk-input"
             placeholder="Place name (filled from the map, you can edit it)"
             @if($requiredName) required @endif
         >

@@ -5,7 +5,7 @@
     data-counts='@json($counts)'
 ></div>
 
-<div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
+<div class="sk-card overflow-hidden">
     <div class="hidden overflow-x-auto md:block">
         <table class="min-w-full text-sm">
             <thead class="bg-gray-50 text-left">

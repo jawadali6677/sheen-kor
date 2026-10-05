@@ -1,23 +1,23 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="text-xl font-semibold leading-tight text-gray-800">Order #{{ $order->id }}</h2>
+        <h2 class="text-xl font-semibold leading-tight text-forest-900">Order #{{ $order->id }}</h2>
     </x-slot>
 
     <div class="py-8">
         <div class="mx-auto max-w-3xl space-y-6 sm:px-6 lg:px-8">
             @if(session('success'))
-                <div class="rounded bg-green-100 p-4 text-green-700">{{ session('success') }}</div>
+                <div class="rounded-2xl bg-emerald-50 p-4 text-forest-800">{{ session('success') }}</div>
             @endif
             @if(session('error'))
                 <div class="rounded bg-red-100 p-4 text-red-700">{{ session('error') }}</div>
             @endif
 
-            <p><a href="{{ route('admin.monetization.orders.index') }}" class="text-sm text-blue-700">Back to orders</a></p>
+            <p><a href="{{ route('admin.monetization.orders.index') }}" class="text-sm text-forest-700">Back to orders</a></p>
 
-            <section class="rounded-lg bg-white p-6 shadow-sm">
+            <section class="sk-card p-6">
                 <h3 class="text-lg font-semibold text-gray-800">
                     @if($order->user)
-                        <a href="{{ route('users.show', $order->user) }}" class="text-blue-700 hover:underline">{{ $order->user->name }}</a>
+                        <a href="{{ route('users.show', $order->user) }}" class="text-forest-700 hover:underline">{{ $order->user->name }}</a>
                     @else
                         Unknown member
                     @endif
@@ -58,10 +58,10 @@
             </section>
 
             @if($order->status->value === 'pending')
-                <section class="flex flex-wrap gap-3 rounded-lg bg-white p-6 shadow-sm">
+                <section class="sk-card flex flex-wrap gap-3 p-6">
                     <form method="POST" action="{{ route('admin.monetization.orders.mark-paid', $order) }}">
                         @csrf
-                        <button type="submit" class="rounded bg-gray-800 px-4 py-2 text-sm text-white">Mark paid</button>
+                        <button type="submit" class="btn-primary">Mark paid</button>
                     </form>
                     <form method="POST" action="{{ route('admin.monetization.orders.cancel', $order) }}">
                         @csrf

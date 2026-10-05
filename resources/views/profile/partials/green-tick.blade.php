@@ -28,7 +28,7 @@
                     @if($greenTickVerification->order->shouldChargeWithStripe())
                         <form method="POST" action="{{ route('orders.pay', $greenTickVerification->order) }}">
                             @csrf
-                            <button type="submit" class="rounded bg-gray-800 px-4 py-2 text-sm text-white">Continue payment</button>
+                            <button type="submit" class="btn-primary">Continue payment</button>
                         </form>
                         <a href="{{ route('orders.show', $greenTickVerification->order) }}" class="text-sm font-medium text-gray-800 underline">View order</a>
                     @else
@@ -64,14 +64,14 @@
                 @csrf
                 <div>
                     <x-input-label for="package_id" value="Package" />
-                    <select id="package_id" name="package_id" class="mt-1 block w-full rounded-md border-gray-300" required>
+                    <select id="package_id" name="package_id" class="sk-input" required>
                         @foreach($greenTickPackages as $package)
                             <option value="{{ $package->id }}">{{ $package->name }} · {{ $package->price }} {{ $package->currency }} · {{ $package->duration_days }} days</option>
                         @endforeach
                     </select>
                     <x-input-error class="mt-2" :messages="$errors->get('package_id')" />
                 </div>
-                <button type="submit" class="rounded bg-gray-800 px-4 py-2 text-sm text-white">Get Green Tick</button>
+                <button type="submit" class="btn-primary">Get Green Tick</button>
             </form>
         @endif
     @elseif($greenTickEligibility['eligible'] && $user->hasOpenGreenTickRequest())

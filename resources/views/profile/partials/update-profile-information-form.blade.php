@@ -8,7 +8,7 @@
             {{ $user->profileCompletionPercent() }}% complete · {{ $user->roleLabel() }} · {{ number_format($user->score) }} points
         </p>
         <p class="mt-1 text-sm">
-            <a href="{{ route('users.show', $user) }}" class="text-blue-700">{{ __('View public profile') }}</a>
+            <a href="{{ route('users.show', $user) }}" class="text-forest-700">{{ __('View public profile') }}</a>
         </p>
     </header>
 
@@ -78,7 +78,7 @@
                     <p class="text-sm mt-2 text-gray-800">
                         {{ __('Your email address is unverified.') }}
 
-                        <button form="send-verification" class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        <button form="send-verification" class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-forest-600">
                             {{ __('Click here to re-send the verification email.') }}
                         </button>
                     </p>
@@ -94,7 +94,7 @@
 
         <div>
             <x-input-label for="bio" :value="__('Bio')" />
-            <textarea id="bio" name="bio" rows="4" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" maxlength="500" placeholder="Tell people about you and the work you do for the environment.">{{ old('bio', $user->bio) }}</textarea>
+            <textarea id="bio" name="bio" rows="4" class="sk-input" maxlength="500" placeholder="Tell people about you and the work you do for the environment.">{{ old('bio', $user->bio) }}</textarea>
             <x-input-error class="mt-2" :messages="$errors->get('bio')" />
         </div>
 

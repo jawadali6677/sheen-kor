@@ -1,15 +1,15 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-wrap items-center justify-between gap-3">
-            <h2 class="text-xl font-semibold leading-tight text-gray-800">Green Tick requests</h2>
-            <a href="{{ route('admin.monetization.index') }}" class="text-sm text-blue-700">Monetization settings</a>
+            <h2 class="text-xl font-semibold leading-tight text-forest-900">Green Tick requests</h2>
+            <a href="{{ route('admin.monetization.index') }}" class="text-sm text-forest-700">Monetization settings</a>
         </div>
     </x-slot>
 
     <div class="py-8">
         <div class="mx-auto max-w-6xl space-y-8 sm:px-6 lg:px-8">
             @if(session('success'))
-                <div class="rounded bg-green-100 p-4 text-green-700">{{ session('success') }}</div>
+                <div class="rounded-2xl bg-emerald-50 p-4 text-forest-800">{{ session('success') }}</div>
             @endif
             @if(session('error'))
                 <div class="rounded bg-red-100 p-4 text-red-700">{{ session('error') }}</div>
@@ -22,7 +22,7 @@
             </div>
 
             @if($unpaidGrantsEnabled)
-                <section class="rounded-lg bg-white p-6 shadow-sm">
+                <section class="sk-card p-6">
                     <h3 class="text-lg font-semibold text-gray-800">Unpaid grant</h3>
                     <p class="mt-1 text-sm text-gray-600">Grant Green Tick without payment while this setting is enabled.</p>
                     <form method="POST" action="{{ route('admin.monetization.green-ticks.grant') }}" class="mt-4 grid gap-3 sm:grid-cols-3 sm:items-end">
@@ -39,12 +39,12 @@
                                 @endforeach
                             </select>
                         </div>
-                        <button type="submit" class="rounded bg-gray-800 px-4 py-2 text-sm text-white">Grant Green Tick</button>
+                        <button type="submit" class="btn-primary">Grant Green Tick</button>
                     </form>
                 </section>
             @endif
 
-            <div class="overflow-hidden rounded-lg bg-white shadow-sm">
+            <div class="sk-card overflow-hidden">
                 <table class="min-w-full text-sm">
                     <thead class="bg-gray-50 text-left">
                         <tr>
@@ -69,7 +69,7 @@
                                 <td class="px-4 py-3">{{ $verification->displayStatus()->label() }}</td>
                                 <td class="px-4 py-3">{{ $verification->created_at?->diffForHumans() }}</td>
                                 <td class="px-4 py-3 text-right">
-                                    <a href="{{ route('admin.monetization.green-ticks.show', $verification) }}" class="text-blue-700">Review</a>
+                                    <a href="{{ route('admin.monetization.green-ticks.show', $verification) }}" class="text-forest-700">Review</a>
                                 </td>
                             </tr>
                         @empty

@@ -8,7 +8,7 @@
         </form>
         <form method="POST" action="{{ route('admin.posts.reject', $post) }}" data-admin-posts-action data-confirm="Reject this story?" data-confirm-message="The author will be told it did not meet community guidelines." data-confirm-action="Reject">
             @csrf
-            <button type="submit" class="rounded-md bg-gray-800 px-2 py-1 text-xs font-medium text-white">Reject</button>
+            <button type="submit" class="btn-primary px-2 py-1 text-xs">Reject</button>
         </form>
     @elseif($post->status === 'published')
         <form method="POST" action="{{ route('admin.posts.pending', $post) }}" data-admin-posts-action>

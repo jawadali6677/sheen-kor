@@ -1,26 +1,26 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="text-xl font-semibold leading-tight text-gray-800">Monetization</h2>
+        <h2 class="text-xl font-semibold leading-tight text-forest-900">Monetization</h2>
     </x-slot>
 
     <div class="py-8">
         <div class="mx-auto max-w-6xl space-y-8 sm:px-6 lg:px-8">
             @if(session('success'))
-                <div class="rounded bg-green-100 p-4 text-green-700">{{ session('success') }}</div>
+                <div class="rounded-2xl bg-emerald-50 p-4 text-forest-800">{{ session('success') }}</div>
             @endif
             @if(session('error'))
                 <div class="rounded bg-red-100 p-4 text-red-700">{{ session('error') }}</div>
             @endif
 
             <p class="mb-4 flex flex-wrap gap-4">
-                <a href="{{ route('admin.monetization.dashboard') }}" class="text-sm font-semibold text-blue-700">Dashboard</a>
-                <a href="{{ route('admin.monetization.green-ticks.index') }}" class="text-sm font-semibold text-blue-700">Review Green Tick requests</a>
-                <a href="{{ route('admin.monetization.boosts.index') }}" class="text-sm font-semibold text-blue-700">Manage post boosts</a>
-                <a href="{{ route('admin.monetization.promotions.index') }}" class="text-sm font-semibold text-blue-700">Manage listing promotions</a>
-                <a href="{{ route('admin.monetization.orders.index') }}" class="text-sm font-semibold text-blue-700">Orders</a>
+                <a href="{{ route('admin.monetization.dashboard') }}" class="text-sm font-semibold text-forest-700">Dashboard</a>
+                <a href="{{ route('admin.monetization.green-ticks.index') }}" class="text-sm font-semibold text-forest-700">Review Green Tick requests</a>
+                <a href="{{ route('admin.monetization.boosts.index') }}" class="text-sm font-semibold text-forest-700">Manage post boosts</a>
+                <a href="{{ route('admin.monetization.promotions.index') }}" class="text-sm font-semibold text-forest-700">Manage listing promotions</a>
+                <a href="{{ route('admin.monetization.orders.index') }}" class="text-sm font-semibold text-forest-700">Orders</a>
             </p>
 
-            <section class="rounded-lg bg-white p-6 shadow-sm">
+            <section class="sk-card p-6">
                 <h3 class="text-lg font-semibold text-gray-800">Settings</h3>
                 <p class="mt-1 text-sm text-gray-600">Feed ads, sidebar ads, video interstitials, and rewarded settings apply immediately. Payment and checkout are still later phases.</p>
 
@@ -66,11 +66,11 @@
                         </div>
                     @endforeach
 
-                    <button type="submit" class="rounded bg-gray-800 px-4 py-2 text-sm text-white">Save settings</button>
+                    <button type="submit" class="btn-primary">Save settings</button>
                 </form>
             </section>
 
-            <section class="overflow-hidden rounded-lg bg-white shadow-sm">
+            <section class="sk-card overflow-hidden">
                 <div class="border-b border-gray-100 px-6 py-4">
                     <h3 class="text-lg font-semibold text-gray-800">Advertisements</h3>
                     <p class="mt-1 text-sm text-gray-600">First-party inventory for Feed, sidebar, video interstitials, and rewarded placeholders. Destination URLs cannot be changed from the browser.</p>
@@ -130,7 +130,7 @@
                                                 <input type="checkbox" name="is_rewarded" value="1" @checked($advertisement->is_rewarded)>
                                                 Rewarded
                                             </label>
-                                            <button type="submit" class="text-blue-700">Save</button>
+                                            <button type="submit" class="text-forest-700">Save</button>
                                         </form>
                                     </td>
                                 </tr>
@@ -144,7 +144,7 @@
                 </div>
             </section>
 
-            <section class="overflow-hidden rounded-lg bg-white shadow-sm">
+            <section class="sk-card overflow-hidden">
                 <div class="border-b border-gray-100 px-6 py-4">
                     <h3 class="text-lg font-semibold text-gray-800">Packages</h3>
                     <p class="mt-1 text-sm text-gray-600">Prices are saved on the server. Package type cannot be changed.</p>
@@ -172,7 +172,7 @@
                                     <td class="px-4 py-3">{{ $package->duration_days }} days</td>
                                     <td class="px-4 py-3">{{ $package->is_enabled ? 'Enabled' : 'Disabled' }}</td>
                                     <td class="px-4 py-3 text-right">
-                                        <a href="{{ route('admin.monetization.packages.edit', $package) }}" class="text-blue-700">Edit</a>
+                                        <a href="{{ route('admin.monetization.packages.edit', $package) }}" class="text-forest-700">Edit</a>
                                     </td>
                                 </tr>
                             @empty

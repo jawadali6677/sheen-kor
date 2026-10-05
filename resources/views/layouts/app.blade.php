@@ -34,19 +34,19 @@
         @stack('styles')
         <style>[x-cloak]{display:none !important;}</style>
     </head>
-        <body class="bg-sand-50 font-sans text-gray-800 antialiased {{ request()->routeIs('posts.index') ? 'lg:bg-[#f3f6f4]' : '' }}">
+        <body class="bg-[#f3f6f4] font-sans text-gray-800 antialiased">
         <div class="{{ $fullBleed ? 'min-h-screen' : 'min-h-screen pb-20 lg:pb-0' }}">
             @include('layouts.navigation')
 
             @isset($header)
-                <header class="border-b border-gray-100 bg-white">
-                    <div class="app-shell py-5">
+                <header>
+                    <div class="app-shell pt-6 text-forest-900">
                         {{ $header }}
                     </div>
                 </header>
             @endisset
 
-            <main class="{{ $fullBleed ? '' : 'app-shell py-6' }}">
+            <main class="{{ $fullBleed ? '' : 'app-shell '.(isset($header) ? 'pb-6 pt-4' : 'py-6') }}">
                 @if($fullBleed || $hideSidebars)
                     {{ $slot }}
                 @else

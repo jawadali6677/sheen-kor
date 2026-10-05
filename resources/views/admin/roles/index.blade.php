@@ -1,8 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex items-center justify-between">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">Roles</h2>
-            <a href="{{ route('admin.roles.create') }}" class="px-4 py-2 bg-gray-800 text-white rounded text-sm">New role</a>
+            <h2 class="text-xl font-semibold leading-tight text-forest-900">Roles</h2>
+            <a href="{{ route('admin.roles.create') }}" class="btn-primary text-sm">New role</a>
         </div>
     </x-slot>
 
@@ -19,7 +19,7 @@
                 Create roles such as Hiker or Tree planter, then choose which permissions that role has. You can only grant permissions you already have.
             </p>
 
-            <div class="bg-white shadow-sm sm:rounded-lg overflow-hidden">
+            <div class="sk-card overflow-hidden">
                 <table class="min-w-full text-sm">
                     <thead class="bg-gray-50 text-left">
                         <tr>
@@ -42,7 +42,7 @@
                                     {{ $role->isAdmin() ? 'All permissions' : $role->permission_records_count }}
                                 </td>
                                 <td class="px-4 py-3 text-right whitespace-nowrap">
-                                    <a href="{{ route('admin.roles.edit', $role) }}" class="text-blue-700">Edit</a>
+                                    <a href="{{ route('admin.roles.edit', $role) }}" class="text-forest-700">Edit</a>
                                     @unless($role->is_system)
                                         <form action="{{ route('admin.roles.destroy', $role) }}" method="POST" class="inline ms-3" onsubmit="return confirm('Delete this role?')">
                                             @csrf

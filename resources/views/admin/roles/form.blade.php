@@ -1,6 +1,6 @@
 <div>
     <label for="name" class="block font-medium text-sm text-gray-700">Name</label>
-    <input id="name" name="name" type="text" value="{{ old('name', $role?->name) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+    <input id="name" name="name" type="text" value="{{ old('name', $role?->name) }}" class="sk-input" required>
     <x-input-error class="mt-2" :messages="$errors->get('name')" />
 </div>
 
@@ -11,7 +11,7 @@
         name="slug"
         type="text"
         value="{{ old('slug', $role?->slug) }}"
-        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+        class="sk-input"
         @if($role?->is_system) readonly @endif
         placeholder="tree-planter"
     >
@@ -21,7 +21,7 @@
 
 <div>
     <label for="description" class="block font-medium text-sm text-gray-700">Description</label>
-    <input id="description" name="description" type="text" value="{{ old('description', $role?->description) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+    <input id="description" name="description" type="text" value="{{ old('description', $role?->description) }}" class="sk-input">
     <x-input-error class="mt-2" :messages="$errors->get('description')" />
 </div>
 

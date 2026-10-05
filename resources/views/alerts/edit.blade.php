@@ -1,13 +1,6 @@
 <x-app-layout>
-
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            Edit Alert
-        </h2>
-    </x-slot>
-
-    <div class="py-8">
-        <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-3xl space-y-4">
+        <h1 class="text-xl font-semibold text-forest-900">Edit Alert</h1>
 
             @if ($errors->any())
                 <div class="mb-6 p-4 bg-red-100 text-red-700 rounded">
@@ -25,14 +18,14 @@
                 </div>
             @endif
 
-            <div class="bg-white shadow-sm sm:rounded-lg p-6">
+            <div class="sk-card p-6">
                 <form action="{{ route('alerts.update', $alert) }}" method="POST" enctype="multipart/form-data">
                     @csrf
                     @method('PUT')
 
                     <div class="mb-6">
                         <label for="title" class="block font-medium text-sm text-gray-700">Title</label>
-                        <input type="text" name="title" id="title" value="{{ old('title', $alert->title) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                        <input type="text" name="title" id="title" value="{{ old('title', $alert->title) }}" class="sk-input" required>
                     </div>
 
                     @include('partials.location-map', [
@@ -49,7 +42,7 @@
 
                     <div class="mb-6">
                         <label for="severity" class="block font-medium text-sm text-gray-700">Severity</label>
-                        <select name="severity" id="severity" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                        <select name="severity" id="severity" class="sk-input" required>
                             <option value="low" @selected(old('severity', $alert->severity) === 'low')>Low</option>
                             <option value="medium" @selected(old('severity', $alert->severity) === 'medium')>Medium</option>
                             <option value="high" @selected(old('severity', $alert->severity) === 'high')>High</option>
@@ -58,7 +51,7 @@
 
                     <div class="mb-6">
                         <label for="description" class="block font-medium text-sm text-gray-700">What did you see?</label>
-                        <textarea name="description" id="description" rows="8" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>{{ old('description', $alert->description) }}</textarea>
+                        <textarea name="description" id="description" rows="8" class="sk-input" required>{{ old('description', $alert->description) }}</textarea>
                     </div>
 
                     @if($alert->hasMedia())
@@ -83,12 +76,10 @@
                     />
 
                     <div class="flex items-center gap-4">
-                        <button type="submit" class="px-5 py-2 bg-gray-800 text-white rounded">Save Alert</button>
-                        <a href="{{ route('alerts.show', $alert) }}" class="px-5 py-2 bg-gray-200 text-gray-700 rounded">Cancel</a>
+                        <button type="submit" class="btn-primary">Save Alert</button>
+                        <a href="{{ route('alerts.show', $alert) }}" class="btn-secondary">Cancel</a>
                     </div>
                 </form>
             </div>
-        </div>
     </div>
-
 </x-app-layout>

@@ -7,14 +7,8 @@
 
 <x-app-layout>
 
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            Edit post
-        </h2>
-    </x-slot>
-
-    <div class="py-8">
-        <div class="{{ $simpleEditor ? 'mx-auto max-w-xl' : 'max-w-4xl mx-auto sm:px-6 lg:px-8' }}">
+    <div class="{{ $simpleEditor ? 'mx-auto max-w-xl space-y-4' : 'mx-auto max-w-3xl space-y-4' }}">
+        <h1 class="text-xl font-semibold text-forest-900">Edit post</h1>
 
             @unless($simpleEditor)
                 @if ($errors->any())
@@ -51,7 +45,7 @@
                     ])
                 </div>
             @else
-            <div class="bg-white shadow-sm sm:rounded-lg p-6">
+            <div class="sk-card p-6">
 
                 <form
                     action="{{ route('posts.update', $post) }}"
@@ -73,14 +67,14 @@
                             name="title"
                             id="title"
                             value="{{ old('title', $post->usesGeneratedTitle() ? '' : $post->title) }}"
-                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                            class="sk-input"
                             placeholder="Add a title (optional)"
                         >
                     </div>
 
                     <div class="mb-6">
                         <label for="category_id" class="block font-medium text-sm text-gray-700">Category</label>
-                        <select name="category_id" id="category_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                        <select name="category_id" id="category_id" class="sk-input">
                             <option value="">Select Category</option>
                             @foreach($categories as $category)
                                 <option value="{{ $category->id }}" @selected(old('category_id', $post->category_id) == $category->id)>
@@ -92,12 +86,12 @@
 
                     <div class="mb-6">
                         <label for="excerpt" class="block font-medium text-sm text-gray-700">Short Description</label>
-                        <textarea name="excerpt" id="excerpt" rows="3" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">{{ old('excerpt', $post->excerpt) }}</textarea>
+                        <textarea name="excerpt" id="excerpt" rows="3" class="sk-input">{{ old('excerpt', $post->excerpt) }}</textarea>
                     </div>
 
                     <div class="mb-6">
                         <label for="content" class="block font-medium text-sm text-gray-700">Post</label>
-                        <textarea name="content" id="content" rows="12" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">{{ old('content', $post->content) }}</textarea>
+                        <textarea name="content" id="content" rows="12" class="sk-input">{{ old('content', $post->content) }}</textarea>
                     </div>
 
                     @if($post->hasMedia())
@@ -147,8 +141,5 @@
 
             </div>
             @endif
-
-        </div>
     </div>
-
 </x-app-layout>

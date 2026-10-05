@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+        <h2 class="text-xl font-semibold leading-tight text-forest-900">
             Manage users
         </h2>
     </x-slot>
@@ -20,7 +20,7 @@
 
             <div class="space-y-4">
                 @foreach($users as $member)
-                    <form method="POST" action="{{ route('admin.users.update', $member) }}" class="bg-white shadow-sm sm:rounded-lg p-4">
+                    <form method="POST" action="{{ route('admin.users.update', $member) }}" class="sk-card p-4">
                         @csrf
                         @method('PATCH')
                         <div class="flex flex-wrap items-center gap-3">
@@ -37,7 +37,7 @@
                                 <option value="1" @selected($member->status)>Active</option>
                                 <option value="0" @selected(! $member->status)>Disabled</option>
                             </select>
-                            <button type="submit" class="px-3 py-1 bg-gray-800 text-white rounded text-sm">Save</button>
+                            <button type="submit" class="btn-primary px-3 py-1 text-sm">Save</button>
                         </div>
                         <details class="mt-3">
                             <summary class="text-sm text-gray-700 cursor-pointer">Extra permissions</summary>

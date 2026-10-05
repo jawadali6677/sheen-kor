@@ -131,3 +131,42 @@
     padding-left: 0.75rem;
     border-left: 2px solid #e5e7eb;
 }
+
+/* Leftover Breeze surfaces follow the feed theme. */
+header .text-gray-800 {
+    color: #0a2a20;
+}
+
+a.bg-gray-800,
+button.bg-gray-800 {
+    border-radius: 9999px;
+    background-color: #0f3d2e;
+    font-weight: 600;
+}
+
+a.bg-gray-800:hover,
+button.bg-gray-800:hover {
+    background-color: #1c3f30;
+}
+
+.shadow-sm.rounded-lg,
+.shadow-sm.sm\:rounded-lg,
+.shadow.sm\:rounded-lg {
+    border: 1px solid #f3f4f6;
+    border-radius: 1rem;
+    box-shadow: 0 8px 24px rgba(15, 61, 46, 0.06);
+}
+
+input.border-gray-300,
+select.border-gray-300,
+textarea.border-gray-300 {
+    border-color: #e5e7eb;
+    border-radius: 0.75rem;
+}
+
+input.border-gray-300:focus,
+select.border-gray-300:focus,
+textarea.border-gray-300:focus {
+    border-color: #2a5340;
+    --tw-ring-color: #2a5340;
+}

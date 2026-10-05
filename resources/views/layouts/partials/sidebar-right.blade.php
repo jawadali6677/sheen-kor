@@ -1,5 +1,4 @@
 @php
-    $homeFeed = request()->routeIs('posts.index');
     $leaders = \App\Models\User::query()
         ->where('status', true)
         ->orderByDesc('score')
@@ -7,18 +6,14 @@
         ->limit(5)
         ->get();
     $ads = app(\App\Actions\PlaceFeedAds::class)->sidebarCards();
-    $communityImpact = null;
-
-    if ($homeFeed) {
-        $communityImpact = [
-            'stories' => \App\Models\Post::query()->where('status', 'published')->count(),
-            'alerts_fixed' => \App\Models\Alert::query()->where('status', 'fixed')->count(),
-            'members' => \App\Models\User::query()->where('status', true)->count(),
-        ];
-    }
+    $communityImpact = [
+        'stories' => \App\Models\Post::query()->where('status', 'published')->count(),
+        'alerts_fixed' => \App\Models\Alert::query()->where('status', 'fixed')->count(),
+        'members' => \App\Models\User::query()->where('status', true)->count(),
+    ];
 @endphp
 
-<aside class="{{ $homeFeed ? 'hidden w-64 shrink-0 lg:block xl:w-72' : 'hidden w-64 shrink-0 xl:block' }}">
+<aside class="hidden w-64 shrink-0 lg:block xl:w-72">
     <div class="sticky top-20 space-y-4">
         @if($communityImpact)
             <section class="overflow-hidden rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-lime-50 p-4 shadow-card">
@@ -55,13 +50,13 @@
         @endif
 
         @foreach($ads as $ad)
-            <x-sidebar-ad :ad="$ad" :sidebar="$homeFeed" />
+            <x-sidebar-ad :ad="$ad" sidebar />
         @endforeach
 
-        @if($leaders->isNotEmpty() || ! $homeFeed)
+        @if($leaders->isNotEmpty())
             <section class="sk-card p-4">
                 <div class="mb-3 flex items-center justify-between">
-                    <h2 class="text-sm font-semibold text-forest-900">{{ $homeFeed ? 'Top contributors' : 'Top scores' }}</h2>
+                    <h2 class="text-sm font-semibold text-forest-900">Top contributors</h2>
                     <a href="{{ route('leaderboard.index') }}" class="text-xs font-semibold text-forest-700 hover:underline">View all</a>
                 </div>
                 <ul class="space-y-3">
@@ -71,7 +66,7 @@
                                 <x-user-avatar :user="$leader" size="sm" />
                                 <span class="truncate">{{ $leader->name }}</span>
                             </a>
-                            <span class="shrink-0 text-gray-500">{{ number_format($leader->score) }}{{ $homeFeed ? ' pts' : '' }}</span>
+                            <span class="shrink-0 text-gray-500">{{ number_format($leader->score) }} pts</span>
                         </li>
                     @endforeach
                 </ul>

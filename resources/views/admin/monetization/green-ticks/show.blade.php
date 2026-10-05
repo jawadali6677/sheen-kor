@@ -1,13 +1,13 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="text-xl font-semibold leading-tight text-gray-800">Green Tick request</h2>
+        <h2 class="text-xl font-semibold leading-tight text-forest-900">Green Tick request</h2>
     </x-slot>
 
     <div class="py-8">
         <div class="mx-auto max-w-3xl space-y-6 sm:px-6 lg:px-8">
-            <p><a href="{{ route('admin.monetization.green-ticks.index') }}" class="text-sm text-blue-700">Back to requests</a></p>
+            <p><a href="{{ route('admin.monetization.green-ticks.index') }}" class="text-sm text-forest-700">Back to requests</a></p>
 
-            <section class="rounded-lg bg-white p-6 shadow-sm">
+            <section class="sk-card p-6">
                 <h3 class="text-lg font-semibold text-gray-800">{{ $verification->user?->name }}</h3>
                 <p class="text-sm text-gray-600">{{ $verification->user?->email }} · {{ $verification->user?->username ? '@'.$verification->user->username : '' }}</p>
                 <p class="mt-2 text-sm text-gray-600">Status: {{ $verification->displayStatus()->label() }} · {{ $verification->source->label() }}</p>
@@ -33,14 +33,14 @@
             </section>
 
             @if($verification->status->value === 'pending_review')
-                <section class="rounded-lg bg-white p-6 shadow-sm">
+                <section class="sk-card p-6">
                     <form method="POST" action="{{ route('admin.monetization.green-ticks.approve', $verification) }}" class="space-y-4">
                         @csrf
                         <div>
                             <label for="review_notes" class="block text-sm font-medium text-gray-700">Notes (optional)</label>
                             <textarea id="review_notes" name="review_notes" rows="3" class="mt-1 block w-full rounded-md border-gray-300 text-sm"></textarea>
                         </div>
-                        <button type="submit" class="rounded bg-gray-800 px-4 py-2 text-sm text-white">Approve</button>
+                        <button type="submit" class="btn-primary">Approve</button>
                     </form>
                     <form method="POST" action="{{ route('admin.monetization.green-ticks.reject', $verification) }}" class="mt-4 space-y-4">
                         @csrf

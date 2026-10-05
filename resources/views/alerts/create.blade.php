@@ -1,13 +1,6 @@
 <x-app-layout>
-
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            Report an Alert
-        </h2>
-    </x-slot>
-
-    <div class="py-8">
-        <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-3xl space-y-4">
+        <h1 class="text-xl font-semibold text-forest-900">Report an Alert</h1>
 
             @if ($errors->any())
                 <div class="mb-6 p-4 bg-red-100 text-red-700 rounded">
@@ -40,7 +33,7 @@
                             name="title"
                             id="title"
                             value="{{ old('title') }}"
-                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                            class="sk-input"
                             placeholder="What is happening?"
                             required
                         >
@@ -60,7 +53,7 @@
 
                     <div class="mb-6">
                         <label for="severity" class="block font-medium text-sm text-gray-700">Severity</label>
-                        <select name="severity" id="severity" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                        <select name="severity" id="severity" class="sk-input" required>
                             <option value="low" @selected(old('severity') === 'low')>Low</option>
                             <option value="medium" @selected(old('severity', 'medium') === 'medium')>Medium</option>
                             <option value="high" @selected(old('severity') === 'high')>High</option>
@@ -73,7 +66,7 @@
                             name="description"
                             id="description"
                             rows="8"
-                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                            class="sk-input"
                             placeholder="Describe the problem and anything people should know..."
                             required
                         >{{ old('description') }}</textarea>
@@ -95,7 +88,5 @@
                     </div>
                 </form>
             </div>
-        </div>
     </div>
-
 </x-app-layout>

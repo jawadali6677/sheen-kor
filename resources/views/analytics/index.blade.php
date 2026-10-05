@@ -1,14 +1,14 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-wrap items-center justify-between gap-3">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+            <h2 class="text-xl font-semibold leading-tight text-forest-900">
                 Analytics
             </h2>
             <div class="flex gap-2">
                 @foreach(['daily' => 'Daily', 'weekly' => 'Weekly', 'monthly' => 'Monthly'] as $value => $label)
                     <a
                         href="{{ route('analytics.index', ['period' => $value]) }}"
-                        class="px-3 py-1.5 rounded text-sm {{ $report['period'] === $value ? 'bg-gray-800 text-white' : 'bg-white text-gray-700 border' }}"
+                        class="rounded-full px-3 py-1.5 text-sm font-semibold {{ $report['period'] === $value ? 'bg-forest-800 text-white' : 'bg-white text-forest-800 ring-1 ring-gray-200' }}"
                     >
                         {{ $label }}
                     </a>
@@ -45,7 +45,7 @@
                     <p class="text-sm text-gray-500">Alert status</p>
                     <p class="text-sm mt-2">
                         <span class="text-amber-600 font-semibold">{{ $report['totals']['alerts_open'] }} open</span>
-                        · <span class="text-blue-600 font-semibold">{{ $report['totals']['alerts_in_progress'] }} in progress</span>
+                        · <span class="font-semibold text-forest-700">{{ $report['totals']['alerts_in_progress'] }} in progress</span>
                         · <span class="text-green-600 font-semibold">{{ $report['totals']['alerts_fixed'] }} fixed</span>
                     </p>
                     <p class="text-xs text-gray-500 mt-1">{{ number_format($report['totals']['fixes_period']) }} fixed in this range</p>
@@ -53,31 +53,31 @@
             </div>
 
             <div class="grid gap-6 md:grid-cols-2">
-                <div class="min-w-0 rounded-lg bg-white p-4 shadow-sm lg:col-span-2">
+                <div class="min-w-0 sk-card p-4 lg:col-span-2">
                     <h3 class="font-semibold mb-2">Activity</h3>
                     <div id="activity-chart" class="w-full min-w-0"></div>
                 </div>
-                <div class="min-w-0 rounded-lg bg-white p-4 shadow-sm lg:col-span-2">
+                <div class="min-w-0 sk-card p-4 lg:col-span-2">
                     <h3 class="font-semibold mb-2">Alert workflow</h3>
                     <div id="workflow-chart" class="w-full min-w-0"></div>
                 </div>
-                <div class="min-w-0 rounded-lg bg-white p-4 shadow-sm">
+                <div class="min-w-0 sk-card p-4">
                     <h3 class="font-semibold mb-2">Alerts by status</h3>
                     <div id="alert-status-chart" class="w-full min-w-0"></div>
                 </div>
-                <div class="min-w-0 rounded-lg bg-white p-4 shadow-sm">
+                <div class="min-w-0 sk-card p-4">
                     <h3 class="font-semibold mb-2">Alerts by severity</h3>
                     <div id="alert-severity-chart" class="w-full min-w-0"></div>
                 </div>
-                <div class="min-w-0 rounded-lg bg-white p-4 shadow-sm">
+                <div class="min-w-0 sk-card p-4">
                     <h3 class="font-semibold mb-2">Stories by status</h3>
                     <div id="story-status-chart" class="w-full min-w-0"></div>
                 </div>
-                <div class="min-w-0 rounded-lg bg-white p-4 shadow-sm">
+                <div class="min-w-0 sk-card p-4">
                     <h3 class="font-semibold mb-2">Users by role</h3>
                     <div id="user-role-chart" class="w-full min-w-0"></div>
                 </div>
-                <div class="min-w-0 rounded-lg bg-white p-4 shadow-sm">
+                <div class="min-w-0 sk-card p-4">
                     <h3 class="font-semibold mb-2">Users by account status</h3>
                     <div id="user-status-chart" class="w-full min-w-0"></div>
                 </div>

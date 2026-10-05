@@ -80,19 +80,34 @@ class HomeFeedPresentationTest extends TestCase
         $response->assertDontSee('>Latest<', false);
     }
 
-    public function test_other_pages_keep_the_existing_sidebar_labels(): void
+    public function test_other_pages_use_the_home_feed_theme(): void
     {
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)->get(route('explore.index'));
 
-        $response->assertOk();
-        $response->assertSee('Top scores');
-        $response->assertDontSee('Your activity');
-        $response->assertDontSee('data-home-sidebar', false);
-        $response->assertDontSee('Community Impact');
-        $response->assertDontSee('Top contributors');
-        $response->assertDontSee('Search posts, people, places...', false);
+        $response->assertSee('Your activity');
+        $response->assertSee('data-home-sidebar', false);
+        $response->assertSee('Community Impact');
+        $response->assertSee('Top contributors');
+        $response->assertSee('Search posts, people, places...', false);
+        $response->assertSee('Greener Community', false);
+        $response->assertSee(
+            'href="'.route('explore.index').'" class="flex items-center gap-3 rounded-xl bg-emerald-100 px-3 py-2.5 text-forest-900 shadow-sm"',
+            false,
+        );
+    }
+
+    public function test_leaderboard_uses_the_feed_card_theme(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->get(route('leaderboard.index'));
+
+        $response->assertSee('sk-card', false);
+        $response->assertSee('Scores');
+        $response->assertSee('data-home-sidebar', false);
+        $response->assertDontSee('text-gray-800 leading-tight', false);
     }
 
     public function test_guests_still_see_the_story_feed_without_member_sidebars(): void

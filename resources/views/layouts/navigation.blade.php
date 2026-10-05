@@ -18,7 +18,7 @@
     }
 @endphp
 @php
-    $homeNav = auth()->check() && request()->routeIs('posts.index');
+    $homeNav = auth()->check();
 @endphp
 <nav x-data="{ open: false }" @if(auth()->check()) x-init="$store.notifications.boot(@js($notificationConfig))" @endif class="sticky top-0 z-40 border-b border-gray-100 bg-white/95 backdrop-blur">
     <div class="app-shell flex h-16 items-center justify-between gap-4 {{ $homeNav ? 'lg:h-[4.5rem]' : '' }}">

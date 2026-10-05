@@ -1,11 +1,11 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="text-xl font-semibold leading-tight text-gray-800">Edit {{ $package->name }}</h2>
+        <h2 class="text-xl font-semibold leading-tight text-forest-900">Edit {{ $package->name }}</h2>
     </x-slot>
 
     <div class="py-8">
         <div class="mx-auto max-w-3xl sm:px-6 lg:px-8">
-            <div class="rounded-lg bg-white p-6 shadow-sm">
+            <div class="sk-card p-6">
                 <p class="text-sm text-gray-600">{{ $package->type->label() }} · {{ $package->slug }}</p>
                 <p class="mt-1 text-xs text-gray-500">Package type is fixed and is not accepted from this form.</p>
 
@@ -44,7 +44,7 @@
                     </div>
 
                     <div class="flex flex-wrap gap-3">
-                        <button type="submit" class="rounded bg-gray-800 px-4 py-2 text-white">Save package</button>
+                        <button type="submit" class="btn-primary">Save package</button>
                         <a href="{{ route('admin.monetization.index') }}" class="rounded px-4 py-2 text-gray-700 ring-1 ring-gray-200">Cancel</a>
                     </div>
                 </form>

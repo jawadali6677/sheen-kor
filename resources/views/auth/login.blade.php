@@ -33,7 +33,7 @@
         <!-- Remember Me -->
         <div class="block mt-4">
             <label for="remember_me" class="inline-flex items-center">
-                <input id="remember_me" type="checkbox" class="rounded border-gray-300 text-forest-800 shadow-sm focus:ring-forest-600" name="remember">
+                <input id="remember_me" type="checkbox" class="sk-check" name="remember">
                 <span class="ms-2 text-sm text-gray-600">{{ __('Remember me') }}</span>
             </label>
         </div>

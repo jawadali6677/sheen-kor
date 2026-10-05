@@ -25,12 +25,12 @@
         mapFirstImageToFeatured: {{ $mapFirst ? 'true' : 'false' }},
     })"
 >
-    <p class="block text-sm font-medium text-gray-700">{{ $label }}</p>
+    <p class="sk-label">{{ $label }}</p>
     <p class="mt-1 text-sm text-gray-500">{{ $hint }}</p>
 
     <button
         type="button"
-        class="mt-3 flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-sand-50 px-4 py-8 text-center transition hover:border-forest-300 hover:bg-white"
+        class="mt-3 flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-forest-200 bg-forest-50 px-4 py-8 text-center transition hover:border-forest-400 hover:bg-white"
         :class="dragging ? 'border-forest-600 bg-white' : ''"
         x-on:click="openPicker()"
         x-on:dragover.prevent="dragging = true"

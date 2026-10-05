@@ -22,13 +22,13 @@
         class="fixed inset-0 z-[80] flex items-end justify-center lg:items-center"
         @keydown.escape.window="close()"
     >
-        <div class="absolute inset-0 bg-forest-950/40" @click="close()"></div>
+        <div class="absolute inset-0 bg-forest-950/50" @click="close()"></div>
         <div class="relative z-10 w-full lg:max-w-lg" role="dialog" aria-modal="true" aria-label="Create post">
             @include('posts.partials.quick-post-fields', [
                 'post' => null,
                 'categories' => $composerCategories,
                 'embedded' => false,
-                'formClass' => 'relative max-h-[92vh] overflow-y-auto rounded-t-3xl bg-white px-4 pb-6 pt-3 shadow-card lg:max-h-[85vh] lg:rounded-3xl lg:p-6',
+                'formClass' => 'relative max-h-[92vh] overflow-y-auto rounded-t-3xl border border-emerald-100 bg-white px-4 pb-6 pt-3 shadow-card lg:max-h-[85vh] lg:rounded-3xl lg:border-forest-100 lg:bg-gradient-to-b lg:from-forest-50 lg:to-white lg:p-6',
             ])
         </div>
     </div>

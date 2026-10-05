@@ -129,4 +129,40 @@ class HomeFeedPresentationTest extends TestCase
         $response->assertDontSee('data-home-sidebar', false);
         $response->assertDontSee('Community Impact');
     }
+
+    public function test_alert_login_and_profile_forms_use_shared_green_controls(): void
+    {
+        $user = User::factory()->create();
+
+        $this->get(route('login'))
+            ->assertOk()
+            ->assertSee('sk-label', false)
+            ->assertSee('sk-input', false)
+            ->assertSee('sk-check', false)
+            ->assertSee('btn-primary', false);
+
+        $this->followingRedirects()
+            ->from(route('login'))
+            ->post(route('login'), [
+                'email' => $user->email,
+                'password' => 'wrong-password',
+            ])
+            ->assertOk()
+            ->assertSee('sk-error', false);
+
+        $this->actingAs($user)
+            ->get(route('alerts.create'))
+            ->assertOk()
+            ->assertSee('sk-input', false)
+            ->assertSee('btn-primary', false)
+            ->assertSee('btn-secondary', false)
+            ->assertSee('sk-label', false);
+
+        $this->actingAs($user)
+            ->get(route('profile.edit'))
+            ->assertOk()
+            ->assertSee('sk-input', false)
+            ->assertSee('sk-label', false)
+            ->assertSee('btn-primary', false);
+    }
 }

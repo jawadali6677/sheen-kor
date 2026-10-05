@@ -195,6 +195,32 @@ class SimplePostComposerTest extends TestCase
         );
     }
 
+    public function test_feed_composer_uses_a_close_icon_and_a_collapsed_text_area(): void
+    {
+        $user = User::factory()->create();
+        Category::query()->create([
+            'name' => 'Wildlife',
+            'slug' => 'wildlife-composer',
+            'description' => 'Animals nearby',
+            'status' => true,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('posts.index'));
+
+        $response->assertOk();
+        $response->assertSee('aria-label="Close"', false);
+        $response->assertSee('sk-composer-text', false);
+        $response->assertSee('rows="1"', false);
+        $response->assertSee('resize-none', false);
+        $response->assertSee('sk-media-photo', false);
+        $response->assertSee('sk-media-video', false);
+        $response->assertSee('sk-media-camera', false);
+        $response->assertSee('sk-topic-chip', false);
+        $response->assertSee('Wildlife', false);
+        $response->assertSee('btn-primary', false);
+        $response->assertDontSee('@click="close()">Close</button>', false);
+    }
+
     public function test_feed_page_two_does_not_include_the_composer_bar(): void
     {
         $user = User::factory()->create();

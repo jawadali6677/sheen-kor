@@ -903,6 +903,8 @@ export function registerSheenUi(Alpine) {
             this.success = '';
 
             this.$nextTick(() => {
+                this.resizeBody();
+
                 if (intent === 'photo') {
                     this.$refs.photoPicker?.click();
                 } else if (intent === 'video') {
@@ -915,15 +917,19 @@ export function registerSheenUi(Alpine) {
             });
         },
         close() {
-            if (this.embedded) {
+            if (this.embedded || ! this.open) {
                 return;
             }
 
             this.open = false;
 
-            if (! this.submitting) {
-                this.phase = 'idle';
+            // Keep the draft while an upload is in flight so a failed upload can restore it.
+            if (this.submitting) {
+                return;
             }
+
+            this.phase = 'idle';
+            this.clearDraft();
         },
         usesLiveFeed() {
             return document.getElementById('feed-items')?.hasAttribute('data-live-feed') === true;
@@ -938,8 +944,27 @@ export function registerSheenUi(Alpine) {
                 return;
             }
 
+            const max = 224;
+            const min = 48;
+            const current = field.offsetHeight;
+
             field.style.height = 'auto';
-            field.style.height = `${Math.min(field.scrollHeight, 224)}px`;
+
+            const needed = field.scrollHeight;
+            const next = Math.max(min, Math.min(needed || min, max));
+
+            field.style.overflowY = needed > max ? 'auto' : 'hidden';
+            field.style.height = `${current > 0 ? current : next}px`;
+
+            if (current > 0 && current !== next) {
+                window.requestAnimationFrame(() => {
+                    field.style.height = `${next}px`;
+                });
+
+                return;
+            }
+
+            field.style.height = `${next}px`;
         },
         tryPost() {
             if (this.submitting) {
@@ -1237,7 +1262,28 @@ export function registerSheenUi(Alpine) {
             this.text = '';
             this.errors = [];
             this.success = '';
+            this.progress = 0;
+            this.clearCategory();
+            this.clearFileInputs();
             this.$nextTick(() => this.resizeBody());
+        },
+        clearCategory() {
+            this.$refs.form?.querySelectorAll('input[name="category_id"]').forEach((input) => {
+                input.checked = false;
+            });
+        },
+        clearFileInputs() {
+            ['photoPicker', 'videoPicker', 'cameraPicker'].forEach((name) => {
+                const input = this.$refs[name];
+
+                if (input) {
+                    input.value = '';
+                }
+            });
+
+            this.assignFiles(this.$refs.featured, []);
+            this.assignFiles(this.$refs.images, []);
+            this.assignFiles(this.$refs.videos, []);
         },
         clearItems() {
             this.items.forEach((item) => {

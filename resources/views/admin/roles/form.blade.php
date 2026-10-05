@@ -37,7 +37,7 @@
                         type="checkbox"
                         name="permissions[]"
                         value="{{ $permission->value }}"
-                        class="rounded border-gray-300 mt-0.5"
+                        class="sk-check mt-0.5"
                         @checked(in_array($permission->value, $selected, true))
                     >
                     <span>{{ $permission->label() }}</span>

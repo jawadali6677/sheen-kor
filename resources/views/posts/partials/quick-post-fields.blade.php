@@ -22,17 +22,23 @@
     <input type="hidden" name="simple_post" value="1">
 
     @unless($embedded)
-        <div class="mx-auto mb-3 h-1.5 w-12 rounded-full bg-gray-200 lg:hidden"></div>
+        <div class="mx-auto mb-3 h-1.5 w-12 rounded-full bg-forest-200 lg:hidden"></div>
     @endunless
 
-    <div class="mb-4 flex items-center justify-between gap-3">
-        @if($embedded)
-            <a href="{{ route('posts.index') }}" class="text-sm font-semibold text-gray-500">Cancel</a>
-        @else
-            <button type="button" class="text-sm font-semibold text-gray-500" @click="close()">Close</button>
-        @endif
-        <h2 class="text-base font-semibold text-forest-900">{{ $post ? 'Edit post' : 'Create post' }}</h2>
-        <a href="{{ $post ? route('posts.edit', $post).'?advanced=1' : route('posts.create') }}" class="text-sm font-semibold text-forest-800">More options</a>
+    <div class="mb-4 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+        <div class="justify-self-start">
+            @if($embedded)
+                <a href="{{ route('posts.index') }}" class="text-sm font-semibold text-forest-700">Cancel</a>
+            @else
+                <button type="button" class="inline-flex h-11 w-11 items-center justify-center rounded-full text-forest-800 transition duration-150 hover:bg-forest-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-forest-600" @click="close()" aria-label="Close">
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                        <path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/>
+                    </svg>
+                </button>
+            @endif
+        </div>
+        <h2 class="text-center text-base font-semibold text-forest-900">{{ $post ? 'Edit post' : 'Create post' }}</h2>
+        <a href="{{ $post ? route('posts.edit', $post).'?advanced=1' : route('posts.create') }}" class="justify-self-end text-sm font-semibold text-forest-700 hover:text-forest-900">More options</a>
     </div>
 
     <label for="{{ $textFieldId }}" class="sr-only">What's on your mind?</label>
@@ -40,24 +46,24 @@
         x-ref="body"
         id="{{ $textFieldId }}"
         name="content"
-        rows="3"
+        rows="1"
         x-model="text"
         @input="grow($event)"
         placeholder="What's on your mind?"
-        class="max-h-56 w-full resize-none rounded-2xl border-0 bg-sand-50 px-4 py-3 text-lg leading-7 text-gray-900 placeholder:text-gray-400 focus:border-forest-600 focus:ring-forest-600"
+        class="sk-composer-text resize-none"
     >{{ old('content', $post->content ?? '') }}</textarea>
 
     <div class="mt-4 grid grid-cols-3 gap-2">
-        <button type="button" class="flex min-h-[4.5rem] flex-col items-center justify-center gap-1 rounded-2xl bg-sand-50 px-2 py-3 text-sm font-semibold text-forest-800" @click="$refs.photoPicker.click()">
-            <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m4 16 4.6-4.6a2 2 0 0 1 2.8 0L16 16m-2-2 1.6-1.6a2 2 0 0 1 2.8 0L20 14M8 8h.01M6 20h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2Z"/></svg>
+        <button type="button" class="sk-media-photo" @click="$refs.photoPicker.click()">
+            <svg class="h-7 w-7 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m4 16 4.6-4.6a2 2 0 0 1 2.8 0L16 16m-2-2 1.6-1.6a2 2 0 0 1 2.8 0L20 14M8 8h.01M6 20h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2Z"/></svg>
             Photo
         </button>
-        <button type="button" class="flex min-h-[4.5rem] flex-col items-center justify-center gap-1 rounded-2xl bg-sand-50 px-2 py-3 text-sm font-semibold text-forest-800" @click="$refs.videoPicker.click()">
-            <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m15 10 4.6-2.3A1 1 0 0 1 21 8.6v6.8a1 1 0 0 1-1.4.9L15 14M4 8h8a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2Z"/></svg>
+        <button type="button" class="sk-media-video" @click="$refs.videoPicker.click()">
+            <svg class="h-7 w-7 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m15 10 4.6-2.3A1 1 0 0 1 21 8.6v6.8a1 1 0 0 1-1.4.9L15 14M4 8h8a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2Z"/></svg>
             Video
         </button>
-        <button type="button" class="flex min-h-[4.5rem] flex-col items-center justify-center gap-1 rounded-2xl bg-sand-50 px-2 py-3 text-sm font-semibold text-forest-800" @click="$refs.cameraPicker.click()">
-            <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8h2.5l1.2-2h8.6l1.2 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg>
+        <button type="button" class="sk-media-camera" @click="$refs.cameraPicker.click()">
+            <svg class="h-7 w-7 text-sky-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8h2.5l1.2-2h8.6l1.2 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg>
             Camera
         </button>
     </div>
@@ -120,7 +126,7 @@
                             class="peer sr-only"
                             @checked($selectedCategory === (string) $category->id)
                         >
-                        <span class="inline-flex min-h-11 items-center rounded-full border border-gray-200 bg-white px-4 py-2 text-base font-semibold text-forest-900 peer-checked:border-forest-800 peer-checked:bg-forest-800 peer-checked:text-white">{{ $category->name }}</span>
+                        <span class="sk-topic-chip">{{ $category->name }}</span>
                     </label>
                 @endforeach
             </div>
@@ -129,7 +135,7 @@
 
     <div class="mt-4 space-y-2" x-show="errors.length" x-cloak>
         <template x-for="item in errors" :key="item">
-            <p class="text-sm font-medium text-red-700" data-composer-error x-text="item" role="alert"></p>
+            <p class="sk-error rounded-2xl bg-red-50 px-3 py-2" data-composer-error x-text="item" role="alert"></p>
         </template>
     </div>
 
@@ -137,7 +143,7 @@
         @if($composerErrors->isNotEmpty())
             <div class="mt-4 space-y-1" role="alert">
                 @foreach($composerErrors as $message)
-                    <p class="text-sm font-medium text-red-700" data-composer-error>{{ $message }}</p>
+                    <p class="sk-error" data-composer-error>{{ $message }}</p>
                 @endforeach
             </div>
         @endif

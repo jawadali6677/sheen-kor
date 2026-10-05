@@ -25,7 +25,7 @@
             @if($user->coverUrl())
                 <img id="cover-preview" src="{{ $user->coverUrl() }}" alt="Cover photo" class="profile-edit-cover mt-2 js-lightbox">
                 <label class="mt-2 inline-flex items-center text-sm text-gray-600">
-                    <input type="checkbox" name="remove_cover_image" value="1" class="rounded border-gray-300">
+                    <input type="checkbox" name="remove_cover_image" value="1" class="sk-check">
                     <span class="ms-2">{{ __('Remove cover photo') }}</span>
                 </label>
             @else
@@ -45,7 +45,7 @@
             </div>
             @if($user->profile_image)
                 <label class="mt-2 inline-flex items-center text-sm text-gray-600">
-                    <input type="checkbox" name="remove_profile_image" value="1" class="rounded border-gray-300">
+                    <input type="checkbox" name="remove_profile_image" value="1" class="sk-check">
                     <span class="ms-2">{{ __('Remove profile picture') }}</span>
                 </label>
             @endif

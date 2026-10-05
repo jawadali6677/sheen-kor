@@ -45,7 +45,7 @@
 
                     <div class="flex flex-wrap gap-3">
                         <button type="submit" class="btn-primary">Save package</button>
-                        <a href="{{ route('admin.monetization.index') }}" class="rounded px-4 py-2 text-gray-700 ring-1 ring-gray-200">Cancel</a>
+                        <a href="{{ route('admin.monetization.index') }}" class="btn-secondary">Cancel</a>
                     </div>
                 </form>
             </div>

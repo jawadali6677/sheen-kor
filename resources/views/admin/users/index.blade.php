@@ -48,7 +48,7 @@
                                             type="checkbox"
                                             name="permissions[]"
                                             value="{{ $permission->value }}"
-                                            class="rounded border-gray-300 mt-0.5"
+                                            class="sk-check mt-0.5"
                                             @checked($member->extraPermissionRecords->contains('permission', $permission->value))
                                         >
                                         <span>{{ $permission->label() }}</span>

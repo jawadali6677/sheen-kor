@@ -8,7 +8,7 @@
 @endphp
 
 @if ($messageList)
-    <ul {{ $attributes->merge(['class' => 'text-sm text-red-600 space-y-1']) }}>
+    <ul {{ $attributes->merge(['class' => 'sk-error space-y-1']) }}>
         @foreach ($messageList as $message)
             <li>{{ $message }}</li>
         @endforeach

@@ -16,7 +16,6 @@ use App\Models\MarketListing;
 use App\Models\MarketListingImage;
 use App\Models\User;
 use App\Notifications\MarketListingNeedsReview;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -89,7 +88,7 @@ class MarketListingController extends Controller
                 $query->where('location_name', 'like', $like);
             })
             ->when($nearLat !== null && $nearLng !== null, function ($query) use ($nearLat, $nearLng, $radiusKm) {
-                $this->constrainNearby($query, $nearLat, $nearLng, $radiusKm);
+                $query->nearby($nearLat, $nearLng, $radiusKm);
             })
             ->orderByDesc('is_promoted_here')
             ->latest('published_at')
@@ -210,13 +209,7 @@ class MarketListingController extends Controller
 
     public function show(MarketListing $listing)
     {
-        if (
-            ! $listing->status->isPubliclyVisible()
-            && $listing->user_id !== auth()->id()
-            && ! auth()->user()?->hasPermission(Permission::ModerateMarketListings)
-        ) {
-            abort(404);
-        }
+        abort_unless($listing->isVisibleTo(auth()->user()), 404);
 
         $listing->load(['user', 'category', 'images', 'promotions.order']);
 
@@ -595,30 +588,6 @@ class MarketListingController extends Controller
                 ? 'Your listing has been submitted successfully and is awaiting review.'
                 : 'Your listing has been updated successfully and is awaiting review.',
         };
-    }
-
-    /**
-     * @param  Builder<MarketListing>  $query
-     */
-    private function constrainNearby(Builder $query, float $latitude, float $longitude, float $radiusKm): void
-    {
-        $latDelta = $radiusKm / 111.32;
-        $cosLatitude = cos(deg2rad($latitude));
-        $lngDelta = $cosLatitude == 0.0 ? 180 : $radiusKm / (111.32 * abs($cosLatitude));
-
-        $query->whereNotNull('latitude')
-            ->whereNotNull('longitude')
-            ->whereBetween('latitude', [$latitude - $latDelta, $latitude + $latDelta])
-            ->whereBetween('longitude', [$longitude - $lngDelta, $longitude + $lngDelta]);
-
-        if ($query->getConnection()->getDriverName() !== 'mysql') {
-            return;
-        }
-
-        $query->whereRaw(
-            '(6371 * acos(least(1, cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude))))) <= ?',
-            [$latitude, $longitude, $latitude, $radiusKm],
-        );
     }
 
     /**

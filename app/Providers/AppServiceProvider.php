@@ -11,13 +11,16 @@ use App\Models\Post;
 use App\Models\User;
 use App\Support\CashierStripeCheckoutGateway;
 use App\Support\UnavailableRewardedAdVerifier;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -43,6 +46,13 @@ class AppServiceProvider extends ServiceProvider
 
         $this->configureCheckoutRateLimiter();
         $this->configureQualifiedViewRateLimiter();
+        $this->configureApiRateLimiters();
+
+        Event::listen(function (PasswordReset $event): void {
+            if ($event->user instanceof User) {
+                $event->user->tokens()->delete();
+            }
+        });
 
         View::composer('layouts.partials.quick-post-composer', function ($view): void {
             $view->with(
@@ -79,6 +89,27 @@ class AppServiceProvider extends ServiceProvider
                         ->with('error', $message)
                         ->withHeaders($headers);
                 });
+        });
+    }
+
+    /**
+     * JSON limiters for the mobile API. They are separate from the website
+     * login throttle so an app lockout does not redirect with a flash message.
+     */
+    private function configureApiRateLimiters(): void
+    {
+        RateLimiter::for('api-login', function (Request $request): Limit {
+            $email = Str::lower($request->string('email')->toString());
+
+            return Limit::perMinute(5)->by(Str::transliterate($email.'|'.$request->ip()));
+        });
+
+        RateLimiter::for('api-register', function (Request $request): Limit {
+            return Limit::perMinute(5)->by((string) $request->ip());
+        });
+
+        RateLimiter::for('api-forgot', function (Request $request): Limit {
+            return Limit::perMinute(5)->by((string) $request->ip());
         });
     }
 

@@ -146,12 +146,7 @@ class PostController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        if (
-            $post->status !== 'published' &&
-            $post->user_id !== auth()->id()
-        ) {
-            abort(404);
-        }
+        abort_unless($post->isVisibleTo($request->user()), 404);
 
         /*
         |--------------------------------------------------------------------------

@@ -111,12 +111,4 @@ class ProfileReadTest extends TestCase
             ->assertJsonPath('data.0.score', 40)
             ->assertJsonMissing(['name' => 'Disabled score']);
     }
-
-    /**
-     * @return array<string, string>
-     */
-    private function bearer(string $token): array
-    {
-        return ['Authorization' => 'Bearer '.$token];
-    }
 }

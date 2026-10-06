@@ -5,6 +5,7 @@ namespace Tests\Feature\Api\V1;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
@@ -283,7 +284,17 @@ class AuthTest extends TestCase
         $user = User::factory()->create();
         $token = $user->createToken('Pixel 8', ['mobile'])->plainTextToken;
 
-        $this->actingAs($user);
+        $this->post('/login', [
+            'email' => $user->email,
+            'password' => 'password',
+        ])->assertRedirect(route('dashboard', absolute: false));
+
+        $websiteSession = session()->all();
+
+        // The reset form is guest-only, so finish it the way a second browser would.
+        session()->flush();
+        Auth::forgetGuards();
+
         $this->post('/forgot-password', ['email' => $user->email]);
 
         Notification::assertSentTo($user, ResetPassword::class, function (ResetPassword $notification) use ($user): bool {
@@ -297,7 +308,13 @@ class AuthTest extends TestCase
             return true;
         });
 
-        $this->assertAuthenticated();
+        session()->flush();
+        session()->put($websiteSession);
+        Auth::forgetGuards();
+
+        $this->get(route('dashboard'))->assertRedirect(route('posts.index'));
+        $this->assertAuthenticatedAs($user);
+        $this->assertTrue(Hash::check('new-password', $user->refresh()->password));
         $this->assertSame(0, $user->fresh()->tokens()->count());
         $this->getJson(route('api.v1.auth.me'), $this->bearer($token))->assertUnauthorized();
     }
@@ -377,6 +394,9 @@ class AuthTest extends TestCase
      */
     private function bearer(string $token): array
     {
+        // Sanctum's request guard keeps the user for the whole test process.
+        Auth::forgetGuards();
+
         return ['Authorization' => 'Bearer '.$token];
     }
 }

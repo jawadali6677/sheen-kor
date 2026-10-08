@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\DeleteUserAccount;
 use App\Enums\MonetizationPackageType;
 use App\Enums\RewardedAdStatus;
 use App\Enums\RewardType;
@@ -180,7 +181,7 @@ class ProfileController extends Controller
         return Redirect::route('profile.edit')->with('status', 'profile-updated');
     }
 
-    public function destroy(Request $request): RedirectResponse
+    public function destroy(Request $request, DeleteUserAccount $deleteUserAccount): RedirectResponse
     {
         $request->validateWithBag('userDeletion', [
             'password' => ['required', 'current_password'],
@@ -190,7 +191,7 @@ class ProfileController extends Controller
 
         Auth::logout();
 
-        $user->delete();
+        $deleteUserAccount->handle($user);
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

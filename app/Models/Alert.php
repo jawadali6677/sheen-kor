@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Permission;
 use App\Events\AlertEngagementUpdated;
 use App\Models\Concerns\HasEngagement;
 use App\Models\Concerns\PresentsMedia;
@@ -83,6 +84,23 @@ class Alert extends Model
     public function isPubliclyVisible(): bool
     {
         return in_array($this->status, ['open', 'in_progress', 'fixed'], true);
+    }
+
+    /**
+     * Alerts that are not publicly visible stay available to the author and to alert moderators.
+     */
+    public function isVisibleTo(?User $user): bool
+    {
+        if ($this->isPubliclyVisible()) {
+            return true;
+        }
+
+        if ($user === null) {
+            return false;
+        }
+
+        return $this->user_id === $user->id
+            || $user->hasPermission(Permission::ModerateAlerts);
     }
 
     public function isOpen(): bool

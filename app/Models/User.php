@@ -17,11 +17,12 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Str;
 use Laravel\Cashier\Billable;
+use Laravel\Sanctum\HasApiTokens;
 use Throwable;
 
 class User extends Authenticatable
 {
-    use Billable, HasFactory, Notifiable;
+    use Billable, HasApiTokens, HasFactory, Notifiable;
 
     protected $fillable = [
         'name',

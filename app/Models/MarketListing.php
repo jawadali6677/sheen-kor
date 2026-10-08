@@ -8,6 +8,7 @@ use App\Enums\MarketListingCondition;
 use App\Enums\MarketListingStatus;
 use App\Enums\MarketListingType;
 use App\Enums\OrderStatus;
+use App\Enums\Permission;
 use App\Models\Concerns\PresentsMedia;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -124,6 +125,50 @@ class MarketListing extends Model
     public function scopePublished(Builder $query): void
     {
         $query->where('status', MarketListingStatus::Published);
+    }
+
+    /**
+     * Unpublished listings are visible to the owner and to market moderators.
+     */
+    public function isVisibleTo(?User $user): bool
+    {
+        if ($this->status->isPubliclyVisible()) {
+            return true;
+        }
+
+        if ($user === null) {
+            return false;
+        }
+
+        return $this->user_id === $user->id
+            || $user->hasPermission(Permission::ModerateMarketListings);
+    }
+
+    /**
+     * Same nearby filter as the website catalog: a bounding box, then a MySQL haversine check.
+     * Other drivers, including the SQLite test database, keep the bounding box only.
+     *
+     * @param  Builder<MarketListing>  $query
+     */
+    public function scopeNearby(Builder $query, float $latitude, float $longitude, float $radiusKm): void
+    {
+        $latDelta = $radiusKm / 111.32;
+        $cosLatitude = cos(deg2rad($latitude));
+        $lngDelta = $cosLatitude == 0.0 ? 180 : $radiusKm / (111.32 * abs($cosLatitude));
+
+        $query->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->whereBetween('latitude', [$latitude - $latDelta, $latitude + $latDelta])
+            ->whereBetween('longitude', [$longitude - $lngDelta, $longitude + $lngDelta]);
+
+        if ($query->getConnection()->getDriverName() !== 'mysql') {
+            return;
+        }
+
+        $query->whereRaw(
+            '(6371 * acos(least(1, cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude))))) <= ?',
+            [$latitude, $longitude, $latitude, $radiusKm],
+        );
     }
 
     public function currentPromotion(): ?ListingPromotion

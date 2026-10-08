@@ -44,6 +44,15 @@ class Post extends Model
         return (bool) $this->title_is_generated;
     }
 
+    /**
+     * Unpublished stories are visible only to their author. Guests and other members get a 404.
+     */
+    public function isVisibleTo(?User $user): bool
+    {
+        return $this->status === 'published'
+            || ($user !== null && $this->user_id === $user->id);
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);

@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Actions\AwardScore;
 use App\Actions\RevokeScore;
-use App\Enums\Permission;
 use App\Enums\ScoreReason;
 use App\Models\Alert;
 use App\Models\AlertImage;
@@ -170,13 +169,7 @@ class AlertController extends Controller
 
     public function show(Alert $alert)
     {
-        if (
-            ! $alert->isPubliclyVisible()
-            && $alert->user_id !== auth()->id()
-            && ! auth()->user()?->hasPermission(Permission::ModerateAlerts)
-        ) {
-            abort(404);
-        }
+        abort_unless($alert->isVisibleTo(auth()->user()), 404);
 
         $alert->load(['user', 'images', 'actionUser', 'reportImages', 'fixImages']);
 

@@ -2,7 +2,11 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Actions\CreatePost;
+use App\Actions\DeletePost;
 use App\Actions\RecordQualifiedPostView;
+use App\Actions\UpdatePost;
+use App\Exceptions\ContentWriteFailed;
 use App\Http\Controllers\Api\V1\Concerns\SerializesApiContent;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
@@ -76,6 +80,98 @@ class PostController extends Controller
         return response()->json([
             'data' => $this->postPayload($post),
         ]);
+    }
+
+    public function store(Request $request, CreatePost $createPost): JsonResponse
+    {
+        $this->authorize('create', Post::class);
+
+        try {
+            $post = $createPost->handle($request);
+        } catch (ContentWriteFailed $exception) {
+            return response()->json(['message' => $exception->getMessage()], 500);
+        }
+
+        return response()->json($this->postWritePayload($request, $post), 201);
+    }
+
+    public function update(Request $request, Post $post, UpdatePost $updatePost): JsonResponse
+    {
+        $this->authorize('update', $post);
+
+        try {
+            $post = $updatePost->handle($request, $post);
+        } catch (ContentWriteFailed $exception) {
+            return response()->json(['message' => $exception->getMessage()], 500);
+        }
+
+        return response()->json($this->postWritePayload($request, $post));
+    }
+
+    public function destroy(Post $post, DeletePost $deletePost): JsonResponse
+    {
+        $this->authorize('delete', $post);
+
+        try {
+            $deletePost->handle($post);
+        } catch (ContentWriteFailed $exception) {
+            return response()->json(['message' => $exception->getMessage()], 500);
+        }
+
+        return response()->json([
+            'message' => 'Your post has been deleted.',
+        ]);
+    }
+
+    public function moderationStatus(Request $request, Post $post): JsonResponse
+    {
+        abort_unless($request->user()?->id === $post->user_id, 403);
+
+        $post->refresh();
+
+        return response()->json([
+            'message' => $post->moderationMessage(),
+            'status' => $post->status,
+        ]);
+    }
+
+    /**
+     * @return array{message: string, status: string, data: array<string, mixed>}
+     */
+    private function postWritePayload(Request $request, Post $post): array
+    {
+        $post->refresh();
+        $viewerId = $request->user()?->id;
+
+        $post->load([
+            'user' => function ($query): void {
+                $query->withExists([
+                    'greenTickVerifications as has_active_green_tick' => function ($query): void {
+                        $query->currentlyActive();
+                    },
+                ]);
+            },
+            'category',
+            'images',
+        ])->loadCount([
+            'likes',
+            'comments' => function ($query): void {
+                $query->where('status', 'approved');
+            },
+        ])->loadExists([
+            'likes as liked_by_user' => function ($query) use ($viewerId): void {
+                $query->where('user_id', $viewerId);
+            },
+            'boosts as is_boosted' => function ($query): void {
+                $query->currentlyActive();
+            },
+        ]);
+
+        return [
+            'message' => $post->moderationMessage(),
+            'status' => $post->status,
+            'data' => $this->postPayload($post),
+        ];
     }
 
     /**

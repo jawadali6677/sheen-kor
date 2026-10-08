@@ -29,6 +29,9 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
         Route::get('alerts', [AlertController::class, 'index'])->name('alerts.index');
         Route::get('alerts/{alert:slug}', [AlertController::class, 'show'])->name('alerts.show');
         Route::get('market/categories', [MarketListingController::class, 'categories'])->name('market.categories');
+        Route::get('market/mine', [MarketListingController::class, 'mine'])
+            ->middleware(['auth:sanctum', 'ability:mobile', EnsureApiUserIsActive::class])
+            ->name('market.mine');
         Route::get('market', [MarketListingController::class, 'index'])->name('market.index');
         Route::get('market/{listing:slug}', [MarketListingController::class, 'show'])->name('market.show');
         Route::get('users/{user:username}', [ProfileController::class, 'show'])->name('users.show');
@@ -44,6 +47,23 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
         Route::get('auth/me', [AuthController::class, 'me'])->name('auth.me');
         Route::put('auth/password', [AuthController::class, 'updatePassword'])->name('auth.password');
         Route::delete('auth/account', [AuthController::class, 'destroy'])->name('auth.account.destroy');
+        Route::post('posts', [PostController::class, 'store'])->name('posts.store');
+        Route::get('posts/{post}/moderation-status', [PostController::class, 'moderationStatus'])->name('posts.moderation-status');
+        Route::patch('posts/{post}', [PostController::class, 'update'])->name('posts.update');
+        Route::delete('posts/{post}', [PostController::class, 'destroy'])->name('posts.destroy');
+        Route::post('alerts', [AlertController::class, 'store'])->name('alerts.store');
+        Route::patch('alerts/{alert}', [AlertController::class, 'update'])->name('alerts.update');
+        Route::delete('alerts/{alert}', [AlertController::class, 'destroy'])->name('alerts.destroy');
+        Route::post('alerts/{alert}/take-action', [AlertController::class, 'takeAction'])->name('alerts.take-action');
+        Route::post('alerts/{alert}/mark-fixed', [AlertController::class, 'markFixed'])->name('alerts.mark-fixed');
+        Route::post('market', [MarketListingController::class, 'store'])->name('market.store');
+        Route::patch('market/{listing}', [MarketListingController::class, 'update'])->name('market.update');
+        Route::delete('market/{listing}', [MarketListingController::class, 'destroy'])->name('market.destroy');
+        Route::post('market/{listing}/sold', [MarketListingController::class, 'sold'])->name('market.sold');
+        Route::post('market/{listing}/exchanged', [MarketListingController::class, 'exchanged'])->name('market.exchanged');
+        Route::post('market/{listing}/donated', [MarketListingController::class, 'donated'])->name('market.donated');
+        Route::post('market/{listing}/close', [MarketListingController::class, 'close'])->name('market.close');
+        Route::post('market/{listing}/report', [MarketListingController::class, 'report'])->name('market.report');
         Route::get('leaderboard', [LeaderboardController::class, 'index'])->name('leaderboard.index');
         Route::get('notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread-count');
         Route::post('notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');

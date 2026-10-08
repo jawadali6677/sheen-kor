@@ -144,6 +144,19 @@ class MarketListing extends Model
             || $user->hasPermission(Permission::ModerateMarketListings);
     }
 
+    public function moderationMessage(bool $created): string
+    {
+        return match ($this->status) {
+            MarketListingStatus::Published => $created
+                ? 'Your listing has been published.'
+                : 'Your listing has been updated and published.',
+            MarketListingStatus::Rejected => 'Your listing was not published because it did not meet community guidelines.',
+            default => $created
+                ? 'Your listing has been submitted successfully and is awaiting review.'
+                : 'Your listing has been updated successfully and is awaiting review.',
+        };
+    }
+
     /**
      * Same nearby filter as the website catalog: a bounding box, then a MySQL haversine check.
      * Other drivers, including the SQLite test database, keep the bounding box only.

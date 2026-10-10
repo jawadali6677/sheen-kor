@@ -2,23 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use App\Actions\AwardScore;
-use App\Actions\RevokeScore;
-use App\Enums\ScoreReason;
+use App\Actions\CreateAlert;
+use App\Actions\DeleteAlert;
+use App\Actions\MarkAlertFixed;
+use App\Actions\TakeAlertAction;
+use App\Actions\UpdateAlert;
+use App\Exceptions\ContentWriteFailed;
 use App\Models\Alert;
-use App\Models\AlertImage;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
-use Throwable;
 
 class AlertController extends Controller
 {
-    public function __construct(
-        private AwardScore $awardScore,
-        private RevokeScore $revokeScore,
-    ) {}
-
     public function index(Request $request)
     {
         $status = $request->string('status')->toString();
@@ -77,94 +71,21 @@ class AlertController extends Controller
         return view('alerts.create');
     }
 
-    public function store(Request $request)
+    public function store(Request $request, CreateAlert $createAlert)
     {
         $this->authorize('create', Alert::class);
 
-        $request->validate(array_merge([
-            'title' => ['required', 'string', 'min:5', 'max:255'],
-            'description' => ['required', 'string', 'min:20'],
-            'location_name' => ['required', 'string', 'min:3', 'max:255'],
-            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
-            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
-            'severity' => ['required', 'in:low,medium,high'],
-            'featured_image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-            'images' => ['nullable', 'array', 'max:10'],
-            'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-        ], shortVideoRules()));
-
-        DB::beginTransaction();
-
         try {
-
-            $featuredImage = $request
-                ->file('featured_image')
-                ->store('alerts/featured', 'public');
-
-            $alert = Alert::create([
-                'user_id' => auth()->id(),
-                'title' => $request->title,
-                'slug' => generateUniqueSlug(Alert::class, $request->title),
-                'description' => $request->description,
-                'location_name' => $request->location_name,
-                'latitude' => $request->latitude,
-                'longitude' => $request->longitude,
-                'featured_image' => $featuredImage,
-                'severity' => $request->severity,
-                'status' => 'open',
-                'views' => 0,
-            ]);
-
-            $sortOrder = 0;
-
-            if ($request->hasFile('images')) {
-                foreach ($request->file('images') as $image) {
-                    AlertImage::create([
-                        'alert_id' => $alert->id,
-                        'image' => $image->store('alerts/images', 'public'),
-                        'caption' => null,
-                        'sort_order' => $sortOrder,
-                        'kind' => 'report',
-                        'media_type' => 'image',
-                    ]);
-
-                    $sortOrder++;
-                }
-            }
-
-            if ($request->hasFile('videos')) {
-                foreach ($request->file('videos') as $video) {
-                    AlertImage::create([
-                        'alert_id' => $alert->id,
-                        'image' => $video->store('alerts/videos', 'public'),
-                        'caption' => null,
-                        'sort_order' => $sortOrder,
-                        'kind' => 'report',
-                        'media_type' => 'video',
-                    ]);
-
-                    $sortOrder++;
-                }
-            }
-
-            $this->awardScore->handle($request->user(), ScoreReason::AlertCreated, $alert);
-
-            DB::commit();
-
-            return redirect()
-                ->route('alerts.show', $alert)
-                ->with('success', 'Your environmental alert has been posted. Others can now see it.');
-
-        } catch (Throwable $e) {
-
-            DB::rollBack();
-
-            report($e);
-
+            $alert = $createAlert->handle($request);
+        } catch (ContentWriteFailed $exception) {
             return back()
                 ->withInput()
-                ->with('error', 'Something went wrong while posting your alert.');
+                ->with('error', $exception->getMessage());
         }
+
+        return redirect()
+            ->route('alerts.show', $alert)
+            ->with('success', 'Your environmental alert has been posted. Others can now see it.');
     }
 
     public function show(Alert $alert)
@@ -203,277 +124,77 @@ class AlertController extends Controller
         return view('alerts.edit', compact('alert'));
     }
 
-    public function update(Request $request, Alert $alert)
+    public function update(Request $request, Alert $alert, UpdateAlert $updateAlert)
     {
         $this->authorize('update', $alert);
 
-        $request->validate(array_merge([
-            'title' => ['required', 'string', 'min:5', 'max:255'],
-            'description' => ['required', 'string', 'min:20'],
-            'location_name' => ['required', 'string', 'min:3', 'max:255'],
-            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
-            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
-            'severity' => ['required', 'in:low,medium,high'],
-            'featured_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-            'images' => ['nullable', 'array', 'max:10'],
-            'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-        ], shortVideoRules()));
-
-        DB::beginTransaction();
-
         try {
-
-            $alert->update([
-                'title' => $request->title,
-                'slug' => generateUniqueSlug(Alert::class, $request->title, $alert->id),
-                'description' => $request->description,
-                'location_name' => $request->location_name,
-                'latitude' => $request->latitude,
-                'longitude' => $request->longitude,
-                'severity' => $request->severity,
-            ]);
-
-            if ($request->hasFile('featured_image')) {
-                $oldFeaturedImage = $alert->featured_image;
-
-                $alert->update([
-                    'featured_image' => $request
-                        ->file('featured_image')
-                        ->store('alerts/featured', 'public'),
-                ]);
-
-                if ($oldFeaturedImage) {
-                    Storage::disk('public')->delete($oldFeaturedImage);
-                }
-            }
-
-            $sortOrder = $alert->images()->count();
-
-            if ($request->hasFile('images')) {
-                foreach ($request->file('images') as $image) {
-                    AlertImage::create([
-                        'alert_id' => $alert->id,
-                        'image' => $image->store('alerts/images', 'public'),
-                        'caption' => null,
-                        'sort_order' => $sortOrder,
-                        'kind' => 'report',
-                        'media_type' => 'image',
-                    ]);
-
-                    $sortOrder++;
-                }
-            }
-
-            if ($request->hasFile('videos')) {
-                foreach ($request->file('videos') as $video) {
-                    AlertImage::create([
-                        'alert_id' => $alert->id,
-                        'image' => $video->store('alerts/videos', 'public'),
-                        'caption' => null,
-                        'sort_order' => $sortOrder,
-                        'kind' => 'report',
-                        'media_type' => 'video',
-                    ]);
-
-                    $sortOrder++;
-                }
-            }
-
-            DB::commit();
-
-            return redirect()
-                ->route('alerts.show', $alert)
-                ->with('success', 'The alert has been updated.');
-
-        } catch (Throwable $e) {
-
-            DB::rollBack();
-
-            report($e);
-
+            $alert = $updateAlert->handle($request, $alert);
+        } catch (ContentWriteFailed $exception) {
             return back()
                 ->withInput()
-                ->with('error', 'Something went wrong while updating the alert.');
+                ->with('error', $exception->getMessage());
         }
+
+        return redirect()
+            ->route('alerts.show', $alert)
+            ->with('success', 'The alert has been updated.');
     }
 
-    public function destroy(Alert $alert)
+    public function destroy(Alert $alert, DeleteAlert $deleteAlert)
     {
         $this->authorize('delete', $alert);
 
-        DB::beginTransaction();
-
         try {
-
-            if ($alert->featured_image) {
-                Storage::disk('public')->delete($alert->featured_image);
-            }
-
-            foreach ($alert->images as $image) {
-                Storage::disk('public')->delete($image->image);
-                $image->delete();
-            }
-
-            $alert->likes()->delete();
-            $alert->comments()->delete();
-
-            if ($alert->user) {
-                $this->revokeScore->handle($alert->user, ScoreReason::AlertCreated, $alert);
-            }
-
-            if ($alert->actionUser) {
-                $this->revokeScore->handle($alert->actionUser, ScoreReason::AlertFixed, $alert);
-            }
-
-            $alert->delete();
-
-            DB::commit();
-
-            return redirect()
-                ->route('alerts.index')
-                ->with('success', 'The alert has been deleted.');
-
-        } catch (Throwable $e) {
-
-            DB::rollBack();
-
-            report($e);
-
-            return back()->with('error', 'Something went wrong while deleting the alert.');
+            $deleteAlert->handle($alert);
+        } catch (ContentWriteFailed $exception) {
+            return back()->with('error', $exception->getMessage());
         }
+
+        return redirect()
+            ->route('alerts.index')
+            ->with('success', 'The alert has been deleted.');
     }
 
     /**
      * Claim an open alert so only this person/organization can fix it.
      */
-    public function takeAction(Alert $alert)
+    public function takeAction(Request $request, Alert $alert, TakeAlertAction $takeAlertAction)
     {
         $this->authorize('takeAction', $alert);
 
-        DB::beginTransaction();
-
         try {
-
-            $lockedAlert = Alert::query()
-                ->whereKey($alert->id)
-                ->lockForUpdate()
-                ->firstOrFail();
-
-            if (! $lockedAlert->canBeClaimedBy(auth()->id())) {
-                DB::rollBack();
-
-                return back()->with(
-                    'error',
-                    $lockedAlert->isFixed()
-                        ? 'This alert is already fixed.'
-                        : 'This alert is already being handled by someone else.'
-                );
-            }
-
-            $lockedAlert->update([
-                'action_user_id' => auth()->id(),
-                'status' => 'in_progress',
-                'action_taken_at' => now(),
-            ]);
-
-            DB::commit();
-
-            return back()->with(
-                'success',
-                'You have taken this alert. Others cannot take it while you work on it. Mark it as Fixed when the cleanup is done.'
-            );
-
-        } catch (Throwable $e) {
-
-            DB::rollBack();
-
-            report($e);
-
-            return back()->with(
-                'error',
-                'Something went wrong while taking this alert.'
-            );
+            $error = $takeAlertAction->handle($request->user(), $alert);
+        } catch (ContentWriteFailed $exception) {
+            return back()->with('error', $exception->getMessage());
         }
+
+        if ($error !== null) {
+            return back()->with('error', $error);
+        }
+
+        return back()->with(
+            'success',
+            'You have taken this alert. Others cannot take it while you work on it. Mark it as Fixed when the cleanup is done.'
+        );
     }
 
     /**
      * Mark a claimed alert as fixed. Only the person who took action can do this.
      */
-    public function markFixed(Request $request, Alert $alert)
+    public function markFixed(Request $request, Alert $alert, MarkAlertFixed $markAlertFixed)
     {
         $this->authorize('markFixed', $alert);
 
-        $request->validate(array_merge([
-            'fixed_location_name' => ['nullable', 'string', 'min:3', 'max:255'],
-            'fixed_latitude' => ['nullable', 'numeric', 'between:-90,90'],
-            'fixed_longitude' => ['nullable', 'numeric', 'between:-180,180'],
-            'fix_images' => ['nullable', 'array', 'max:10'],
-            'fix_images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-        ], shortVideoRules('fix_videos')));
-
-        DB::beginTransaction();
-
         try {
-
-            $alert->update([
-                'status' => 'fixed',
-                'fixed_at' => now(),
-                'fixed_location_name' => $request->fixed_location_name,
-                'fixed_latitude' => $request->fixed_latitude,
-                'fixed_longitude' => $request->fixed_longitude,
-            ]);
-
-            $sortOrder = $alert->fixImages()->count();
-
-            if ($request->hasFile('fix_images')) {
-                foreach ($request->file('fix_images') as $image) {
-                    AlertImage::create([
-                        'alert_id' => $alert->id,
-                        'image' => $image->store('alerts/fixes', 'public'),
-                        'caption' => null,
-                        'sort_order' => $sortOrder,
-                        'kind' => 'fix',
-                        'media_type' => 'image',
-                    ]);
-
-                    $sortOrder++;
-                }
-            }
-
-            if ($request->hasFile('fix_videos')) {
-                foreach ($request->file('fix_videos') as $video) {
-                    AlertImage::create([
-                        'alert_id' => $alert->id,
-                        'image' => $video->store('alerts/fixes', 'public'),
-                        'caption' => null,
-                        'sort_order' => $sortOrder,
-                        'kind' => 'fix',
-                        'media_type' => 'video',
-                    ]);
-
-                    $sortOrder++;
-                }
-            }
-
-            $this->awardScore->handle($request->user(), ScoreReason::AlertFixed, $alert);
-
-            DB::commit();
-
-            return back()->with(
-                'success',
-                'This alert is now marked as Fixed. Thank you for taking care of it.'
-            );
-
-        } catch (Throwable $e) {
-
-            DB::rollBack();
-
-            report($e);
-
-            return back()->with(
-                'error',
-                'Something went wrong while marking this alert as fixed.'
-            );
+            $markAlertFixed->handle($request, $alert);
+        } catch (ContentWriteFailed $exception) {
+            return back()->with('error', $exception->getMessage());
         }
+
+        return back()->with(
+            'success',
+            'This alert is now marked as Fixed. Thank you for taking care of it.'
+        );
     }
 }

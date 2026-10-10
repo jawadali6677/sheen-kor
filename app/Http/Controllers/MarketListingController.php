@@ -2,34 +2,24 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\CompleteMarketListing;
+use App\Actions\CreateMarketListing;
+use App\Actions\DeleteMarketListing;
 use App\Actions\FindOrCreateDirectConversation;
-use App\Actions\ModerateContent;
-use App\Enums\ListingPromotionStatus;
+use App\Actions\ReportMarketListing;
+use App\Actions\UpdateMarketListing;
 use App\Enums\MarketListingCondition;
-use App\Enums\MarketListingReportReason;
 use App\Enums\MarketListingStatus;
 use App\Enums\MarketListingType;
-use App\Enums\ModerationDecision;
-use App\Enums\Permission;
+use App\Exceptions\ContentWriteFailed;
 use App\Models\MarketCategory;
 use App\Models\MarketListing;
-use App\Models\MarketListingImage;
-use App\Models\User;
-use App\Notifications\MarketListingNeedsReview;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
-use Throwable;
 
 class MarketListingController extends Controller
 {
-    public function __construct(
-        private ModerateContent $moderateContent,
-    ) {}
-
     public function index(Request $request)
     {
         $search = trim((string) $request->input('q', ''));
@@ -156,55 +146,21 @@ class MarketListingController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, CreateMarketListing $createMarketListing)
     {
         $this->authorize('create', MarketListing::class);
 
-        $validated = $this->validatedListing($request, creating: true);
-
-        DB::beginTransaction();
-
         try {
-            $listingType = MarketListingType::from($validated['listing_type']);
-
-            $listing = MarketListing::query()->create([
-                'user_id' => $request->user()->id,
-                'market_category_id' => $validated['market_category_id'],
-                'title' => $validated['title'],
-                'slug' => generateUniqueSlug(MarketListing::class, $validated['title']),
-                'description' => $validated['description'],
-                'listing_type' => $listingType,
-                'condition' => MarketListingCondition::from($validated['condition']),
-                'price' => $listingType->priceIsRequired() ? $validated['price'] : null,
-                'exchange_details' => $listingType->exchangeDetailsAreRequired()
-                    ? $validated['exchange_details']
-                    : null,
-                'location_name' => $validated['location_name'],
-                'latitude' => $validated['latitude'] ?? null,
-                'longitude' => $validated['longitude'] ?? null,
-                'featured_image' => $request->file('featured_image')->store('market/featured', 'public'),
-                'status' => MarketListingStatus::Pending,
-                'published_at' => null,
-            ]);
-
-            $this->storeGalleryImages($listing, $request);
-
-            DB::commit();
-        } catch (Throwable $exception) {
-            DB::rollBack();
-
-            report($exception);
-
+            $listing = $createMarketListing->handle($request);
+        } catch (ContentWriteFailed $exception) {
             return back()
                 ->withInput()
-                ->with('error', 'Something went wrong while creating your listing.');
+                ->with('error', $exception->getMessage());
         }
-
-        $this->applyContentModeration($listing);
 
         return redirect()
             ->route('market.show', $listing)
-            ->with('success', $this->moderationFlashMessage($listing, created: true));
+            ->with('success', $listing->moderationMessage(created: true));
     }
 
     public function show(MarketListing $listing)
@@ -230,50 +186,33 @@ class MarketListingController extends Controller
         return redirect()->route('messages.show', $conversation);
     }
 
-    public function markSold(MarketListing $listing): RedirectResponse
+    public function markSold(MarketListing $listing, CompleteMarketListing $completeMarketListing): RedirectResponse
     {
-        return $this->completeListing($listing, 'markSold', MarketListingStatus::Sold, 'Listing marked as sold.');
+        return $this->completeListing($listing, 'markSold', MarketListingStatus::Sold, 'Listing marked as sold.', $completeMarketListing);
     }
 
-    public function markExchanged(MarketListing $listing): RedirectResponse
+    public function markExchanged(MarketListing $listing, CompleteMarketListing $completeMarketListing): RedirectResponse
     {
-        return $this->completeListing($listing, 'markExchanged', MarketListingStatus::Exchanged, 'Listing marked as exchanged.');
+        return $this->completeListing($listing, 'markExchanged', MarketListingStatus::Exchanged, 'Listing marked as exchanged.', $completeMarketListing);
     }
 
-    public function markDonated(MarketListing $listing): RedirectResponse
+    public function markDonated(MarketListing $listing, CompleteMarketListing $completeMarketListing): RedirectResponse
     {
-        return $this->completeListing($listing, 'markDonated', MarketListingStatus::Donated, 'Listing marked as donated.');
+        return $this->completeListing($listing, 'markDonated', MarketListingStatus::Donated, 'Listing marked as donated.', $completeMarketListing);
     }
 
-    public function close(MarketListing $listing): RedirectResponse
+    public function close(MarketListing $listing, CompleteMarketListing $completeMarketListing): RedirectResponse
     {
-        return $this->completeListing($listing, 'close', MarketListingStatus::Closed, 'Listing closed.');
+        return $this->completeListing($listing, 'close', MarketListingStatus::Closed, 'Listing closed.', $completeMarketListing);
     }
 
-    public function report(Request $request, MarketListing $listing): RedirectResponse
+    public function report(Request $request, MarketListing $listing, ReportMarketListing $reportMarketListing): RedirectResponse
     {
         $this->authorize('report', $listing);
 
-        if ($listing->reports()->where('user_id', $request->user()->id)->exists()) {
+        if (! $reportMarketListing->handle($request, $listing)) {
             return back()->with('error', 'You have already reported this listing.');
         }
-
-        $validated = $request->validate([
-            'reason' => ['required', Rule::enum(MarketListingReportReason::class)],
-            'details' => [
-                'nullable',
-                'string',
-                'max:1000',
-                Rule::requiredIf($request->input('reason') === MarketListingReportReason::Other->value),
-            ],
-        ]);
-
-        $listing->reports()->create([
-            'user_id' => $request->user()->id,
-            'reason' => MarketListingReportReason::from($validated['reason']),
-            'details' => $validated['details'] ?? null,
-            'status' => 'pending',
-        ]);
 
         return back()->with('success', 'Thanks. We will review this listing.');
     }
@@ -292,97 +231,36 @@ class MarketListingController extends Controller
         ]);
     }
 
-    public function update(Request $request, MarketListing $listing)
+    public function update(Request $request, MarketListing $listing, UpdateMarketListing $updateMarketListing)
     {
         $this->authorize('update', $listing);
 
-        $validated = $this->validatedListing($request, creating: false);
-
-        DB::beginTransaction();
-
         try {
-            $listingType = MarketListingType::from($validated['listing_type']);
-
-            $listing->update([
-                'market_category_id' => $validated['market_category_id'],
-                'title' => $validated['title'],
-                'slug' => generateUniqueSlug(MarketListing::class, $validated['title'], $listing->id),
-                'description' => $validated['description'],
-                'listing_type' => $listingType,
-                'condition' => MarketListingCondition::from($validated['condition']),
-                'price' => $listingType->priceIsRequired() ? $validated['price'] : null,
-                'exchange_details' => $listingType->exchangeDetailsAreRequired()
-                    ? $validated['exchange_details']
-                    : null,
-                'location_name' => $validated['location_name'],
-                'latitude' => $validated['latitude'] ?? null,
-                'longitude' => $validated['longitude'] ?? null,
-                'status' => MarketListingStatus::Pending,
-                'published_at' => null,
-            ]);
-
-            if ($request->hasFile('featured_image')) {
-                $oldFeaturedImage = $listing->featured_image;
-
-                $listing->update([
-                    'featured_image' => $request->file('featured_image')->store('market/featured', 'public'),
-                ]);
-
-                if ($oldFeaturedImage) {
-                    Storage::disk('public')->delete($oldFeaturedImage);
-                }
-            }
-
-            $this->storeGalleryImages($listing, $request);
-
-            DB::commit();
-        } catch (Throwable $exception) {
-            DB::rollBack();
-
-            report($exception);
-
+            $listing = $updateMarketListing->handle($request, $listing);
+        } catch (ContentWriteFailed $exception) {
             return back()
                 ->withInput()
-                ->with('error', 'Something went wrong while updating your listing.');
+                ->with('error', $exception->getMessage());
         }
-
-        $this->applyContentModeration($listing);
 
         return redirect()
             ->route('market.show', $listing)
-            ->with('success', $this->moderationFlashMessage($listing, created: false));
+            ->with('success', $listing->moderationMessage(created: false));
     }
 
-    public function destroy(MarketListing $listing)
+    public function destroy(MarketListing $listing, DeleteMarketListing $deleteMarketListing)
     {
         $this->authorize('delete', $listing);
 
-        DB::beginTransaction();
-
         try {
-            if ($listing->featured_image) {
-                Storage::disk('public')->delete($listing->featured_image);
-            }
-
-            foreach ($listing->images as $image) {
-                Storage::disk('public')->delete($image->image);
-                $image->delete();
-            }
-
-            $listing->delete();
-
-            DB::commit();
-
-            return redirect()
-                ->route('market.index')
-                ->with('success', 'Your listing has been deleted successfully.');
-        } catch (Throwable $exception) {
-            DB::rollBack();
-
-            report($exception);
-
-            return back()->with('error', 'Something went wrong while deleting your listing.');
+            $deleteMarketListing->handle($listing);
+        } catch (ContentWriteFailed $exception) {
+            return back()->with('error', $exception->getMessage());
         }
+
+        return redirect()
+            ->route('market.index')
+            ->with('success', 'Your listing has been deleted successfully.');
     }
 
     private function completeListing(
@@ -390,204 +268,13 @@ class MarketListingController extends Controller
         string $ability,
         MarketListingStatus $status,
         string $message,
+        CompleteMarketListing $completeMarketListing,
     ): RedirectResponse {
         $this->authorize($ability, $listing);
 
-        $listing->update([
-            'status' => $status,
-            'closed_at' => now(),
-        ]);
-
-        $openPromotions = $listing->promotions()
-            ->whereIn('status', [
-                ListingPromotionStatus::Pending->value,
-                ListingPromotionStatus::Active->value,
-            ])
-            ->with('order')
-            ->get();
-
-        foreach ($openPromotions as $promotion) {
-            $promotion->order?->cancelIfPending();
-        }
-
-        $listing->promotions()
-            ->whereIn('status', [
-                ListingPromotionStatus::Pending->value,
-                ListingPromotionStatus::Active->value,
-            ])
-            ->update([
-                'status' => ListingPromotionStatus::Cancelled->value,
-            ]);
+        $completeMarketListing->handle($listing, $status);
 
         return back()->with('success', $message);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function validatedListing(Request $request, bool $creating): array
-    {
-        return $request->validate([
-            'title' => ['required', 'string', 'min:5', 'max:255'],
-            'description' => ['required', 'string', 'min:20'],
-            'market_category_id' => [
-                'required',
-                'integer',
-                Rule::exists('market_categories', 'id')->where('is_active', true),
-            ],
-            'listing_type' => ['required', Rule::enum(MarketListingType::class)],
-            'condition' => ['required', Rule::enum(MarketListingCondition::class)],
-            'price' => [
-                'required_if:listing_type,'.MarketListingType::Sell->value,
-                'prohibited_unless:listing_type,'.MarketListingType::Sell->value,
-                'nullable',
-                'numeric',
-                'min:0.01',
-            ],
-            'exchange_details' => [
-                'required_if:listing_type,'.MarketListingType::Exchange->value,
-                'prohibited_unless:listing_type,'.MarketListingType::Exchange->value,
-                'nullable',
-                'string',
-                'min:5',
-            ],
-            'location_name' => ['required', 'string', 'min:3', 'max:255'],
-            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
-            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
-            'featured_image' => array_filter([
-                $creating ? 'required' : 'nullable',
-                'image',
-                'mimes:jpg,jpeg,png,webp',
-                'max:5120',
-            ]),
-            'images' => ['nullable', 'array', 'max:7'],
-            'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-            'videos' => ['prohibited'],
-            'videos.*' => ['prohibited'],
-        ]);
-    }
-
-    private function storeGalleryImages(MarketListing $listing, Request $request): void
-    {
-        if (! $request->hasFile('images')) {
-            return;
-        }
-
-        $sortOrder = $listing->images()->count();
-
-        foreach ($request->file('images') as $image) {
-            MarketListingImage::query()->create([
-                'market_listing_id' => $listing->id,
-                'image' => $image->store('market/images', 'public'),
-                'caption' => null,
-                'sort_order' => $sortOrder,
-                'media_type' => 'image',
-            ]);
-
-            $sortOrder++;
-        }
-    }
-
-    private function applyContentModeration(MarketListing $listing): void
-    {
-        try {
-            $listing->refresh()->load('images');
-
-            $text = trim(implode("\n\n", array_filter([
-                $listing->title,
-                $listing->description,
-                $listing->exchange_details,
-            ], fn (?string $value): bool => filled($value))));
-
-            $imagePaths = [];
-
-            if (filled($listing->featured_image)) {
-                $imagePaths[] = Storage::disk('public')->path($listing->featured_image);
-            }
-
-            foreach ($listing->images as $media) {
-                $imagePaths[] = Storage::disk('public')->path($media->image);
-            }
-
-            $decision = $this->moderateContent->handle($text, $imagePaths, []);
-
-            if ($decision === ModerationDecision::Allow) {
-                $listing->update([
-                    'status' => MarketListingStatus::Published,
-                    'published_at' => now(),
-                ]);
-
-                return;
-            }
-
-            if ($decision === ModerationDecision::Reject) {
-                $listing->update([
-                    'status' => MarketListingStatus::Rejected,
-                    'published_at' => null,
-                ]);
-
-                return;
-            }
-
-            $listing->update([
-                'status' => MarketListingStatus::Pending,
-                'published_at' => null,
-            ]);
-
-            $this->notifyReviewersIfPending($listing);
-        } catch (Throwable $exception) {
-            report($exception);
-
-            $listing->update([
-                'status' => MarketListingStatus::Pending,
-                'published_at' => null,
-            ]);
-
-            $this->notifyReviewersIfPending($listing);
-        }
-    }
-
-    private function notifyReviewersIfPending(MarketListing $listing): void
-    {
-        $listing->refresh()->loadMissing('user');
-
-        if ($listing->status !== MarketListingStatus::Pending) {
-            return;
-        }
-
-        $reviewers = User::query()->withPermission(Permission::ModerateMarketListings)->get();
-
-        foreach ($reviewers as $reviewer) {
-            $alreadyNotified = $reviewer->unreadNotifications()
-                ->where('type', MarketListingNeedsReview::class)
-                ->where('data->listing_id', $listing->id)
-                ->exists();
-
-            if ($alreadyNotified) {
-                continue;
-            }
-
-            try {
-                $reviewer->notifyInbox(new MarketListingNeedsReview($listing));
-            } catch (Throwable $exception) {
-                report($exception);
-            }
-        }
-    }
-
-    private function moderationFlashMessage(MarketListing $listing, bool $created): string
-    {
-        $listing->refresh();
-
-        return match ($listing->status) {
-            MarketListingStatus::Published => $created
-                ? 'Your listing has been published.'
-                : 'Your listing has been updated and published.',
-            MarketListingStatus::Rejected => 'Your listing was not published because it did not meet community guidelines.',
-            default => $created
-                ? 'Your listing has been submitted successfully and is awaiting review.'
-                : 'Your listing has been updated successfully and is awaiting review.',
-        };
     }
 
     /**

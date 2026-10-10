@@ -53,6 +53,15 @@ class Post extends Model
             || ($user !== null && $this->user_id === $user->id);
     }
 
+    public function moderationMessage(): string
+    {
+        return match ($this->status) {
+            'published' => 'Your post is live!',
+            'rejected' => 'Your post was not published. It did not follow our community rules.',
+            default => 'Your post is being checked. It will appear shortly.',
+        };
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Actions\UpdateProfile;
 use App\Http\Controllers\Api\V1\Concerns\SerializesApiContent;
 use App\Http\Controllers\Controller;
 use App\Models\Alert;
@@ -41,7 +42,23 @@ class ProfileController extends Controller
         ]);
 
         return response()->json([
-            'data' => $this->profilePayload($profile),
+            'data' => $this->profilePayload($profile, $request->user()),
+        ]);
+    }
+
+    public function update(Request $request, UpdateProfile $updateProfile): JsonResponse
+    {
+        UpdateProfile::prepare($request);
+
+        $user = $updateProfile->handle(
+            $request->user(),
+            $request->validate(UpdateProfile::rules($request->user())),
+            $request,
+        );
+
+        return response()->json([
+            'message' => 'Profile updated.',
+            'data' => $this->accountPayload($user),
         ]);
     }
 
@@ -205,7 +222,7 @@ class ProfileController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function profilePayload(User $user): array
+    private function profilePayload(User $user, ?User $viewer): array
     {
         return [
             'id' => $user->id,
@@ -219,10 +236,34 @@ class ProfileController extends Controller
             'bio' => $user->bio,
             'location' => $user->location,
             'website' => $user->website,
+            'is_following' => $viewer instanceof User && $viewer->isFollowing($user),
             'stories_count' => (int) $user->stories_count,
             'alerts_count' => (int) $user->alerts_count,
             'fixes_count' => (int) $user->fixes_count,
             'listings_count' => (int) $user->listings_count,
+            'created_at' => $user->created_at?->toIso8601String(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function accountPayload(User $user): array
+    {
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'email_verified_at' => $user->email_verified_at?->toIso8601String(),
+            'username' => $user->username,
+            'role' => $user->role,
+            'score' => (int) $user->score,
+            'has_green_tick' => $user->hasActiveGreenTick(),
+            'avatar_url' => $user->avatarUrl(),
+            'cover_url' => $user->coverUrl(),
+            'bio' => $user->bio,
+            'location' => $user->location,
+            'website' => $user->website,
             'created_at' => $user->created_at?->toIso8601String(),
         ];
     }

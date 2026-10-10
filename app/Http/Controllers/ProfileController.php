@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\DeleteUserAccount;
+use App\Actions\UpdateProfile;
 use App\Enums\MonetizationPackageType;
 use App\Enums\RewardedAdStatus;
 use App\Enums\RewardType;
@@ -14,7 +15,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class ProfileController extends Controller
@@ -128,55 +128,9 @@ class ProfileController extends Controller
         ]);
     }
 
-    public function update(ProfileUpdateRequest $request): RedirectResponse
+    public function update(ProfileUpdateRequest $request, UpdateProfile $updateProfile): RedirectResponse
     {
-        $user = $request->user();
-        $profileData = $request->safe()->except([
-            'profile_image',
-            'cover_image',
-            'remove_profile_image',
-            'remove_cover_image',
-        ]);
-
-        if (! filled($profileData['username'] ?? null)) {
-            unset($profileData['username']);
-        }
-
-        $user->fill($profileData);
-
-        if ($user->isDirty('email')) {
-            $user->email_verified_at = null;
-        }
-
-        if ($request->boolean('remove_profile_image') && $user->profile_image) {
-            Storage::disk('public')->delete($user->profile_image);
-            $user->profile_image = null;
-        }
-
-        if ($request->boolean('remove_cover_image') && $user->cover_image) {
-            Storage::disk('public')->delete($user->cover_image);
-            $user->cover_image = null;
-        }
-
-        if ($request->hasFile('profile_image')) {
-            $oldImage = $user->profile_image;
-            $user->profile_image = $request->file('profile_image')->store('profiles/avatars', 'public');
-
-            if ($oldImage) {
-                Storage::disk('public')->delete($oldImage);
-            }
-        }
-
-        if ($request->hasFile('cover_image')) {
-            $oldCover = $user->cover_image;
-            $user->cover_image = $request->file('cover_image')->store('profiles/covers', 'public');
-
-            if ($oldCover) {
-                Storage::disk('public')->delete($oldCover);
-            }
-        }
-
-        $user->save();
+        $updateProfile->handle($request->user(), $request->validated(), $request);
 
         return Redirect::route('profile.edit')->with('status', 'profile-updated');
     }

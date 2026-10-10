@@ -2,11 +2,15 @@
 
 use App\Http\Controllers\Api\V1\AlertController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\CommentController;
+use App\Http\Controllers\Api\V1\FollowController;
 use App\Http\Controllers\Api\V1\LeaderboardController;
+use App\Http\Controllers\Api\V1\LikeController;
 use App\Http\Controllers\Api\V1\MarketListingController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PostController;
 use App\Http\Controllers\Api\V1\ProfileController;
+use App\Http\Controllers\QualifiedPostViewController;
 use App\Http\Middleware\AuthenticateOptionalApiToken;
 use App\Http\Middleware\EnsureApiUserIsActive;
 use Illuminate\Support\Facades\Route;
@@ -47,13 +51,29 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
         Route::get('auth/me', [AuthController::class, 'me'])->name('auth.me');
         Route::put('auth/password', [AuthController::class, 'updatePassword'])->name('auth.password');
         Route::delete('auth/account', [AuthController::class, 'destroy'])->name('auth.account.destroy');
+        Route::post('posts/qualified-views', [QualifiedPostViewController::class, 'store'])
+            ->middleware('throttle:qualified-views')
+            ->name('posts.qualified-views');
         Route::post('posts', [PostController::class, 'store'])->name('posts.store');
+        Route::post('posts/{post}/likes', [LikeController::class, 'storePost'])->name('posts.likes.store');
+        Route::delete('posts/{post}/likes', [LikeController::class, 'destroyPost'])->name('posts.likes.destroy');
+        Route::get('posts/{post}/comments', [CommentController::class, 'indexPost'])->name('posts.comments.index');
+        Route::post('posts/{post}/comments', [CommentController::class, 'storePost'])->name('posts.comments.store');
         Route::get('posts/{post}/moderation-status', [PostController::class, 'moderationStatus'])->name('posts.moderation-status');
         Route::patch('posts/{post}', [PostController::class, 'update'])->name('posts.update');
         Route::delete('posts/{post}', [PostController::class, 'destroy'])->name('posts.destroy');
         Route::post('alerts', [AlertController::class, 'store'])->name('alerts.store');
         Route::patch('alerts/{alert}', [AlertController::class, 'update'])->name('alerts.update');
         Route::delete('alerts/{alert}', [AlertController::class, 'destroy'])->name('alerts.destroy');
+        Route::post('alerts/{alert}/likes', [LikeController::class, 'storeAlert'])->name('alerts.likes.store');
+        Route::delete('alerts/{alert}/likes', [LikeController::class, 'destroyAlert'])->name('alerts.likes.destroy');
+        Route::get('alerts/{alert}/comments', [CommentController::class, 'indexAlert'])->name('alerts.comments.index');
+        Route::post('alerts/{alert}/comments', [CommentController::class, 'storeAlert'])->name('alerts.comments.store');
+        Route::patch('comments/{comment}', [CommentController::class, 'update'])->name('comments.update');
+        Route::delete('comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
+        Route::post('users/{user}/follow', [FollowController::class, 'store'])->name('users.follow.store');
+        Route::delete('users/{user}/follow', [FollowController::class, 'destroy'])->name('users.follow.destroy');
+        Route::patch('profile', [ProfileController::class, 'update'])->name('profile.update');
         Route::post('alerts/{alert}/take-action', [AlertController::class, 'takeAction'])->name('alerts.take-action');
         Route::post('alerts/{alert}/mark-fixed', [AlertController::class, 'markFixed'])->name('alerts.mark-fixed');
         Route::post('market', [MarketListingController::class, 'store'])->name('market.store');

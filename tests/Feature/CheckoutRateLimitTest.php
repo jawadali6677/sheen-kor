@@ -159,7 +159,7 @@ class CheckoutRateLimitTest extends TestCase
 
     private function stripeCheckoutUrlForAttempt(int $attempt): string
     {
-        return 'https://checkout.stripe.test/cs_test_'.(122 + $attempt);
+        return 'https://checkout.stripe.test/cs_test_123';
     }
 
     /**

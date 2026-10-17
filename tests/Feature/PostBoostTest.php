@@ -370,7 +370,7 @@ class PostBoostTest extends TestCase
 
         $this->actingAs($user)
             ->post(route('orders.pay', $order))
-            ->assertRedirect('https://checkout.stripe.test/cs_test_124');
+            ->assertRedirect('https://checkout.stripe.test/cs_test_123');
     }
 
     public function test_published_posts_show_a_boosted_label_when_active(): void

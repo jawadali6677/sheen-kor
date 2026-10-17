@@ -58,6 +58,10 @@ class StripeWebhookTest extends TestCase
             ->post(route('market.promote.store', $listing), ['package_id' => $package->id]);
 
         $order = Order::query()->firstOrFail();
+        $order->payments()->first()->forceFill([
+            'provider' => PaymentProvider::Stripe,
+            'provider_reference' => 'cs_test_listing_'.$order->id,
+        ])->save();
 
         $this->postStripeWebhook($this->completedPayload($order, 'evt_listing_1'))
             ->assertOk();
@@ -80,6 +84,10 @@ class StripeWebhookTest extends TestCase
             ->post(route('green-tick.store'), ['package_id' => $package->id]);
 
         $order = Order::query()->firstOrFail();
+        $order->payments()->first()->forceFill([
+            'provider' => PaymentProvider::Stripe,
+            'provider_reference' => 'cs_test_tick_'.$order->id,
+        ])->save();
 
         $this->postStripeWebhook($this->completedPayload($order, 'evt_tick_1'))
             ->assertOk();
@@ -93,6 +101,10 @@ class StripeWebhookTest extends TestCase
             ->post(route('green-tick.store'), ['package_id' => $package->id]);
 
         $second = Order::query()->latest('id')->firstOrFail();
+        $second->payments()->first()->forceFill([
+            'provider' => PaymentProvider::Stripe,
+            'provider_reference' => 'cs_test_tick_'.$second->id,
+        ])->save();
         $this->postStripeWebhook($this->completedPayload($second, 'evt_tick_2'))
             ->assertOk();
 
@@ -156,6 +168,13 @@ class StripeWebhookTest extends TestCase
         $this->assertSame(PaymentStatus::Failed, $order->payments()->first()->status);
         $this->assertSame(PostBoostStatus::Cancelled, PostBoost::query()->first()->status);
         $this->assertFalse($post->fresh()->hasActiveBoost());
+
+        $this->actingAs($order->user)
+            ->post(route('orders.pay', $order))
+            ->assertForbidden();
+
+        $this->assertSame(1, Order::query()->count());
+        $this->assertSame(1, $order->payments()->count());
     }
 
     public function test_an_old_expired_checkout_session_does_not_fail_an_order_with_a_newer_session(): void
@@ -163,7 +182,17 @@ class StripeWebhookTest extends TestCase
         [$order, $post] = $this->pendingBoostOrder();
         $staleSessionId = $order->payments()->first()->provider_reference;
 
-        $this->fakeStripe();
+        $gateway = $this->fakeStripe();
+        $gateway->sessions[$staleSessionId] = [
+            'id' => $staleSessionId,
+            'status' => 'expired',
+            'url' => null,
+            'payment_status' => 'unpaid',
+            'order_id' => (string) $order->id,
+            'client_reference_id' => (string) $order->id,
+            'payment_intent' => null,
+            'payment_intent_status' => null,
+        ];
 
         $this->actingAs($order->user)
             ->post(route('orders.pay', $order))
@@ -189,6 +218,9 @@ class StripeWebhookTest extends TestCase
         $this->assertSame(PaymentStatus::Pending, $order->payments()->latest('id')->first()->status);
         $this->assertSame(PostBoostStatus::Pending, PostBoost::query()->first()->status);
         $this->assertFalse($post->fresh()->hasActiveBoost());
+
+        $gateway->sessions['cs_test_123']['status'] = 'expired';
+        $gateway->sessions['cs_test_123']['payment_status'] = 'unpaid';
 
         $this->postStripeWebhook([
             'id' => 'evt_expired_current',
@@ -263,6 +295,9 @@ class StripeWebhookTest extends TestCase
         $payload = $this->completedPayload($order, 'evt_missing_order');
         $payload['data']['object']['metadata'] = ['order_id' => 999999999];
         $payload['data']['object']['client_reference_id'] = '999999999';
+        $gateway = $this->fakeStripe();
+        $sessionId = $order->payments()->first()->provider_reference;
+        $gateway->sessions[$sessionId] = $this->settledSession($order, $sessionId, 'pi_evt_missing_order');
 
         $this->postStripeWebhook($payload)->assertOk();
 
@@ -324,6 +359,201 @@ class StripeWebhookTest extends TestCase
         $this->assertTrue($post->fresh()->hasActiveBoost());
     }
 
+    public function test_a_declined_card_stays_pending_until_stripe_confirms_a_later_payment(): void
+    {
+        [$order, $post] = $this->pendingBoostOrder();
+        $gateway = $this->fakeStripe();
+        $sessionId = $order->payments()->first()->provider_reference;
+
+        $this->postStripeWebhook($this->declinedPayload($order, 'evt_decline_1', 'pi_decline_1', 'generic_decline', 'Your card was declined.'))
+            ->assertOk();
+
+        $payment = $order->payments()->first();
+
+        $this->assertSame(OrderStatus::Pending, $order->fresh()->status);
+        $this->assertSame(PaymentStatus::Pending, $payment->fresh()->status);
+        $this->assertSame(PostBoostStatus::Pending, PostBoost::query()->first()->status);
+        $this->assertFalse($post->fresh()->hasActiveBoost());
+        $this->assertSame([], $gateway->expiredSessions);
+        $this->assertSame('evt_decline_1', $payment->fresh()->payload['declined_attempts'][0]['event_id']);
+        $this->assertSame('pi_decline_1', $payment->fresh()->payload['declined_attempts'][0]['payment_intent']);
+        $this->assertSame('card_declined', $payment->fresh()->payload['declined_attempts'][0]['code']);
+        $this->assertSame('generic_decline', $payment->fresh()->payload['declined_attempts'][0]['decline_code']);
+        $this->assertSame('Your card was declined.', $payment->fresh()->payload['declined_attempts'][0]['message']);
+
+        $this->postStripeWebhook($this->declinedPayload($order, 'evt_decline_1', 'pi_decline_1', 'generic_decline', 'Your card was declined.'))
+            ->assertOk();
+
+        $this->assertCount(1, $order->payments()->first()->payload['declined_attempts']);
+
+        $this->postStripeWebhook($this->declinedPayload($order, 'evt_decline_2', 'pi_decline_2', 'insufficient_funds', 'Your card has insufficient funds.'))
+            ->assertOk();
+
+        $this->actingAs($order->user)
+            ->from(route('posts.boost.create', $post))
+            ->post(route('posts.boost.store', $post), ['package_id' => $order->package_id])
+            ->assertRedirect(route('posts.boost.create', $post))
+            ->assertSessionHas('error');
+
+        $this->assertSame(1, Order::query()->count());
+        $this->assertSame(1, $order->payments()->count());
+        $this->assertCount(2, $order->payments()->first()->payload['declined_attempts']);
+        $this->assertSame(OrderStatus::Pending, $order->fresh()->status);
+
+        $gateway->sessions[$sessionId] = $this->settledSession($order, $sessionId, 'pi_success');
+
+        $this->postStripeWebhook($this->completedPayload($order, 'evt_paid_after_decline'))
+            ->assertOk();
+        $this->postStripeWebhook($this->completedPayload($order, 'evt_paid_after_decline'))
+            ->assertOk();
+
+        $this->assertSame(OrderStatus::Paid, $order->fresh()->status);
+        $this->assertSame(PaymentStatus::Paid, $order->payments()->first()->status);
+        $this->assertSame(PostBoostStatus::Active, PostBoost::query()->first()->status);
+        $this->assertTrue($post->fresh()->hasActiveBoost());
+        $this->assertSame(1, PostBoost::query()->count());
+        $this->assertSame(1, Order::query()->count());
+        $this->assertSame(1, $order->payments()->count());
+        $this->assertSame([], $gateway->expiredSessions);
+        $this->assertSame('pi_success', $order->payments()->first()->payload['payment_intent']);
+    }
+
+    public function test_async_payment_succeeded_after_a_decline_marks_the_order_paid(): void
+    {
+        [$order, $post] = $this->pendingBoostOrder();
+        $sessionId = $order->payments()->first()->provider_reference;
+        $gateway = $this->fakeStripe();
+
+        $this->postStripeWebhook($this->declinedPayload($order, 'evt_decline_async', 'pi_decline_async', 'generic_decline', 'Your card was declined.'))
+            ->assertOk();
+
+        $gateway->sessions[$sessionId] = $this->settledSession($order, $sessionId, 'pi_async_success');
+        $payload = $this->completedPayload($order, 'evt_async_paid');
+        $payload['type'] = 'checkout.session.async_payment_succeeded';
+
+        $this->postStripeWebhook($payload)->assertOk();
+
+        $this->assertSame(OrderStatus::Paid, $order->fresh()->status);
+        $this->assertTrue($post->fresh()->hasActiveBoost());
+        $this->assertSame(1, $order->payments()->count());
+    }
+
+    public function test_late_failure_events_do_not_downgrade_a_paid_order_or_its_benefit(): void
+    {
+        [$order, $post] = $this->pendingBoostOrder();
+        $sessionId = $order->payments()->first()->provider_reference;
+
+        $this->postStripeWebhook($this->completedPayload($order, 'evt_paid_first'))
+            ->assertOk();
+
+        $this->postStripeWebhook($this->declinedPayload($order, 'evt_decline_late', 'pi_late', 'generic_decline', 'Your card was declined.'))
+            ->assertOk();
+        $this->postStripeWebhook($this->expiredPayload($order, $sessionId, 'evt_expired_late'))
+            ->assertOk();
+        $this->postStripeWebhook($this->asyncFailedPayload($order, $sessionId, 'evt_async_failed_late'))
+            ->assertOk();
+        $this->postStripeWebhook($this->completedPayload($order, 'evt_paid_first'))
+            ->assertOk();
+
+        $this->assertSame(OrderStatus::Paid, $order->fresh()->status);
+        $this->assertSame(PaymentStatus::Paid, $order->payments()->first()->status);
+        $this->assertSame(PostBoostStatus::Active, PostBoost::query()->first()->status);
+        $this->assertTrue($post->fresh()->hasActiveBoost());
+        $this->assertSame(1, PostBoost::query()->currentlyActive()->count());
+    }
+
+    public function test_checkout_completed_does_not_pay_when_stripe_says_the_session_is_unpaid(): void
+    {
+        [$order, $post] = $this->pendingBoostOrder();
+        $gateway = $this->fakeStripe();
+        $sessionId = $order->payments()->first()->provider_reference;
+        $gateway->sessions[$sessionId] = [
+            'id' => $sessionId,
+            'status' => 'open',
+            'url' => null,
+            'payment_status' => 'unpaid',
+            'order_id' => (string) $order->id,
+            'client_reference_id' => (string) $order->id,
+            'payment_intent' => 'pi_open',
+            'payment_intent_status' => 'requires_payment_method',
+        ];
+
+        $this->postStripeWebhook($this->completedPayload($order, 'evt_claims_paid'))
+            ->assertOk();
+
+        $this->assertSame(OrderStatus::Pending, $order->fresh()->status);
+        $this->assertSame(PaymentStatus::Pending, $order->payments()->first()->status);
+        $this->assertSame(PostBoostStatus::Pending, PostBoost::query()->first()->status);
+        $this->assertFalse($post->fresh()->hasActiveBoost());
+    }
+
+    public function test_checkout_completed_does_not_pay_when_the_payment_intent_has_not_succeeded(): void
+    {
+        [$order, $post] = $this->pendingBoostOrder();
+        $gateway = $this->fakeStripe();
+        $sessionId = $order->payments()->first()->provider_reference;
+        $session = $this->settledSession($order, $sessionId, 'pi_processing');
+        $session['payment_intent_status'] = 'processing';
+        $gateway->sessions[$sessionId] = $session;
+
+        $this->postStripeWebhook($this->completedPayload($order, 'evt_processing'))
+            ->assertOk();
+
+        $this->assertSame(OrderStatus::Pending, $order->fresh()->status);
+        $this->assertFalse($post->fresh()->hasActiveBoost());
+    }
+
+    public function test_an_expired_webhook_pays_when_stripe_has_already_settled_the_session(): void
+    {
+        [$order, $post] = $this->pendingBoostOrder();
+        $gateway = $this->fakeStripe();
+        $sessionId = $order->payments()->first()->provider_reference;
+        $gateway->sessions[$sessionId] = $this->settledSession($order, $sessionId, 'pi_already_settled');
+
+        $this->postStripeWebhook($this->expiredPayload($order, $sessionId, 'evt_expired_but_paid'))
+            ->assertOk();
+
+        $this->assertSame(OrderStatus::Paid, $order->fresh()->status);
+        $this->assertSame(PaymentStatus::Paid, $order->payments()->first()->status);
+        $this->assertSame(PostBoostStatus::Active, PostBoost::query()->first()->status);
+        $this->assertTrue($post->fresh()->hasActiveBoost());
+        $this->assertSame([], $gateway->expiredSessions);
+    }
+
+    public function test_async_payment_failed_still_cancels_a_pending_unpaid_order(): void
+    {
+        [$order, $post] = $this->pendingBoostOrder();
+        $sessionId = $order->payments()->first()->provider_reference;
+
+        $this->postStripeWebhook($this->asyncFailedPayload($order, $sessionId, 'evt_async_failed'))
+            ->assertOk();
+
+        $this->assertSame(OrderStatus::Failed, $order->fresh()->status);
+        $this->assertSame(PaymentStatus::Failed, $order->payments()->first()->status);
+        $this->assertSame(PostBoostStatus::Cancelled, PostBoost::query()->first()->status);
+        $this->assertFalse($post->fresh()->hasActiveBoost());
+    }
+
+    public function test_a_decline_for_a_different_order_does_not_change_this_order(): void
+    {
+        [$order, $post] = $this->pendingBoostOrder();
+        [$otherOrder] = $this->pendingBoostOrder();
+        $order->payments()->first()->forceFill([
+            'payload' => ['payment_intent' => 'pi_cross'],
+        ])->save();
+
+        $payload = $this->declinedPayload($order, 'evt_cross_decline', 'pi_cross', 'generic_decline', 'Your card was declined.');
+        $payload['data']['object']['metadata'] = ['order_id' => (string) $otherOrder->id];
+
+        $this->postStripeWebhook($payload)->assertOk();
+
+        $this->assertSame(OrderStatus::Pending, $order->fresh()->status);
+        $this->assertSame(OrderStatus::Pending, $otherOrder->fresh()->status);
+        $this->assertSame(['payment_intent' => 'pi_cross'], $order->payments()->first()->payload);
+        $this->assertNull($otherOrder->payments()->first()->payload);
+        $this->assertFalse($post->fresh()->hasActiveBoost());
+    }
+
     public function test_admin_mark_paid_still_works_for_a_pending_stripe_order(): void
     {
         $admin = User::factory()->admin()->create();
@@ -383,6 +613,89 @@ class StripeWebhookTest extends TestCase
     /**
      * @param  array<string, mixed>  $payload
      */
+    /**
+     * @return array<string, mixed>
+     */
+    private function declinedPayload(Order $order, string $eventId, string $paymentIntentId, string $declineCode, string $message): array
+    {
+        return [
+            'id' => $eventId,
+            'type' => 'payment_intent.payment_failed',
+            'data' => [
+                'object' => [
+                    'id' => $paymentIntentId,
+                    'object' => 'payment_intent',
+                    'metadata' => ['order_id' => (string) $order->id],
+                    'last_payment_error' => [
+                        'code' => 'card_declined',
+                        'decline_code' => $declineCode,
+                        'message' => $message,
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function expiredPayload(Order $order, string $sessionId, string $eventId): array
+    {
+        return [
+            'id' => $eventId,
+            'type' => 'checkout.session.expired',
+            'data' => [
+                'object' => [
+                    'id' => $sessionId,
+                    'object' => 'checkout.session',
+                    'payment_status' => 'unpaid',
+                    'client_reference_id' => (string) $order->id,
+                    'metadata' => ['order_id' => (string) $order->id],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function asyncFailedPayload(Order $order, string $sessionId, string $eventId): array
+    {
+        return [
+            'id' => $eventId,
+            'type' => 'checkout.session.async_payment_failed',
+            'data' => [
+                'object' => [
+                    'id' => $sessionId,
+                    'object' => 'checkout.session',
+                    'payment_status' => 'unpaid',
+                    'client_reference_id' => (string) $order->id,
+                    'metadata' => ['order_id' => (string) $order->id],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function settledSession(Order $order, string $sessionId, string $paymentIntentId): array
+    {
+        return [
+            'id' => $sessionId,
+            'status' => 'complete',
+            'url' => null,
+            'payment_status' => 'paid',
+            'order_id' => (string) $order->id,
+            'client_reference_id' => (string) $order->id,
+            'payment_intent' => $paymentIntentId,
+            'payment_intent_status' => 'succeeded',
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
     private function postStripeWebhook(array $payload)
     {
         config([
@@ -390,6 +703,7 @@ class StripeWebhookTest extends TestCase
             'cashier.secret' => 'sk_test_123',
             'cashier.webhook.secret' => 'whsec_test_123',
         ]);
+        $this->rememberWebhookSession($payload);
 
         $body = json_encode($payload);
         $timestamp = now()->timestamp;
@@ -399,6 +713,52 @@ class StripeWebhookTest extends TestCase
             'CONTENT_TYPE' => 'application/json',
             'HTTP_STRIPE_SIGNATURE' => 't='.$timestamp.',v1='.$signature,
         ], $body);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function rememberWebhookSession(array $payload): void
+    {
+        $gateway = $this->app->make(StripeCheckoutGateway::class);
+
+        if (! $gateway instanceof FakeStripeCheckoutGateway) {
+            $gateway = new FakeStripeCheckoutGateway;
+            $this->app->instance(StripeCheckoutGateway::class, $gateway);
+        }
+
+        $object = $payload['data']['object'] ?? null;
+
+        if (! is_array($object) || ($object['object'] ?? null) !== 'checkout.session') {
+            return;
+        }
+
+        $sessionId = $object['id'] ?? null;
+
+        if (! is_string($sessionId) || $sessionId === '' || isset($gateway->sessions[$sessionId])) {
+            return;
+        }
+
+        $metadata = is_array($object['metadata'] ?? null) ? $object['metadata'] : [];
+        $orderId = $metadata['order_id'] ?? null;
+        $clientReferenceId = $object['client_reference_id'] ?? null;
+        $paymentStatus = (string) ($object['payment_status'] ?? 'unpaid');
+        $paymentIntent = $object['payment_intent'] ?? null;
+
+        if (is_array($paymentIntent)) {
+            $paymentIntent = $paymentIntent['id'] ?? null;
+        }
+
+        $gateway->sessions[$sessionId] = [
+            'id' => $sessionId,
+            'status' => ($payload['type'] ?? '') === 'checkout.session.expired' ? 'expired' : 'complete',
+            'url' => null,
+            'payment_status' => $paymentStatus,
+            'order_id' => is_scalar($orderId) && (string) $orderId !== '' ? (string) $orderId : null,
+            'client_reference_id' => is_scalar($clientReferenceId) && (string) $clientReferenceId !== '' ? (string) $clientReferenceId : null,
+            'payment_intent' => is_string($paymentIntent) && $paymentIntent !== '' ? $paymentIntent : null,
+            'payment_intent_status' => $paymentStatus === 'paid' ? 'succeeded' : null,
+        ];
     }
 
     private function fakeStripe(): FakeStripeCheckoutGateway

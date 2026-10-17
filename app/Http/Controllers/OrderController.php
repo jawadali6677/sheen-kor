@@ -79,6 +79,12 @@ class OrderController extends Controller
             return redirect()->away($checkoutUrl);
         }
 
+        $order->refresh();
+
+        if ($order->status === OrderStatus::Paid) {
+            return redirect()->route('orders.show', $order);
+        }
+
         return redirect()
             ->route('orders.show', $order)
             ->with('error', 'Checkout could not be started. You can retry payment, or an admin can mark the order paid.');

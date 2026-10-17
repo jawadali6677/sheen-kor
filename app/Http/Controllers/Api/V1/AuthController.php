@@ -176,6 +176,11 @@ class AuthController extends Controller
      */
     private function accountUser(User $user): array
     {
+        $user->loadCount([
+            'followers',
+            'followings as following_count',
+        ]);
+
         return [
             'id' => $user->id,
             'name' => $user->name,
@@ -189,6 +194,8 @@ class AuthController extends Controller
             'bio' => $user->bio,
             'location' => $user->location,
             'website' => $user->website,
+            'followers_count' => (int) $user->followers_count,
+            'following_count' => (int) $user->following_count,
             'unread_notifications_count' => $user->unreadNotifications()->count(),
             'created_at' => $user->created_at?->toIso8601String(),
         ];

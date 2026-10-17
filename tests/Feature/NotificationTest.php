@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Notifications\ContentCommented;
 use App\Notifications\ContentLiked;
 use App\Notifications\ConversationMessageReceived;
+use App\Notifications\UserFollowed;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
@@ -206,6 +207,107 @@ class NotificationTest extends TestCase
             ->assertJsonPath('unread_count', 0);
 
         $this->assertSame(0, $author->fresh()->unreadNotifications()->count());
+    }
+
+    public function test_following_a_member_notifies_them_and_the_list_links_to_the_follower(): void
+    {
+        $ali = User::factory()->create([
+            'name' => 'Ali',
+            'username' => 'ali',
+            'profile_image' => 'profiles/avatars/ali.jpg',
+        ]);
+        $followed = User::factory()->create(['username' => 'nali']);
+
+        Event::fake([UserNotificationBroadcasted::class]);
+
+        $this->actingAs($ali)
+            ->post(route('users.follow.store', $followed))
+            ->assertRedirect();
+
+        $this->assertSame(1, $followed->notifications()->count());
+        $this->assertSame(0, $ali->notifications()->count());
+        $notification = $followed->notifications()->first();
+        $this->assertSame(UserFollowed::class, $notification?->type);
+        $this->assertSame('user_followed', $notification?->data['kind']);
+        $this->assertSame('Ali followed you', $notification?->data['title']);
+        $this->assertSame('@ali', $notification?->data['body']);
+        $this->assertSame(route('users.show', $ali), $notification?->data['url']);
+        $this->assertSame($ali->id, $notification?->data['actor_id']);
+
+        $page = $this->actingAs($followed)
+            ->get(route('posts.index'))
+            ->assertOk();
+
+        preg_match("/notifications\\.boot\\(JSON\\.parse\\('(.*?)'\\)\\)/", $page->getContent(), $matches);
+        $this->assertArrayHasKey(1, $matches);
+        $payload = json_decode(json_decode('"'.$matches[1].'"'), true);
+        $item = $payload['items'][0];
+
+        $this->assertSame(1, $payload['unread']);
+        $this->assertSame('user_followed', $item['kind']);
+        $this->assertSame('Ali followed you', $item['title']);
+        $this->assertSame('@ali', $item['body']);
+        $this->assertSame(route('users.show', $ali), $item['url']);
+        $this->assertSame('Ali', $item['actor_name']);
+        $this->assertSame(asset('storage/profiles/avatars/ali.jpg'), $item['actor_avatar_url']);
+    }
+
+    public function test_following_broadcasts_the_inbox_event_immediately(): void
+    {
+        $ali = User::factory()->create(['name' => 'Ali']);
+        $followed = User::factory()->create();
+
+        Event::fake([UserNotificationBroadcasted::class]);
+
+        $this->actingAs($ali)
+            ->post(route('users.follow.store', $followed))
+            ->assertRedirect();
+
+        Event::assertDispatched(UserNotificationBroadcasted::class, function (UserNotificationBroadcasted $event) use ($followed): bool {
+            return $event->userId === $followed->id
+                && ($event->payload['kind'] ?? null) === 'user_followed'
+                && ($event->payload['title'] ?? null) === 'Ali followed you';
+        });
+    }
+
+    public function test_unfollowing_and_following_again_while_unread_does_not_duplicate_the_notice(): void
+    {
+        Event::fake([UserNotificationBroadcasted::class]);
+
+        $ali = User::factory()->create();
+        $other = User::factory()->create();
+        $followed = User::factory()->create();
+
+        $this->actingAs($ali)->post(route('users.follow.store', $followed))->assertRedirect();
+        $this->actingAs($ali)->post(route('users.follow.store', $followed))->assertRedirect();
+        $this->actingAs($other)->post(route('users.follow.store', $followed))->assertRedirect();
+
+        $this->assertSame(2, $followed->notifications()->count());
+
+        $this->actingAs($ali)->delete(route('users.follow.destroy', $followed))->assertRedirect();
+        $this->actingAs($ali)->post(route('users.follow.store', $followed))->assertRedirect();
+
+        $this->assertTrue($ali->fresh()->isFollowing($followed));
+        $this->assertSame(2, $followed->fresh()->notifications()->count());
+        $this->assertSame(0, $ali->notifications()->count());
+    }
+
+    public function test_following_again_after_the_notice_is_read_creates_another(): void
+    {
+        Event::fake([UserNotificationBroadcasted::class]);
+
+        $ali = User::factory()->create();
+        $followed = User::factory()->create();
+
+        $this->actingAs($ali)->post(route('users.follow.store', $followed))->assertRedirect();
+
+        $followed->unreadNotifications()->update(['read_at' => now()]);
+
+        $this->actingAs($ali)->delete(route('users.follow.destroy', $followed))->assertRedirect();
+        $this->actingAs($ali)->post(route('users.follow.store', $followed))->assertRedirect();
+
+        $this->assertSame(2, $followed->fresh()->notifications()->count());
+        $this->assertSame(1, $followed->fresh()->unreadNotifications()->count());
     }
 
     public function test_user_channel_authorizes_only_the_matching_user(): void

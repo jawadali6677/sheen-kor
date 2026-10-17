@@ -24,7 +24,10 @@ class AlertWriteTest extends TestCase
         $created->assertCreated()
             ->assertJsonPath('message', 'Your environmental alert has been posted. Others can now see it.')
             ->assertJsonPath('data.status', 'open')
-            ->assertJsonPath('data.title', 'Oil spill beside the footbridge');
+            ->assertJsonPath('data.title', 'Oil spill beside the footbridge')
+            ->assertJsonPath('data.fixed_location_name', null)
+            ->assertJsonPath('data.fixed_latitude', null)
+            ->assertJsonPath('data.fixed_longitude', null);
 
         $alert = Alert::query()->firstOrFail();
         $this->assertSame(15, $user->refresh()->score);
@@ -91,10 +94,17 @@ class AlertWriteTest extends TestCase
         ], $this->bearer($helper))
             ->assertOk()
             ->assertJsonPath('data.status', 'fixed')
+            ->assertJsonPath('data.fixed_location_name', 'River bank, cleaned stretch')
+            ->assertJsonPath('data.fixed_latitude', 35.1234)
+            ->assertJsonPath('data.fixed_longitude', 44.5678)
             ->assertJsonPath('message', 'This alert is now marked as Fixed. Thank you for taking care of it.');
 
+        $alert->refresh();
         $this->assertSame(25, $helper->refresh()->score);
-        $this->assertNotNull($alert->fresh()->fixed_at);
+        $this->assertNotNull($alert->fixed_at);
+        $this->assertSame('River bank, cleaned stretch', $alert->fixed_location_name);
+        $this->assertEqualsWithDelta(35.1234, $alert->fixed_latitude, 0.0000001);
+        $this->assertEqualsWithDelta(44.5678, $alert->fixed_longitude, 0.0000001);
     }
 
     public function test_another_member_cannot_update_or_delete_an_alert_and_a_disabled_account_cannot_create_one(): void

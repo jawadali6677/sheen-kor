@@ -52,6 +52,8 @@ class FollowTest extends TestCase
         $this->actingAs($user)
             ->post(route('users.follow.store', $user))
             ->assertForbidden();
+
+        $this->assertSame(0, $user->notifications()->count());
     }
 
     public function test_user_cannot_follow_an_inactive_user(): void

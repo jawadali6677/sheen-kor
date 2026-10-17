@@ -73,6 +73,12 @@ class NotificationController extends Controller
             'created_at' => $notification->created_at?->toIso8601String(),
         ];
 
+        foreach (['actor_name', 'actor_username', 'actor_avatar_url'] as $field) {
+            if (array_key_exists($field, $data)) {
+                $payload[$field] = $data[$field];
+            }
+        }
+
         foreach ($data as $key => $value) {
             if (is_string($key) && str_ends_with($key, '_id')) {
                 $payload[$key] = $value;

@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api\V1;
 
 use App\Models\User;
+use App\Notifications\UserFollowed;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Tests\TestCase;
@@ -51,6 +52,41 @@ class FollowTest extends TestCase
             ->assertForbidden();
 
         $this->assertSame(0, $member->followings()->count());
+        $this->assertSame(0, $member->notifications()->count());
+    }
+
+    public function test_following_returns_a_new_follower_notification_and_unfollowing_does_not(): void
+    {
+        $ali = User::factory()->create([
+            'name' => 'Ali',
+            'username' => 'ali',
+            'profile_image' => 'profiles/avatars/ali.jpg',
+        ]);
+        $followed = User::factory()->create(['username' => 'nali']);
+
+        $this->postJson(route('api.v1.users.follow.store', $followed), [], $this->bearer($ali))
+            ->assertOk()
+            ->assertJsonPath('following', true);
+
+        $this->assertSame(1, $followed->notifications()->count());
+        $this->assertSame(0, $ali->notifications()->count());
+        $this->assertSame(UserFollowed::class, $followed->notifications()->first()?->type);
+
+        $this->getJson(route('api.v1.notifications.index'), $this->bearer($followed))
+            ->assertOk()
+            ->assertJsonPath('data.0.kind', 'user_followed')
+            ->assertJsonPath('data.0.title', 'Ali followed you')
+            ->assertJsonPath('data.0.body', '@ali')
+            ->assertJsonPath('data.0.actor_id', $ali->id)
+            ->assertJsonPath('data.0.actor_name', 'Ali')
+            ->assertJsonPath('data.0.actor_username', 'ali')
+            ->assertJsonPath('data.0.actor_avatar_url', asset('storage/profiles/avatars/ali.jpg'));
+
+        $this->deleteJson(route('api.v1.users.follow.destroy', $followed), [], $this->bearer($ali))
+            ->assertOk()
+            ->assertJsonPath('following', false);
+
+        $this->assertSame(1, $followed->fresh()->notifications()->count());
     }
 
     public function test_a_member_cannot_follow_an_inactive_user(): void

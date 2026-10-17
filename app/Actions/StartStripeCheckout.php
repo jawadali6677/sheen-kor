@@ -13,7 +13,10 @@ use Illuminate\Support\Facades\DB;
 
 class StartStripeCheckout
 {
-    public function __construct(public StripeCheckoutGateway $stripeCheckout) {}
+    public function __construct(
+        public StripeCheckoutGateway $stripeCheckout,
+        public FulfillStripeCheckoutSession $fulfillStripeCheckoutSession,
+    ) {}
 
     public function handle(Order $order): ?string
     {
@@ -28,6 +31,36 @@ class StartStripeCheckout
         }
 
         $previousSessionId = $this->currentStripeSessionId($order);
+        $expirePrevious = false;
+
+        if (is_string($previousSessionId) && $previousSessionId !== '') {
+            $existing = $this->stripeCheckout->retrieveCheckoutSession($previousSessionId);
+
+            if (! is_array($existing)) {
+                return null;
+            }
+
+            $status = (string) ($existing['status'] ?? '');
+            $paymentStatus = (string) ($existing['payment_status'] ?? '');
+
+            if ($status === 'complete' || in_array($paymentStatus, ['paid', 'no_payment_required'], true)) {
+                $this->fulfillStripeCheckoutSession->handle($order, $previousSessionId);
+
+                return null;
+            }
+
+            if ($status === 'open') {
+                $url = $existing['url'] ?? null;
+
+                if (is_string($url) && $url !== '') {
+                    return $url;
+                }
+
+                $expirePrevious = true;
+            } elseif ($status !== 'expired') {
+                return null;
+            }
+        }
 
         $session = $this->stripeCheckout->createOneOffCheckout(
             $order->user,
@@ -71,7 +104,7 @@ class StartStripeCheckout
             return null;
         }
 
-        if (is_string($previousSessionId) && $previousSessionId !== $session->id) {
+        if ($expirePrevious && is_string($previousSessionId) && $previousSessionId !== $session->id) {
             $this->stripeCheckout->expireSession($previousSessionId);
         }
 
@@ -86,6 +119,12 @@ class StartStripeCheckout
 
         if (filled($checkoutUrl)) {
             return redirect()->away($checkoutUrl);
+        }
+
+        $order->refresh();
+
+        if ($order->status === OrderStatus::Paid) {
+            return redirect()->route('orders.show', $order);
         }
 
         if ($order->shouldChargeWithStripe()) {

@@ -59,10 +59,13 @@ class FakeStripeCheckoutGateway implements StripeCheckoutGateway
 
         $this->sessions[$sessionId] = [
             'id' => $sessionId,
+            'status' => 'open',
+            'url' => $url,
             'payment_status' => 'unpaid',
             'order_id' => is_scalar($orderId) && (string) $orderId !== '' ? (string) $orderId : null,
             'client_reference_id' => is_scalar($clientReferenceId) && (string) $clientReferenceId !== '' ? (string) $clientReferenceId : null,
             'payment_intent' => null,
+            'payment_intent_status' => null,
         ];
 
         return (object) [
@@ -81,6 +84,10 @@ class FakeStripeCheckoutGateway implements StripeCheckoutGateway
     public function expireSession(string $sessionId): void
     {
         $this->expiredSessions[] = $sessionId;
+
+        if (isset($this->sessions[$sessionId])) {
+            $this->sessions[$sessionId]['status'] = 'expired';
+        }
     }
 
     public function markSessionPaid(string $sessionId, string $status = 'paid'): void
@@ -90,5 +97,10 @@ class FakeStripeCheckoutGateway implements StripeCheckoutGateway
         }
 
         $this->sessions[$sessionId]['payment_status'] = $status;
+
+        if ($status === 'paid') {
+            $this->sessions[$sessionId]['status'] = 'complete';
+            $this->sessions[$sessionId]['payment_intent_status'] = 'succeeded';
+        }
     }
 }

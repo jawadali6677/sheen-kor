@@ -607,7 +607,7 @@ class ListingPromotionTest extends TestCase
         $this->actingAs($user)
             ->from(route('market.promote.create', $listing))
             ->post(route('orders.pay', $order))
-            ->assertRedirect('https://checkout.stripe.test/cs_test_124');
+            ->assertRedirect('https://checkout.stripe.test/cs_test_123');
     }
 
     public function test_package_selection_does_not_say_only_an_admin_can_mark_paid_when_stripe_is_connected(): void

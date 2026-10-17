@@ -15,10 +15,13 @@ interface StripeCheckoutGateway
     /**
      * @return array{
      *     id: string,
+     *     status: string,
+     *     url: ?string,
      *     payment_status: string,
      *     order_id: ?string,
      *     client_reference_id: ?string,
-     *     payment_intent: ?string
+     *     payment_intent: ?string,
+     *     payment_intent_status: ?string
      * }|null
      */
     public function retrieveCheckoutSession(string $sessionId): ?array;

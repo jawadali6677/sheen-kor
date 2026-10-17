@@ -21,7 +21,10 @@ class FulfillStripeCheckoutSession
      *
      * @return array{order: Order, outcome: StripeCheckoutFulfillmentOutcome}
      */
-    public function handle(Order $order, string $sessionId): array
+    /**
+     * @param  array<string, mixed>  $extraPaymentPayload
+     */
+    public function handle(Order $order, string $sessionId, array $extraPaymentPayload = []): array
     {
         $order->refresh();
         $sessionId = trim($sessionId);
@@ -78,15 +81,16 @@ class FulfillStripeCheckoutSession
             return $this->result($order, StripeCheckoutFulfillmentOutcome::SessionNotLinked);
         }
 
-        $paymentStatus = (string) ($session['payment_status'] ?? '');
-
-        if (! $this->paymentStatusIsSettled($paymentStatus)) {
+        if (! $this->sessionIsSettled($session)) {
             $this->logSkip($order, $sessionId, 'payment_not_confirmed', $session);
 
             return $this->result($order, StripeCheckoutFulfillmentOutcome::Unpaid);
         }
 
-        $updated = $this->markOrderPaid->handle($order, paymentPayload: $this->paymentPayload($session));
+        $updated = $this->markOrderPaid->handle($order, paymentPayload: array_merge(
+            $extraPaymentPayload,
+            $this->paymentPayload($session),
+        ));
 
         if ($updated->status !== OrderStatus::Paid) {
             $this->logSkip($updated, $sessionId, 'order_not_pending', $session);
@@ -97,7 +101,7 @@ class FulfillStripeCheckoutSession
         Log::info('Stripe checkout return fulfilled', [
             'order_id' => $updated->id,
             'session_id' => $sessionId,
-            'payment_status' => $paymentStatus,
+            'payment_status' => (string) ($session['payment_status'] ?? ''),
             'reason' => 'fulfilled',
         ]);
 
@@ -178,9 +182,33 @@ class FulfillStripeCheckoutSession
         return (string) (int) $value;
     }
 
-    private function paymentStatusIsSettled(string $paymentStatus): bool
+    /**
+     * A Checkout Session is settled only when Stripe currently says so.
+     * Card payments need payment_status=paid and, when a PaymentIntent exists, status=succeeded.
+     *
+     * @param  array<string, mixed>  $session
+     */
+    private function sessionIsSettled(array $session): bool
     {
-        return in_array($paymentStatus, ['paid', 'no_payment_required'], true);
+        $paymentStatus = (string) ($session['payment_status'] ?? '');
+
+        if ($paymentStatus === 'no_payment_required') {
+            return true;
+        }
+
+        if ($paymentStatus !== 'paid') {
+            return false;
+        }
+
+        $paymentIntentStatus = $session['payment_intent_status'] ?? null;
+
+        if (is_string($paymentIntentStatus) && $paymentIntentStatus !== '') {
+            return $paymentIntentStatus === 'succeeded';
+        }
+
+        $paymentIntent = $session['payment_intent'] ?? null;
+
+        return $paymentIntent === null || $paymentIntent === '';
     }
 
     private function sessionIdIsValid(string $sessionId): bool

@@ -112,10 +112,13 @@ class StripeCheckoutTest extends TestCase
         [$user, $listing, $order] = $this->pendingListingPromotion();
         $gateway->sessions['cs_test_123'] = [
             'id' => 'cs_test_123',
+            'status' => 'complete',
+            'url' => null,
             'payment_status' => 'paid',
             'order_id' => null,
             'client_reference_id' => null,
             'payment_intent' => 'pi_cs_test_123',
+            'payment_intent_status' => 'succeeded',
         ];
 
         $this->actingAs($user)
@@ -216,10 +219,13 @@ class StripeCheckoutTest extends TestCase
         [$user, $listing, $order] = $this->pendingListingPromotion();
         $gateway->sessions['cs_test_other'] = [
             'id' => 'cs_test_other',
+            'status' => 'complete',
+            'url' => null,
             'payment_status' => 'paid',
             'order_id' => null,
             'client_reference_id' => null,
             'payment_intent' => 'pi_other',
+            'payment_intent_status' => 'succeeded',
         ];
         $logged = $this->captureLogs();
 
@@ -341,13 +347,13 @@ class StripeCheckoutTest extends TestCase
 
         $this->actingAs($user)
             ->post(route('orders.pay', $order))
-            ->assertRedirect('https://checkout.stripe.test/cs_test_124');
+            ->assertRedirect('https://checkout.stripe.test/cs_test_123');
 
         $this->assertSame(1, $order->payments()->count());
-        $this->assertSame('cs_test_124', $order->payments()->first()->provider_reference);
+        $this->assertSame('cs_test_123', $order->payments()->first()->provider_reference);
     }
 
-    public function test_retrying_pay_on_a_pending_order_reuses_the_checkout_payment(): void
+    public function test_pay_again_on_an_open_checkout_session_does_not_create_another_charge(): void
     {
         $gateway = $this->fakeStripe();
         $user = User::factory()->create();
@@ -364,15 +370,49 @@ class StripeCheckoutTest extends TestCase
 
         $this->actingAs($user)
             ->post(route('orders.pay', $order))
-            ->assertRedirect('https://checkout.stripe.test/cs_test_124');
+            ->assertRedirect('https://checkout.stripe.test/cs_test_123');
 
         $this->assertDatabaseCount('payments', 1);
         $this->assertSame($payment->id, $order->payments()->first()->id);
         $this->assertSame(Payment::checkoutIdempotencyKey($order->id), $order->payments()->first()->idempotency_key);
-        $this->assertSame('cs_test_124', $order->payments()->first()->provider_reference);
+        $this->assertSame('cs_test_123', $order->payments()->first()->provider_reference);
         $this->assertSame(PaymentStatus::Pending, $order->payments()->first()->status);
-        $this->assertSame(['cs_test_123'], $gateway->expiredSessions);
+        $this->assertSame([], $gateway->expiredSessions);
+        $this->assertCount(1, $gateway->charges);
+        $this->assertFalse($post->fresh()->hasActiveBoost());
+    }
+
+    public function test_pay_again_after_the_checkout_session_expires_reuses_the_pending_order_and_payment(): void
+    {
+        $gateway = $this->fakeStripe();
+        $user = User::factory()->create();
+        $post = Post::factory()->create(['user_id' => $user->id]);
+        $package = $this->enableBoostPackages()->firstWhere('slug', 'post_boost_1d');
+        $package->forceFill(['price' => '4.50'])->save();
+
+        $this->actingAs($user)
+            ->post(route('posts.boost.store', $post), ['package_id' => $package->id])
+            ->assertRedirect('https://checkout.stripe.test/cs_test_123');
+
+        $order = Order::query()->firstOrFail();
+        $payment = $order->payments()->first();
+        $gateway->sessions['cs_test_123']['status'] = 'expired';
+
+        $this->actingAs($user)
+            ->post(route('orders.pay', $order))
+            ->assertRedirect('https://checkout.stripe.test/cs_test_124');
+
+        $this->assertSame(1, Order::query()->count());
+        $this->assertDatabaseCount('payments', 1);
+        $this->assertSame($payment->id, $order->payments()->first()->id);
+        $this->assertSame(Payment::checkoutIdempotencyKey($order->id), $order->payments()->first()->idempotency_key);
+        $this->assertSame('cs_test_124', $order->payments()->first()->provider_reference);
+        $this->assertSame(['cs_test_123'], $order->payments()->first()->payload['previous_checkout_session_ids']);
+        $this->assertSame(PaymentStatus::Pending, $order->payments()->first()->status);
+        $this->assertSame(OrderStatus::Pending, $order->fresh()->status);
+        $this->assertSame([], $gateway->expiredSessions);
         $this->assertCount(2, $gateway->charges);
+        $this->assertFalse($post->fresh()->hasActiveBoost());
     }
 
     public function test_retrying_pay_after_a_failed_checkout_creates_a_new_payment_key(): void
@@ -545,10 +585,13 @@ class StripeCheckoutTest extends TestCase
     {
         return [
             'id' => $sessionId,
+            'status' => $paymentStatus === 'unpaid' ? 'open' : 'complete',
+            'url' => null,
             'payment_status' => $paymentStatus,
             'order_id' => (string) $order->id,
             'client_reference_id' => (string) $order->id,
             'payment_intent' => 'pi_'.$sessionId,
+            'payment_intent_status' => $paymentStatus === 'paid' ? 'succeeded' : null,
         ];
     }
 

@@ -170,6 +170,8 @@ class AuthTest extends TestCase
             ->assertOk()
             ->assertJsonPath('user.id', $user->id)
             ->assertJsonPath('user.score', 4)
+            ->assertJsonPath('user.followers_count', 0)
+            ->assertJsonPath('user.following_count', 0)
             ->assertJsonPath('user.unread_notifications_count', 1);
     }
 

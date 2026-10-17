@@ -64,6 +64,63 @@ class FollowTest extends TestCase
         $this->assertFalse($member->fresh()->isFollowing($inactive));
     }
 
+    public function test_profile_and_current_user_payloads_return_follower_and_following_counts(): void
+    {
+        $profile = User::factory()->create([
+            'username' => 'nali',
+            'email' => 'nali@example.com',
+        ]);
+        $firstFollower = User::factory()->create();
+        $secondFollower = User::factory()->create();
+        $followed = User::factory()->create();
+        $unrelated = User::factory()->create();
+
+        $firstFollower->followings()->attach($profile->id);
+        $secondFollower->followings()->attach($profile->id);
+        $profile->followings()->attach($followed->id);
+        $unrelated->followings()->attach($followed->id);
+
+        $this->getJson(route('api.v1.users.show', $profile))
+            ->assertOk()
+            ->assertJsonPath('data.followers_count', 2)
+            ->assertJsonPath('data.following_count', 1)
+            ->assertJsonPath('data.is_following', false)
+            ->assertJsonMissingPath('data.email');
+
+        $this->getJson(route('api.v1.users.show', $profile), $this->bearer($firstFollower))
+            ->assertOk()
+            ->assertJsonPath('data.followers_count', 2)
+            ->assertJsonPath('data.following_count', 1)
+            ->assertJsonPath('data.is_following', true);
+
+        $this->getJson(route('api.v1.users.show', $followed))
+            ->assertOk()
+            ->assertJsonPath('data.followers_count', 2)
+            ->assertJsonPath('data.following_count', 0);
+
+        $this->getJson(route('api.v1.auth.me'), $this->bearer($profile))
+            ->assertOk()
+            ->assertJsonPath('user.followers_count', 2)
+            ->assertJsonPath('user.following_count', 1)
+            ->assertJsonPath('user.email', 'nali@example.com');
+
+        $this->patchJson(route('api.v1.profile.update'), [
+            'name' => $profile->name,
+            'email' => 'nali@example.com',
+        ], $this->bearer($profile))
+            ->assertOk()
+            ->assertJsonPath('data.followers_count', 2)
+            ->assertJsonPath('data.following_count', 1)
+            ->assertJsonPath('data.email', 'nali@example.com');
+
+        $firstFollower->followings()->detach($profile->id);
+
+        $this->getJson(route('api.v1.users.show', $profile))
+            ->assertOk()
+            ->assertJsonPath('data.followers_count', 1)
+            ->assertJsonPath('data.following_count', 1);
+    }
+
     /**
      * @return array<string, string>
      */

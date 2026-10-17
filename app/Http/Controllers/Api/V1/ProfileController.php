@@ -39,6 +39,8 @@ class ProfileController extends Controller
             'marketListings as listings_count' => function ($query): void {
                 $query->where('status', 'published');
             },
+            'followers',
+            'followings as following_count',
         ]);
 
         return response()->json([
@@ -237,6 +239,8 @@ class ProfileController extends Controller
             'location' => $user->location,
             'website' => $user->website,
             'is_following' => $viewer instanceof User && $viewer->isFollowing($user),
+            'followers_count' => (int) $user->followers_count,
+            'following_count' => (int) $user->following_count,
             'stories_count' => (int) $user->stories_count,
             'alerts_count' => (int) $user->alerts_count,
             'fixes_count' => (int) $user->fixes_count,
@@ -250,6 +254,11 @@ class ProfileController extends Controller
      */
     private function accountPayload(User $user): array
     {
+        $user->loadCount([
+            'followers',
+            'followings as following_count',
+        ]);
+
         return [
             'id' => $user->id,
             'name' => $user->name,
@@ -264,6 +273,8 @@ class ProfileController extends Controller
             'bio' => $user->bio,
             'location' => $user->location,
             'website' => $user->website,
+            'followers_count' => (int) $user->followers_count,
+            'following_count' => (int) $user->following_count,
             'created_at' => $user->created_at?->toIso8601String(),
         ];
     }

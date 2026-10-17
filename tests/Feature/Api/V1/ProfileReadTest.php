@@ -58,6 +58,8 @@ class ProfileReadTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.username', 'nali')
             ->assertJsonPath('data.score', 30)
+            ->assertJsonPath('data.followers_count', 0)
+            ->assertJsonPath('data.following_count', 0)
             ->assertJsonPath('data.stories_count', 1)
             ->assertJsonPath('data.alerts_count', 1)
             ->assertJsonPath('data.fixes_count', 1)

@@ -233,11 +233,17 @@ class ContentReadTest extends TestCase
             ->assertJsonPath('meta.per_page', 10)
             ->assertJsonPath('meta.total', 1)
             ->assertJsonPath('data.0.title', 'Newer spill')
-            ->assertJsonPath('data.0.liked_by_user', false);
+            ->assertJsonPath('data.0.liked_by_user', false)
+            ->assertJsonPath('data.0.fixed_location_name', null)
+            ->assertJsonPath('data.0.fixed_latitude', null)
+            ->assertJsonPath('data.0.fixed_longitude', null);
 
         $this->getJson(route('api.v1.alerts.show', $newer))
             ->assertOk()
-            ->assertJsonPath('data.views', 3);
+            ->assertJsonPath('data.views', 3)
+            ->assertJsonPath('data.fixed_location_name', null)
+            ->assertJsonPath('data.fixed_latitude', null)
+            ->assertJsonPath('data.fixed_longitude', null);
 
         $this->assertSame(3, (int) $newer->fresh()->views);
         $this->assertSame(0, (int) $older->fresh()->views - (int) Alert::query()->find($older->id)->views);

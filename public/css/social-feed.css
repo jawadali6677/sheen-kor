@@ -267,6 +267,11 @@ img.feed-avatar {
     cursor: zoom-in;
     display: block;
 }
+.profile-edit-preview.hidden,
+.profile-edit-cover.hidden,
+.profile-edit-avatar-fallback.hidden {
+    display: none;
+}
 .profile-file-input {
     position: absolute;
     width: 1px;

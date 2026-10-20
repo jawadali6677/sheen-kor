@@ -374,6 +374,37 @@ class ProfileTest extends TestCase
             ->assertSee('The current cover stays until you choose a new one.');
     }
 
+    public function test_edit_profile_hides_the_avatar_or_initials_that_are_not_in_use(): void
+    {
+        $withPhoto = User::factory()->create([
+            'profile_image' => 'profiles/avatars/kept.jpg',
+        ]);
+
+        $this->actingAs($withPhoto)
+            ->get(route('profile.edit'))
+            ->assertOk()
+            ->assertSee('profile-edit-avatar-fallback hidden', false)
+            ->assertDontSee('profile-edit-preview js-lightbox hidden', false);
+
+        $withoutPhoto = User::factory()->create([
+            'profile_image' => null,
+        ]);
+
+        $this->actingAs($withoutPhoto)
+            ->get(route('profile.edit'))
+            ->assertOk()
+            ->assertSee('profile-edit-preview js-lightbox hidden', false)
+            ->assertDontSee('profile-edit-avatar-fallback hidden', false);
+
+        $css = file_get_contents(public_path('css/social-feed.css'));
+
+        $this->assertIsString($css);
+        $this->assertStringContainsString(
+            ".profile-edit-preview.hidden,\n.profile-edit-cover.hidden,\n.profile-edit-avatar-fallback.hidden {\n    display: none;\n}",
+            $css,
+        );
+    }
+
     public function test_profile_images_stay_when_they_are_not_replaced_and_can_be_removed(): void
     {
         Storage::fake('public');

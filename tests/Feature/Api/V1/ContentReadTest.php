@@ -47,6 +47,21 @@ class ContentReadTest extends TestCase
             ->assertJsonPath('data.0.liked_by_user', false)
             ->assertJsonPath('data.0.is_boosted', false);
 
+        $counted = Post::factory()->create([
+            'title' => 'Counted river story',
+            'category_id' => $category->id,
+            'status' => 'published',
+            'views' => 7,
+            'created_at' => '2026-10-07 12:00:00',
+        ]);
+
+        $this->getJson(route('api.v1.posts.index'))
+            ->assertOk()
+            ->assertJsonPath('data.0.title', 'Counted river story')
+            ->assertJsonPath('data.0.views', 7);
+
+        $this->assertSame(7, (int) $counted->fresh()->views);
+
         $this->getJson(route('api.v1.categories.index'))
             ->assertOk()
             ->assertJsonPath('data.0.slug', 'stories');

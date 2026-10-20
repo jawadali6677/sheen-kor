@@ -264,4 +264,97 @@ class AlertTest extends TestCase
             ->assertRedirect(route('alerts.show', $alert))
             ->assertSessionHas('error');
     }
+
+    public function test_a_guest_and_the_reporter_cannot_mark_an_alert_fixed(): void
+    {
+        $reporter = User::factory()->create();
+        $alert = Alert::factory()->create([
+            'user_id' => $reporter->id,
+            'status' => 'open',
+        ]);
+
+        $this->post(route('alerts.mark-fixed', $alert))
+            ->assertRedirect(route('login'));
+
+        $this->actingAs($reporter)
+            ->post(route('alerts.mark-fixed', $alert), [
+                'fixed_latitude' => 35.1,
+                'fixed_longitude' => 44.5,
+                'fix_images' => [UploadedFile::fake()->image('after.jpg')],
+            ])
+            ->assertForbidden();
+
+        $this->assertSame('open', $alert->fresh()->status);
+        $this->assertNull($alert->fresh()->fixed_at);
+    }
+
+    public function test_marking_an_alert_fixed_requires_a_proof_photo_and_coordinates(): void
+    {
+        Storage::fake('public');
+
+        $helper = User::factory()->create();
+        $alert = Alert::factory()->create([
+            'status' => 'in_progress',
+            'action_user_id' => $helper->id,
+            'action_taken_at' => now(),
+        ]);
+
+        $this->actingAs($helper)
+            ->from(route('alerts.show', $alert))
+            ->post(route('alerts.mark-fixed', $alert), [])
+            ->assertRedirect(route('alerts.show', $alert))
+            ->assertSessionHasErrors([
+                'fix_images' => 'Add a proof photo to mark this alert as fixed.',
+                'fixed_latitude' => 'Add the latitude and longitude of the place you fixed.',
+                'fixed_longitude' => 'Add the latitude and longitude of the place you fixed.',
+            ]);
+
+        $this->assertSame('in_progress', $alert->fresh()->status);
+        $this->assertNull($alert->fresh()->fixed_at);
+        $this->assertSame(0, $helper->fresh()->score);
+        $this->assertSame(0, $alert->fixImages()->count());
+    }
+
+    public function test_marking_an_alert_fixed_rejects_an_invalid_photo_or_coordinates(): void
+    {
+        Storage::fake('public');
+
+        $helper = User::factory()->create();
+        $alert = Alert::factory()->create([
+            'status' => 'in_progress',
+            'action_user_id' => $helper->id,
+            'action_taken_at' => now(),
+        ]);
+
+        $this->actingAs($helper)
+            ->from(route('alerts.show', $alert))
+            ->post(route('alerts.mark-fixed', $alert), [
+                'fixed_latitude' => 91,
+                'fixed_longitude' => -181,
+                'fix_images' => [UploadedFile::fake()->image('after.gif')],
+            ])
+            ->assertRedirect(route('alerts.show', $alert))
+            ->assertSessionHasErrors([
+                'fix_images.0' => 'Proof photos must be JPEG, PNG, or WebP.',
+                'fixed_latitude' => 'Latitude must be between -90 and 90.',
+                'fixed_longitude' => 'Longitude must be between -180 and 180.',
+            ]);
+
+        $this->actingAs($helper)
+            ->from(route('alerts.show', $alert))
+            ->post(route('alerts.mark-fixed', $alert), [
+                'fixed_latitude' => 35.1,
+                'fixed_longitude' => 44.5,
+                'fix_images' => [UploadedFile::fake()->image('huge.jpg')->size(5121)],
+            ])
+            ->assertRedirect(route('alerts.show', $alert))
+            ->assertSessionHasErrors([
+                'fix_images.0' => 'Each proof photo must be 5 MB or smaller.',
+            ]);
+
+        $this->assertSame('in_progress', $alert->fresh()->status);
+        $this->assertNull($alert->fresh()->fixed_at);
+        $this->assertSame(0, $alert->fixImages()->count());
+        Storage::disk('public')->assertDirectoryEmpty('alerts/fixes');
+    }
 }

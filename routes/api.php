@@ -73,6 +73,7 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
         Route::delete('comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
         Route::post('users/{user}/follow', [FollowController::class, 'store'])->name('users.follow.store');
         Route::delete('users/{user}/follow', [FollowController::class, 'destroy'])->name('users.follow.destroy');
+        Route::get('profile/image-rules', [ProfileController::class, 'imageRules'])->name('profile.image-rules');
         Route::patch('profile', [ProfileController::class, 'update'])->name('profile.update');
         Route::post('alerts/{alert}/take-action', [AlertController::class, 'takeAction'])->name('alerts.take-action');
         Route::post('alerts/{alert}/mark-fixed', [AlertController::class, 'markFixed'])->name('alerts.mark-fixed');

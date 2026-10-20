@@ -190,9 +190,121 @@
         document.body.classList.remove('image-lightbox-open');
     }
 
+    function clientErrorElement(input) {
+        var selector = input.getAttribute('data-client-error');
+
+        if (! selector) {
+            return null;
+        }
+
+        return document.querySelector(selector);
+    }
+
+    function showClientError(input, message) {
+        var error = clientErrorElement(input);
+
+        if (! error) {
+            return;
+        }
+
+        error.textContent = message;
+        error.classList.remove('hidden');
+    }
+
+    function clearClientError(input) {
+        var error = clientErrorElement(input);
+
+        if (! error) {
+            return;
+        }
+
+        error.textContent = '';
+        error.classList.add('hidden');
+    }
+
+    function sizeLimitLabel(kilobytes) {
+        if (kilobytes > 0 && kilobytes % 1024 === 0) {
+            return (kilobytes / 1024) + ' MB';
+        }
+
+        return kilobytes + ' KB';
+    }
+
+    function profileImageError(input) {
+        if (! input.hasAttribute('data-max-kilobytes')) {
+            return '';
+        }
+
+        var file = input.files && input.files[0];
+
+        if (! file) {
+            return '';
+        }
+
+        var allowed = (input.getAttribute('data-allowed-extensions') || '')
+            .split(',')
+            .map(function (extension) {
+                return extension.trim().toLowerCase();
+            })
+            .filter(Boolean);
+        var extension = (file.name.split('.').pop() || '').toLowerCase();
+        var maxKilobytes = Number(input.getAttribute('data-max-kilobytes'));
+        var typeAllowed = allowed.indexOf(extension) !== -1;
+
+        if (! typeAllowed) {
+            return 'Choose a JPEG, PNG, or WebP image up to ' + sizeLimitLabel(maxKilobytes) + '.';
+        }
+
+        if (file.size > maxKilobytes * 1024) {
+            return 'Choose a JPEG, PNG, or WebP image up to ' + sizeLimitLabel(maxKilobytes) + '.';
+        }
+
+        return '';
+    }
+
     document.addEventListener('change', function (event) {
-        if (isPreviewableFileInput(event.target)) {
-            renderPreviews(event.target);
+        if (! isPreviewableFileInput(event.target)) {
+            return;
+        }
+
+        var message = profileImageError(event.target);
+
+        if (message !== '') {
+            event.target.value = '';
+            showClientError(event.target, message);
+
+            return;
+        }
+
+        clearClientError(event.target);
+        renderPreviews(event.target);
+    });
+
+    document.addEventListener('submit', function (event) {
+        var form = event.target;
+
+        if (! (form instanceof HTMLFormElement)) {
+            return;
+        }
+
+        var blocked = false;
+
+        form.querySelectorAll('input[type="file"][data-max-kilobytes]').forEach(function (input) {
+            var message = profileImageError(input);
+
+            if (message === '') {
+                clearClientError(input);
+
+                return;
+            }
+
+            blocked = true;
+            input.value = '';
+            showClientError(input, message);
+        });
+
+        if (blocked) {
+            event.preventDefault();
         }
     });
 

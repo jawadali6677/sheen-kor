@@ -48,6 +48,16 @@ class ProfileController extends Controller
         ]);
     }
 
+    public function imageRules(): JsonResponse
+    {
+        $rules = UpdateProfile::imageRules();
+
+        return response()->json([
+            'profile_image' => $rules,
+            'cover_image' => $rules,
+        ]);
+    }
+
     public function update(Request $request, UpdateProfile $updateProfile): JsonResponse
     {
         UpdateProfile::prepare($request);

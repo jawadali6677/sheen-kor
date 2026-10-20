@@ -108,25 +108,31 @@
                         >
                             @csrf
                             <x-media-uploader
-                                label="Add evidence photos/videos"
-                                hint="Optional photos or short clips of the cleaned place. Photos 5 MB each, videos 20 MB, up to 3 videos."
+                                label="Add a proof photo"
+                                hint="A photo of the cleaned place is required. JPEG, PNG, or WebP, 5 MB each, up to 10 photos. A short video can be added with the photo."
                                 featured-name=""
                                 images-name="fix_images"
                                 videos-name="fix_videos"
+                                :require-image="true"
                                 :map-first-image-to-featured="false"
                                 :max-images="10"
                             />
+                            <x-input-error class="mt-2" :messages="array_merge($errors->get('fix_images'), $errors->get('fix_images.0'))" />
                             @include('partials.location-map', [
                                 'mapId' => 'alert-fix-map',
                                 'latName' => 'fixed_latitude',
                                 'lngName' => 'fixed_longitude',
                                 'nameField' => 'fixed_location_name',
-                                'nameLabel' => 'Location after the fix (optional)',
+                                'nameLabel' => 'Location after the fix',
                                 'requiredName' => false,
                                 'lat' => old('fixed_latitude'),
                                 'lng' => old('fixed_longitude'),
                                 'name' => old('fixed_location_name'),
                             ])
+                            <p class="text-sm text-gray-600">Set a point on the map. Latitude and longitude are required.</p>
+                            <x-input-error class="mt-2" :messages="$errors->get('fixed_latitude')" />
+                            <x-input-error class="mt-2" :messages="$errors->get('fixed_longitude')" />
+                            <x-input-error class="mt-2" :messages="$errors->get('alert')" />
                             <button type="submit" class="btn-accent text-forest-900">Mark as Fixed</button>
                         </form>
                     @else

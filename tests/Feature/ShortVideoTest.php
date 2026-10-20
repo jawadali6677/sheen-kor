@@ -81,12 +81,45 @@ class ShortVideoTest extends TestCase
         $this->actingAs($helper)
             ->from(route('alerts.show', $alert))
             ->post(route('alerts.mark-fixed', $alert), [
+                'fixed_latitude' => 35.1234,
+                'fixed_longitude' => 44.5678,
+                'fix_images' => [UploadedFile::fake()->image('after.jpg')],
                 'fix_videos' => [$this->shortVideo()],
             ])
             ->assertRedirect(route('alerts.show', $alert));
 
+        $this->assertSame(1, $alert->fixImages()->where('media_type', 'image')->count());
         $this->assertSame(1, $alert->fixImages()->where('media_type', 'video')->count());
         $this->assertSame('fixed', $alert->fresh()->status);
+    }
+
+    public function test_a_short_video_alone_cannot_mark_an_alert_fixed(): void
+    {
+        Storage::fake('public');
+
+        $helper = User::factory()->create();
+        $alert = Alert::factory()->create([
+            'status' => 'in_progress',
+            'action_user_id' => $helper->id,
+            'action_taken_at' => now(),
+        ]);
+
+        $this->actingAs($helper)
+            ->from(route('alerts.show', $alert))
+            ->post(route('alerts.mark-fixed', $alert), [
+                'fixed_latitude' => 35.1234,
+                'fixed_longitude' => 44.5678,
+                'fix_videos' => [$this->shortVideo()],
+            ])
+            ->assertRedirect(route('alerts.show', $alert))
+            ->assertSessionHasErrors([
+                'fix_images' => 'Add a proof photo to mark this alert as fixed.',
+            ]);
+
+        $this->assertSame('in_progress', $alert->fresh()->status);
+        $this->assertNull($alert->fresh()->fixed_at);
+        $this->assertSame(0, $alert->fixImages()->count());
+        Storage::disk('public')->assertDirectoryEmpty('alerts/fixes');
     }
 
     public function test_a_photo_cannot_be_uploaded_as_a_short_video(): void

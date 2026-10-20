@@ -19,12 +19,6 @@ class GreenTickController extends Controller
         $user = $request->user();
         abort_unless($user !== null, 403);
 
-        $eligibility = $user->greenTickEligibility();
-
-        if (! $eligibility['eligible']) {
-            return back()->with('error', 'You do not meet the Green Tick eligibility requirements yet.');
-        }
-
         $validated = $request->validate([
             'package_id' => [
                 'required',

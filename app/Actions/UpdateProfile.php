@@ -11,12 +11,34 @@ use Illuminate\Validation\Rule;
 class UpdateProfile
 {
     /**
+     * @var list<string>
+     */
+    public const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'];
+
+    public const IMAGE_MAX_KILOBYTES = 5120;
+
+    /**
+     * Rules the website form and the mobile app both enforce for a profile image.
+     *
+     * @return array{mimes: list<string>, max_kilobytes: int}
+     */
+    public static function imageRules(): array
+    {
+        return [
+            'mimes' => self::IMAGE_EXTENSIONS,
+            'max_kilobytes' => self::IMAGE_MAX_KILOBYTES,
+        ];
+    }
+
+    /**
      * Shared profile field rules for the website form request and the mobile API.
      *
      * @return array<string, mixed>
      */
     public static function rules(User $user): array
     {
+        $imageRules = ['nullable', 'image', 'mimes:'.implode(',', self::IMAGE_EXTENSIONS), 'max:'.self::IMAGE_MAX_KILOBYTES];
+
         return [
             'name' => ['required', 'string', 'max:255'],
             'username' => [
@@ -38,8 +60,8 @@ class UpdateProfile
             'bio' => ['nullable', 'string', 'max:500'],
             'location' => ['nullable', 'string', 'max:120'],
             'website' => ['nullable', 'url', 'max:255'],
-            'profile_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-            'cover_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'profile_image' => $imageRules,
+            'cover_image' => $imageRules,
             'remove_profile_image' => ['sometimes', 'boolean'],
             'remove_cover_image' => ['sometimes', 'boolean'],
         ];

@@ -70,7 +70,11 @@ class UserScoringTest extends TestCase
 
         $this->actingAs($fixer)
             ->from(route('alerts.show', $alert))
-            ->post(route('alerts.mark-fixed', $alert))
+            ->post(route('alerts.mark-fixed', $alert), [
+                'fixed_latitude' => 35.1234,
+                'fixed_longitude' => 44.5678,
+                'fix_images' => [UploadedFile::fake()->image('after.jpg')],
+            ])
             ->assertRedirect();
 
         $this->assertSame(25, $fixer->fresh()->score);

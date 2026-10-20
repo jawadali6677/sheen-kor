@@ -51,9 +51,9 @@ class AdminMonetizationTest extends TestCase
             ->assertSee('Featured Listing - 7 Days')
             ->assertSee('Orders')
             ->assertDontSee('listing_promotion')
-            ->assertSee('Enforced when a member requests a Green Tick. Use 0 for no follower minimum.')
-            ->assertSee('Enforced when a member requests a Green Tick. Use 0 for no published-post minimum.')
-            ->assertSee('Logged-in viewers other than the post author, once per post per rolling 24 hours. Counts when the post is at least 50% visible for 2 seconds in a feed, or when the viewer opens the post. Guests, the post author, and obvious bots are excluded. Use 0 for no minimum.')
+            ->assertSee('Enforced for payout eligibility, not for buying a Green Tick. Use 0 for no follower minimum.')
+            ->assertSee('Enforced for payout eligibility, not for buying a Green Tick. Use 0 for no published-post minimum.')
+            ->assertSee('Not used for Green Tick purchase or payout. Logged-in viewers other than the post author, once per post per rolling 24 hours, when a post is at least 50% visible for 2 seconds in a feed or when the viewer opens the post. Use 0 for no minimum.')
             ->assertDontSee('not tracked yet')
             ->assertDontSee('Not enforced yet');
     }

@@ -104,7 +104,7 @@ class ProfileController extends Controller
 
         return view('profile.edit', [
             'user' => $user,
-            'greenTickEligibility' => $user->greenTickEligibility(),
+            'payoutEligibility' => $user->payoutEligibility(),
             'greenTickVerification' => $greenTickVerification,
             'greenTickPackages' => MonetizationPackage::query()
                 ->where('type', MonetizationPackageType::GreenTick)

@@ -20,37 +20,81 @@
         @csrf
         @method('patch')
 
+        @php
+            $profileImageRules = \App\Actions\UpdateProfile::imageRules();
+            $profileImageAccept = 'image/jpeg,image/png,image/webp';
+            $profileImageMaxLabel = ((int) ($profileImageRules['max_kilobytes'] / 1024)).' MB';
+        @endphp
+
         <div>
             <x-input-label for="cover_image" :value="__('Cover photo')" />
-            @if($user->coverUrl())
-                <img id="cover-preview" src="{{ $user->coverUrl() }}" alt="Cover photo" class="profile-edit-cover mt-2 js-lightbox">
-                <label class="mt-2 inline-flex items-center text-sm text-gray-600">
-                    <input type="checkbox" name="remove_cover_image" value="1" class="sk-check">
-                    <span class="ms-2">{{ __('Remove cover photo') }}</span>
-                </label>
-            @else
-                <img id="cover-preview" src="" alt="Cover photo preview" class="profile-edit-cover mt-2 js-lightbox hidden">
-            @endif
-            <input id="cover_image" name="cover_image" type="file" accept="image/jpeg,image/png,image/webp" class="mt-2 block w-full text-sm" data-preview-target="#cover-preview">
+            <img
+                id="cover-preview"
+                src="{{ $user->coverUrl() ?? '' }}"
+                alt="{{ $user->coverUrl() ? 'Cover photo' : 'Cover photo preview' }}"
+                @class(['profile-edit-cover mt-2 js-lightbox', 'hidden' => ! $user->coverUrl()])
+            >
+            <div class="mt-2 flex flex-wrap items-center gap-3">
+                <label for="cover_image" class="btn-secondary">Change cover</label>
+                @if($user->coverUrl())
+                    <label class="inline-flex items-center text-sm text-gray-600">
+                        <input type="checkbox" name="remove_cover_image" value="1" class="sk-check">
+                        <span class="ms-2">{{ __('Remove cover photo') }}</span>
+                    </label>
+                @endif
+            </div>
+            <input
+                id="cover_image"
+                name="cover_image"
+                type="file"
+                accept="{{ $profileImageAccept }}"
+                class="profile-file-input"
+                data-preview-target="#cover-preview"
+                data-max-kilobytes="{{ $profileImageRules['max_kilobytes'] }}"
+                data-allowed-extensions="{{ implode(',', $profileImageRules['mimes']) }}"
+                data-client-error="#cover-image-client-error"
+            >
+            <p id="cover-image-client-error" class="mt-2 hidden text-sm text-red-600" role="alert"></p>
+            <p class="mt-1 text-xs text-gray-500">JPEG, PNG, or WebP. Maximum {{ $profileImageMaxLabel }}. The current cover stays until you choose a new one.</p>
             <x-input-error class="mt-2" :messages="$errors->get('cover_image')" />
         </div>
 
         <div>
             <x-input-label for="profile_image" :value="__('Profile picture')" />
             <div class="mt-2 flex items-center gap-4">
-                <div id="current-avatar">
-                    <x-user-avatar :user="$user" :lightbox="true" />
+                <div class="profile-edit-avatar">
+                    <img
+                        id="profile-image-preview"
+                        src="{{ $user->avatarUrl() ?? '' }}"
+                        alt="{{ $user->avatarUrl() ? 'Profile picture' : 'Profile picture preview' }}"
+                        @class(['profile-edit-preview js-lightbox', 'hidden' => ! $user->avatarUrl()])
+                    >
+                    <div id="profile-image-fallback" @class(['profile-avatar profile-edit-avatar-fallback', 'hidden' => (bool) $user->avatarUrl()])>{{ $user->initials() }}</div>
                 </div>
-                <img id="profile-image-preview" src="" alt="New profile picture" class="profile-edit-preview js-lightbox hidden">
+                <div class="flex flex-col items-start gap-2">
+                    <label for="profile_image" class="btn-secondary">Change photo</label>
+                    @if($user->profile_image)
+                        <label class="inline-flex items-center text-sm text-gray-600">
+                            <input type="checkbox" name="remove_profile_image" value="1" class="sk-check">
+                            <span class="ms-2">{{ __('Remove profile picture') }}</span>
+                        </label>
+                    @endif
+                </div>
             </div>
-            @if($user->profile_image)
-                <label class="mt-2 inline-flex items-center text-sm text-gray-600">
-                    <input type="checkbox" name="remove_profile_image" value="1" class="sk-check">
-                    <span class="ms-2">{{ __('Remove profile picture') }}</span>
-                </label>
-            @endif
-            <input id="profile_image" name="profile_image" type="file" accept="image/jpeg,image/png,image/webp" class="mt-2 block w-full text-sm" data-preview-target="#profile-image-preview" data-preview-hide="#current-avatar">
-            <p class="text-xs text-gray-500 mt-1">JPEG, PNG, or WebP. Maximum 5 MB.</p>
+            <input
+                id="profile_image"
+                name="profile_image"
+                type="file"
+                accept="{{ $profileImageAccept }}"
+                class="profile-file-input"
+                data-preview-target="#profile-image-preview"
+                data-preview-hide="#profile-image-fallback"
+                data-max-kilobytes="{{ $profileImageRules['max_kilobytes'] }}"
+                data-allowed-extensions="{{ implode(',', $profileImageRules['mimes']) }}"
+                data-client-error="#profile-image-client-error"
+            >
+            <p id="profile-image-client-error" class="mt-2 hidden text-sm text-red-600" role="alert"></p>
+            <p class="mt-1 text-xs text-gray-500">JPEG, PNG, or WebP. Maximum {{ $profileImageMaxLabel }}. The current photo stays until you choose a new one.</p>
             <x-input-error class="mt-2" :messages="$errors->get('profile_image')" />
         </div>
 

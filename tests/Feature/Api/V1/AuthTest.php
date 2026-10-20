@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api\V1;
 
 use App\Models\User;
+use App\Models\UserVerification;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
@@ -77,7 +78,8 @@ class AuthTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('user.id', $user->id)
             ->assertJsonPath('user.score', 12)
-            ->assertJsonPath('user.has_green_tick', false);
+            ->assertJsonPath('user.has_green_tick', false)
+            ->assertJsonMissingPath('user.payout_eligibility');
 
         $this->assertGuest();
         $response->assertCookieMissing(config('session.cookie'));
@@ -172,7 +174,34 @@ class AuthTest extends TestCase
             ->assertJsonPath('user.score', 4)
             ->assertJsonPath('user.followers_count', 0)
             ->assertJsonPath('user.following_count', 0)
-            ->assertJsonPath('user.unread_notifications_count', 1);
+            ->assertJsonPath('user.unread_notifications_count', 1)
+            ->assertJsonPath('user.payout_eligibility.eligible', false)
+            ->assertJsonPath('user.payout_eligibility.green_tick.current', 0)
+            ->assertJsonPath('user.payout_eligibility.green_tick.required', 1)
+            ->assertJsonPath('user.payout_eligibility.green_tick.met', false)
+            ->assertJsonPath('user.payout_eligibility.followers.required', 500)
+            ->assertJsonPath('user.payout_eligibility.followers.met', false)
+            ->assertJsonPath('user.payout_eligibility.published_posts.required', 10)
+            ->assertJsonPath('user.payout_eligibility.published_posts.met', false)
+            ->assertJsonMissingPath('user.payout_eligibility.qualified_views');
+    }
+
+    public function test_me_reports_payout_eligibility_from_the_live_admin_minimums(): void
+    {
+        $user = User::factory()->create();
+        UserVerification::factory()->active()->create(['user_id' => $user->id]);
+        $token = $user->createToken('Pixel 8', ['mobile'])->plainTextToken;
+
+        $this->getJson(route('api.v1.auth.me'), $this->bearer($token))
+            ->assertOk()
+            ->assertJsonPath('user.has_green_tick', true)
+            ->assertJsonPath('user.payout_eligibility.eligible', false)
+            ->assertJsonPath('user.payout_eligibility.green_tick.current', 1)
+            ->assertJsonPath('user.payout_eligibility.green_tick.met', true)
+            ->assertJsonPath('user.payout_eligibility.followers.current', 0)
+            ->assertJsonPath('user.payout_eligibility.followers.required', 500)
+            ->assertJsonPath('user.payout_eligibility.published_posts.current', 0)
+            ->assertJsonPath('user.payout_eligibility.published_posts.required', 10);
     }
 
     public function test_a_token_without_the_mobile_ability_returns_403(): void

@@ -223,18 +223,65 @@ img.feed-avatar {
     padding: 0.5rem;
     font-size: 0.8rem;
 }
+.profile-edit-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    color: #0F3D2E;
+    background: #f3f4f6;
+    flex-shrink: 0;
+}
+.profile-edit-icon:hover {
+    background: #e5e7eb;
+}
+.profile-edit-icon:focus-visible {
+    outline: 2px solid #0F3D2E;
+    outline-offset: 2px;
+}
+.profile-edit-avatar {
+    position: relative;
+    width: 88px;
+    height: 88px;
+    flex-shrink: 0;
+}
+.profile-edit-avatar-fallback {
+    width: 88px;
+    height: 88px;
+    font-size: 1.75rem;
+}
 .profile-edit-preview {
     width: 88px;
     height: 88px;
     border-radius: 999px;
     object-fit: cover;
+    display: block;
 }
 .profile-edit-cover {
     width: 100%;
-    height: 140px;
-    object-fit: cover;
+    height: auto;
+    object-fit: contain;
     border-radius: 12px;
     cursor: zoom-in;
+    display: block;
+}
+.profile-edit-preview.hidden,
+.profile-edit-cover.hidden,
+.profile-edit-avatar-fallback.hidden {
+    display: none;
+}
+.profile-file-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
 .image-preview-list {
     display: flex;

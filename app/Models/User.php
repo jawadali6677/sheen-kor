@@ -503,4 +503,46 @@ class User extends Authenticatable
             'views_tracked' => true,
         ];
     }
+
+    /**
+     * Payout access is separate from buying a Green Tick. Qualified views are
+     * not part of this check. A minimum of 0 means that count is not required.
+     * The minimums are the live admin settings.
+     *
+     * @return array{
+     *     eligible: bool,
+     *     green_tick: array{current: int, required: int, met: bool},
+     *     followers: array{current: int, required: int, met: bool},
+     *     published_posts: array{current: int, required: int, met: bool}
+     * }
+     */
+    public function payoutEligibility(): array
+    {
+        $requiredFollowers = monetization_setting('eligibility_min_followers', 0);
+        $requiredPosts = monetization_setting('eligibility_min_published_posts', 0);
+        $followers = $this->followers()->count();
+        $publishedPosts = $this->posts()->where('status', 'published')->count();
+        $hasGreenTick = $this->hasActiveGreenTick();
+        $followersMet = $followers >= $requiredFollowers;
+        $postsMet = $publishedPosts >= $requiredPosts;
+
+        return [
+            'eligible' => $hasGreenTick && $followersMet && $postsMet,
+            'green_tick' => [
+                'current' => $hasGreenTick ? 1 : 0,
+                'required' => 1,
+                'met' => $hasGreenTick,
+            ],
+            'followers' => [
+                'current' => $followers,
+                'required' => $requiredFollowers,
+                'met' => $followersMet,
+            ],
+            'published_posts' => [
+                'current' => $publishedPosts,
+                'required' => $requiredPosts,
+                'met' => $postsMet,
+            ],
+        ];
+    }
 }

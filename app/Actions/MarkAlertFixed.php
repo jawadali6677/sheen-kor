@@ -8,6 +8,7 @@ use App\Models\Alert;
 use App\Models\AlertImage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -17,64 +18,94 @@ class MarkAlertFixed
 
     public function handle(Request $request, Alert $alert): Alert
     {
-        $request->validate(array_merge([
+        $validated = $request->validate(array_merge([
             'fixed_location_name' => ['nullable', 'string', 'min:3', 'max:255'],
-            'fixed_latitude' => ['nullable', 'numeric', 'between:-90,90'],
-            'fixed_longitude' => ['nullable', 'numeric', 'between:-180,180'],
-            'fix_images' => ['nullable', 'array', 'max:10'],
+            'fixed_latitude' => ['required', 'numeric', 'between:-90,90'],
+            'fixed_longitude' => ['required', 'numeric', 'between:-180,180'],
+            'fix_images' => ['required', 'array', 'min:1', 'max:10'],
             'fix_images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-        ], shortVideoRules('fix_videos')));
+        ], shortVideoRules('fix_videos')), [
+            'fix_images.required' => 'Add a proof photo to mark this alert as fixed.',
+            'fix_images.min' => 'Add a proof photo to mark this alert as fixed.',
+            'fix_images.*.image' => 'Proof photos must be JPEG, PNG, or WebP.',
+            'fix_images.*.mimes' => 'Proof photos must be JPEG, PNG, or WebP.',
+            'fix_images.*.max' => 'Each proof photo must be 5 MB or smaller.',
+            'fixed_latitude.required' => 'Add the latitude and longitude of the place you fixed.',
+            'fixed_longitude.required' => 'Add the latitude and longitude of the place you fixed.',
+            'fixed_latitude.numeric' => 'Latitude must be a number between -90 and 90.',
+            'fixed_longitude.numeric' => 'Longitude must be a number between -180 and 180.',
+            'fixed_latitude.between' => 'Latitude must be between -90 and 90.',
+            'fixed_longitude.between' => 'Longitude must be between -180 and 180.',
+        ]);
+
+        $storedPaths = [];
 
         DB::beginTransaction();
 
         try {
-            $alert->update([
+            $locked = Alert::query()->whereKey($alert->id)->lockForUpdate()->firstOrFail();
+
+            if (! $locked->isInProgress() || ! $request->user()?->can('markFixed', $locked)) {
+                throw ValidationException::withMessages([
+                    'alert' => $locked->isFixed()
+                        ? 'This alert is already fixed.'
+                        : 'This alert can only be marked fixed while it is in progress.',
+                ]);
+            }
+
+            $sortOrder = $locked->fixImages()->count();
+
+            foreach ($request->file('fix_images', []) as $image) {
+                $path = $image->store('alerts/fixes', 'public');
+                $storedPaths[] = $path;
+
+                AlertImage::create([
+                    'alert_id' => $locked->id,
+                    'image' => $path,
+                    'caption' => null,
+                    'sort_order' => $sortOrder,
+                    'kind' => 'fix',
+                    'media_type' => 'image',
+                ]);
+
+                $sortOrder++;
+            }
+
+            foreach ($request->file('fix_videos', []) as $video) {
+                $path = $video->store('alerts/fixes', 'public');
+                $storedPaths[] = $path;
+
+                AlertImage::create([
+                    'alert_id' => $locked->id,
+                    'image' => $path,
+                    'caption' => null,
+                    'sort_order' => $sortOrder,
+                    'kind' => 'fix',
+                    'media_type' => 'video',
+                ]);
+
+                $sortOrder++;
+            }
+
+            $locked->update([
                 'status' => 'fixed',
                 'fixed_at' => now(),
-                'fixed_location_name' => $request->fixed_location_name,
-                'fixed_latitude' => $request->fixed_latitude,
-                'fixed_longitude' => $request->fixed_longitude,
+                'fixed_location_name' => $validated['fixed_location_name'] ?? null,
+                'fixed_latitude' => $validated['fixed_latitude'],
+                'fixed_longitude' => $validated['fixed_longitude'],
             ]);
 
-            $sortOrder = $alert->fixImages()->count();
-
-            if ($request->hasFile('fix_images')) {
-                foreach ($request->file('fix_images') as $image) {
-                    AlertImage::create([
-                        'alert_id' => $alert->id,
-                        'image' => $image->store('alerts/fixes', 'public'),
-                        'caption' => null,
-                        'sort_order' => $sortOrder,
-                        'kind' => 'fix',
-                        'media_type' => 'image',
-                    ]);
-
-                    $sortOrder++;
-                }
-            }
-
-            if ($request->hasFile('fix_videos')) {
-                foreach ($request->file('fix_videos') as $video) {
-                    AlertImage::create([
-                        'alert_id' => $alert->id,
-                        'image' => $video->store('alerts/fixes', 'public'),
-                        'caption' => null,
-                        'sort_order' => $sortOrder,
-                        'kind' => 'fix',
-                        'media_type' => 'video',
-                    ]);
-
-                    $sortOrder++;
-                }
-            }
-
-            $this->awardScore->handle($request->user(), ScoreReason::AlertFixed, $alert);
+            $this->awardScore->handle($request->user(), ScoreReason::AlertFixed, $locked);
 
             DB::commit();
 
-            return $alert;
+            return $locked->refresh();
         } catch (Throwable $exception) {
             DB::rollBack();
+
+            if ($storedPaths !== []) {
+                Storage::disk('public')->delete($storedPaths);
+            }
 
             if ($exception instanceof ValidationException) {
                 throw $exception;

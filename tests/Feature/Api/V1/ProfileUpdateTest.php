@@ -85,15 +85,79 @@ class ProfileUpdateTest extends TestCase
             ->assertJsonValidationErrors('email');
     }
 
+    public function test_image_rules_are_available_to_a_mobile_token_and_do_not_change_profile_payloads(): void
+    {
+        $this->getJson(route('api.v1.profile.image-rules'))
+            ->assertUnauthorized();
+
+        $user = User::factory()->create();
+        $plain = $user->createToken('Pixel 8', ['other'])->plainTextToken;
+
+        $this->getJson(route('api.v1.profile.image-rules'), $this->bearerToken($plain))
+            ->assertForbidden();
+
+        $this->getJson(route('api.v1.profile.image-rules'), $this->bearer($user))
+            ->assertOk()
+            ->assertExactJson([
+                'profile_image' => [
+                    'mimes' => ['jpg', 'jpeg', 'png', 'webp'],
+                    'max_kilobytes' => 5120,
+                ],
+                'cover_image' => [
+                    'mimes' => ['jpg', 'jpeg', 'png', 'webp'],
+                    'max_kilobytes' => 5120,
+                ],
+            ]);
+
+        $this->patchJson(route('api.v1.profile.update'), [
+            'name' => $user->name,
+            'email' => $user->email,
+        ], $this->bearer($user))
+            ->assertOk()
+            ->assertJsonMissingPath('data.mimes')
+            ->assertJsonMissingPath('data.max_kilobytes')
+            ->assertJsonMissingPath('data.payout_eligibility');
+    }
+
+    public function test_an_invalid_profile_image_is_rejected_and_the_current_image_stays(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create([
+            'profile_image' => 'profiles/avatars/kept.jpg',
+        ]);
+        Storage::disk('public')->put('profiles/avatars/kept.jpg', 'avatar');
+
+        $this->post(route('api.v1.profile.update'), [
+            '_method' => 'PATCH',
+            'name' => $user->name,
+            'email' => $user->email,
+            'profile_image' => UploadedFile::fake()->create('notes.pdf', 20, 'application/pdf'),
+        ], $this->bearer($user))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('profile_image');
+
+        $this->assertSame('profiles/avatars/kept.jpg', $user->fresh()->profile_image);
+        Storage::disk('public')->assertExists('profiles/avatars/kept.jpg');
+    }
+
     /**
      * @return array<string, string>
      */
     private function bearer(User $user): array
     {
+        return $this->bearerToken($user->createToken('Pixel 8', ['mobile'])->plainTextToken);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function bearerToken(string $token): array
+    {
         Auth::forgetGuards();
 
         return [
-            'Authorization' => 'Bearer '.$user->createToken('Pixel 8', ['mobile'])->plainTextToken,
+            'Authorization' => 'Bearer '.$token,
             'Accept' => 'application/json',
         ];
     }

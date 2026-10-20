@@ -47,16 +47,16 @@
     @endif
 
     <div class="mt-4 text-sm text-gray-700">
-        <p class="font-medium">Eligibility</p>
+        <p class="font-medium">Payout eligibility</p>
+        <p class="mt-1 text-gray-600">Buying a Green Tick does not grant payout access. Payout requires an approved Green Tick and the follower and published-post minimums set by an admin.</p>
         <ul class="mt-2 list-disc space-y-1 ps-5">
-            <li>{{ number_format($greenTickEligibility['followers']) }} / {{ number_format($greenTickEligibility['min_followers']) }} followers</li>
-            <li>{{ number_format($greenTickEligibility['published_posts']) }} / {{ number_format($greenTickEligibility['min_published_posts']) }} published posts</li>
-            <li>{{ number_format($greenTickEligibility['qualified_views']) }} / {{ number_format($greenTickEligibility['min_qualified_views']) }} qualified views (30 days)</li>
+            <li>Approved Green Tick — {{ $payoutEligibility['green_tick']['met'] ? 'Met' : 'Not yet' }}</li>
+            <li>{{ number_format($payoutEligibility['followers']['current']) }} / {{ number_format($payoutEligibility['followers']['required']) }} followers — {{ $payoutEligibility['followers']['met'] ? 'Met' : 'Not yet' }}</li>
+            <li>{{ number_format($payoutEligibility['published_posts']['current']) }} / {{ number_format($payoutEligibility['published_posts']['required']) }} published posts — {{ $payoutEligibility['published_posts']['met'] ? 'Met' : 'Not yet' }}</li>
         </ul>
-        <p class="mt-2 text-gray-600">Qualified views count logged-in viewers who are not you, once per post every 24 hours, when the post is at least 50% visible for 2 seconds in a feed or when someone opens the post.</p>
     </div>
 
-    @if($greenTickEligibility['eligible'] && ! $user->hasOpenGreenTickRequest())
+    @if(! $user->hasOpenGreenTickRequest())
         @if($greenTickPackages->isEmpty())
             <p class="mt-4 text-sm text-gray-500">No Green Tick packages are enabled.</p>
         @else
@@ -74,9 +74,7 @@
                 <button type="submit" class="btn-primary">Get Green Tick</button>
             </form>
         @endif
-    @elseif($greenTickEligibility['eligible'] && $user->hasOpenGreenTickRequest())
-        <p class="mt-4 text-sm text-gray-500">You already have a pending or active Green Tick.</p>
     @else
-        <p class="mt-4 text-sm text-gray-500">You are not eligible to request a Green Tick yet.</p>
+        <p class="mt-4 text-sm text-gray-500">You already have a pending or active Green Tick.</p>
     @endif
 </section>

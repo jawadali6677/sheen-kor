@@ -99,8 +99,13 @@ class AuthController extends Controller
 
     public function me(Request $request): JsonResponse
     {
+        $user = $request->user();
+
         return response()->json([
-            'user' => $this->accountUser($request->user()),
+            'user' => [
+                ...$this->accountUser($user),
+                'payout_eligibility' => $user->payoutEligibility(),
+            ],
         ]);
     }
 

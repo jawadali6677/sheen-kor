@@ -335,4 +335,146 @@ class ProfileTest extends TestCase
             ->assertSee('Claimed Only Restore')
             ->assertDontSee('Created Only Dump');
     }
+
+    public function test_own_profile_uses_a_pencil_and_other_profiles_keep_follow(): void
+    {
+        $owner = User::factory()->create([
+            'name' => 'Owner Person',
+            'username' => 'owner.person',
+        ]);
+        $visitor = User::factory()->create();
+
+        $this->actingAs($owner)
+            ->get(route('users.show', $owner))
+            ->assertOk()
+            ->assertSee('aria-label="Edit profile"', false)
+            ->assertSee('profile-edit-icon', false)
+            ->assertDontSee('btn-primary mb-2 text-sm', false);
+
+        $this->actingAs($visitor)
+            ->get(route('users.show', $owner))
+            ->assertOk()
+            ->assertSee('Follow')
+            ->assertDontSee('aria-label="Edit profile"', false);
+    }
+
+    public function test_edit_profile_shows_separate_image_controls_and_the_server_limits(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->get(route('profile.edit'))
+            ->assertOk()
+            ->assertSee('Change cover')
+            ->assertSee('Change photo')
+            ->assertSee('profile-edit-cover', false)
+            ->assertSee('profile-edit-preview', false)
+            ->assertSee('data-max-kilobytes="5120"', false)
+            ->assertSee('data-allowed-extensions="jpg,jpeg,png,webp"', false)
+            ->assertSee('The current cover stays until you choose a new one.');
+    }
+
+    public function test_edit_profile_hides_the_avatar_or_initials_that_are_not_in_use(): void
+    {
+        $withPhoto = User::factory()->create([
+            'profile_image' => 'profiles/avatars/kept.jpg',
+        ]);
+
+        $this->actingAs($withPhoto)
+            ->get(route('profile.edit'))
+            ->assertOk()
+            ->assertSee('profile-edit-avatar-fallback hidden', false)
+            ->assertDontSee('profile-edit-preview js-lightbox hidden', false);
+
+        $withoutPhoto = User::factory()->create([
+            'profile_image' => null,
+        ]);
+
+        $this->actingAs($withoutPhoto)
+            ->get(route('profile.edit'))
+            ->assertOk()
+            ->assertSee('profile-edit-preview js-lightbox hidden', false)
+            ->assertDontSee('profile-edit-avatar-fallback hidden', false);
+
+        $css = file_get_contents(public_path('css/social-feed.css'));
+
+        $this->assertIsString($css);
+        $this->assertStringContainsString(
+            ".profile-edit-preview.hidden,\n.profile-edit-cover.hidden,\n.profile-edit-avatar-fallback.hidden {\n    display: none;\n}",
+            $css,
+        );
+    }
+
+    public function test_profile_images_stay_when_they_are_not_replaced_and_can_be_removed(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+        Storage::disk('public')->put('profiles/avatars/kept.jpg', 'avatar');
+        Storage::disk('public')->put('profiles/covers/kept.jpg', 'cover');
+        $user->forceFill([
+            'profile_image' => 'profiles/avatars/kept.jpg',
+            'cover_image' => 'profiles/covers/kept.jpg',
+        ])->save();
+
+        $this->actingAs($user)
+            ->patch('/profile', [
+                'name' => 'River Keeper',
+                'email' => $user->email,
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect('/profile');
+
+        $user->refresh();
+        $this->assertSame('profiles/avatars/kept.jpg', $user->profile_image);
+        $this->assertSame('profiles/covers/kept.jpg', $user->cover_image);
+        Storage::disk('public')->assertExists('profiles/avatars/kept.jpg');
+        Storage::disk('public')->assertExists('profiles/covers/kept.jpg');
+
+        $this->actingAs($user)
+            ->patch('/profile', [
+                'name' => 'River Keeper',
+                'email' => $user->email,
+                'remove_profile_image' => '1',
+                'remove_cover_image' => '1',
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect('/profile');
+
+        $user->refresh();
+        $this->assertNull($user->profile_image);
+        $this->assertNull($user->cover_image);
+        Storage::disk('public')->assertMissing('profiles/avatars/kept.jpg');
+        Storage::disk('public')->assertMissing('profiles/covers/kept.jpg');
+    }
+
+    public function test_profile_images_must_match_the_type_and_size_rules(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create([
+            'profile_image' => 'profiles/avatars/kept.jpg',
+            'cover_image' => 'profiles/covers/kept.jpg',
+        ]);
+        Storage::disk('public')->put('profiles/avatars/kept.jpg', 'avatar');
+        Storage::disk('public')->put('profiles/covers/kept.jpg', 'cover');
+
+        $this->actingAs($user)
+            ->from('/profile')
+            ->patch('/profile', [
+                'name' => $user->name,
+                'email' => $user->email,
+                'profile_image' => UploadedFile::fake()->create('notes.pdf', 20, 'application/pdf'),
+                'cover_image' => UploadedFile::fake()->image('cover.jpg')->size(5121),
+            ])
+            ->assertRedirect('/profile')
+            ->assertSessionHasErrors([
+                'profile_image' => 'The profile image field must be an image.',
+                'cover_image' => 'The cover image field must not be greater than 5120 kilobytes.',
+            ]);
+
+        $user->refresh();
+        $this->assertSame('profiles/avatars/kept.jpg', $user->profile_image);
+        $this->assertSame('profiles/covers/kept.jpg', $user->cover_image);
+    }
 }

@@ -107,6 +107,88 @@ class AlertWriteTest extends TestCase
         $this->assertEqualsWithDelta(44.5678, $alert->fixed_longitude, 0.0000001);
     }
 
+    public function test_mark_fixed_requires_a_mobile_token(): void
+    {
+        $helper = User::factory()->create();
+        $alert = Alert::factory()->create([
+            'status' => 'in_progress',
+            'action_user_id' => $helper->id,
+            'action_taken_at' => now(),
+        ]);
+
+        $this->postJson(route('api.v1.alerts.mark-fixed', $alert))
+            ->assertUnauthorized();
+
+        $plain = $helper->createToken('Pixel 8', ['other'])->plainTextToken;
+
+        $this->postJson(route('api.v1.alerts.mark-fixed', $alert), [], $this->bearerToken($plain))
+            ->assertForbidden();
+
+        $this->assertSame('in_progress', $alert->fresh()->status);
+    }
+
+    public function test_mark_fixed_requires_a_proof_photo_and_coordinates(): void
+    {
+        Storage::fake('public');
+
+        $helper = User::factory()->create();
+        $alert = Alert::factory()->create([
+            'status' => 'in_progress',
+            'action_user_id' => $helper->id,
+            'action_taken_at' => now(),
+        ]);
+
+        $this->post(route('api.v1.alerts.mark-fixed', $alert), [], $this->bearer($helper))
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.fix_images.0', 'Add a proof photo to mark this alert as fixed.')
+            ->assertJsonPath('errors.fixed_latitude.0', 'Add the latitude and longitude of the place you fixed.')
+            ->assertJsonPath('errors.fixed_longitude.0', 'Add the latitude and longitude of the place you fixed.');
+
+        $this->assertSame('in_progress', $alert->fresh()->status);
+        $this->assertNull($alert->fresh()->fixed_at);
+        $this->assertSame(0, $helper->fresh()->score);
+        $this->assertSame(0, $alert->fixImages()->count());
+    }
+
+    public function test_mark_fixed_rejects_an_invalid_photo_or_coordinates(): void
+    {
+        Storage::fake('public');
+
+        $helper = User::factory()->create();
+        $alert = Alert::factory()->create([
+            'status' => 'in_progress',
+            'action_user_id' => $helper->id,
+            'action_taken_at' => now(),
+        ]);
+
+        $this->post(route('api.v1.alerts.mark-fixed', $alert), [
+            'fixed_latitude' => 91,
+            'fixed_longitude' => -181,
+            'fix_images' => [UploadedFile::fake()->image('after.gif')],
+        ], $this->bearer($helper))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors([
+                'fix_images.0' => 'Proof photos must be JPEG, PNG, or WebP.',
+                'fixed_latitude' => 'Latitude must be between -90 and 90.',
+                'fixed_longitude' => 'Longitude must be between -180 and 180.',
+            ]);
+
+        $this->post(route('api.v1.alerts.mark-fixed', $alert), [
+            'fixed_latitude' => 35.1,
+            'fixed_longitude' => 44.5,
+            'fix_images' => [UploadedFile::fake()->image('huge.jpg')->size(5121)],
+        ], $this->bearer($helper))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors([
+                'fix_images.0' => 'Each proof photo must be 5 MB or smaller.',
+            ]);
+
+        $this->assertSame('in_progress', $alert->fresh()->status);
+        $this->assertNull($alert->fresh()->fixed_at);
+        $this->assertSame(0, $alert->fixImages()->count());
+        Storage::disk('public')->assertDirectoryEmpty('alerts/fixes');
+    }
+
     public function test_another_member_cannot_update_or_delete_an_alert_and_a_disabled_account_cannot_create_one(): void
     {
         Storage::fake('public');

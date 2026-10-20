@@ -20,7 +20,12 @@
                     </div>
                     @auth
                         @if(auth()->id() === $profile->id)
-                            <a href="{{ route('profile.edit') }}" class="btn-primary mb-2 text-sm">Edit profile</a>
+                            <a href="{{ route('profile.edit') }}" class="profile-edit-icon mb-2" aria-label="Edit profile">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                    <path d="M12 20h9" />
+                                    <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                                </svg>
+                            </a>
                         @elseif($profile->status)
                             <div class="mb-2 flex flex-wrap gap-2">
                                 @if($isFollowing)

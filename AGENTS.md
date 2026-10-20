@@ -165,3 +165,13 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - Run `vendor/bin/phpunit` to call the test runner directly. It accepts the same file path and `--filter=testName` arguments.
 
 </laravel-boost-guidelines>
+
+## Cursor Cloud specific instructions
+
+SHEEN KOR is a Laravel 13 app. Symfony 8 needs PHP >= 8.4.1; use PHP 8.5. Ubuntu 24.04's default PHP is too old. Node.js 22 and Composer install the lockfiles.
+
+- The app database is SQLite at `database/database.sqlite`. Copy `.env.example` to `.env`, generate `APP_KEY`, then `php artisan migrate --force`.
+- `CategorySeeder` inserts categories and fails if they already exist. `MarketCategorySeeder` is safe to run again.
+- Dev server: `php artisan serve --host=0.0.0.0 --port=8000`. Production assets come from `npm run build`. Use `npm run dev` only when editing frontend assets.
+- Tests: `php artisan test --compact`. They use in-memory SQLite and do not need Stripe or Sightengine credentials.
+- `STRIPE_KEY`, `STRIPE_SECRET`, `STRIPE_WEBHOOK_SECRET`, `SIGHTENGINE_API_USER`, and `SIGHTENGINE_API_SECRET` are optional for browsing, registration, and creating stories. Without Sightengine keys, new stories stay pending review. Paid checkout needs Stripe test keys from the same account as `stripe listen`.
